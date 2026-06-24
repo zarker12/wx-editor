@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>公众号文章排版助手</title>
+    <link rel="stylesheet" href="styles.css?v=2">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">✎</span>
+                <span class="logo-text">排版助手</span>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-ghost" id="clearBtn">清空</button>
+                <button class="btn btn-outline" id="copyHtmlBtn">
+                    <span class="btn-icon">⟨/⟩</span>
+                    复制HTML
+                </button>
+                <button class="btn btn-primary" id="copyBtn">
+                    <span class="btn-icon">⎘</span>
+                    复制全文
+                </button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <aside class="sidebar">
+                <div class="section">
+                    <h4>排版主题</h4>
+                    <div class="style-list">
+                        <button class="style-btn active" data-style="minimal">
+                            <span class="style-indicator"></span>
+                            极简白
+                        </button>
+                        <button class="style-btn" data-style="luxury">
+                            <span class="style-indicator"></span>
+                            黑金奢
+                        </button>
+                        <button class="style-btn" data-style="cyber">
+                            <span class="style-indicator"></span>
+                            科技感
+                        </button>
+                        <button class="style-btn" data-style="magazine">
+                            <span class="style-indicator"></span>
+                            杂志风
+                        </button>
+                        <button class="style-btn" data-style="fresh">
+                            <span class="style-indicator"></span>
+                            清新绿
+                        </button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h4>主题色</h4>
+                    <div class="color-list">
+                        <button class="color-btn active" data-color="emerald">
+                            <span class="color-dot" style="background: linear-gradient(135deg, #10B981, #34D399);"></span>
+                            翠绿
+                        </button>
+                        <button class="color-btn" data-color="blue">
+                            <span class="color-dot" style="background: linear-gradient(135deg, #3B82F6, #60A5FA);"></span>
+                            湖蓝
+                        </button>
+                        <button class="color-btn" data-color="orange">
+                            <span class="color-dot" style="background: linear-gradient(135deg, #F97316, #FB923C);"></span>
+                            暖橙
+                        </button>
+                        <button class="color-btn" data-color="purple">
+                            <span class="color-dot" style="background: linear-gradient(135deg, #8B5CF6, #A78BFA);"></span>
+                            紫藤
+                        </button>
+                        <button class="color-btn" data-color="brown">
+                            <span class="color-dot" style="background: linear-gradient(135deg, #78350F, #B45309);"></span>
+                            栗棕
+                        </button>
+                        <button class="color-btn" data-color="black">
+                            <span class="color-dot" style="background: linear-gradient(135deg, #1F2937, #4B5563);"></span>
+                            墨灰
+                        </button>
+                        <button class="color-btn" data-color="beige">
+                            <span class="color-dot" style="background: linear-gradient(135deg, #D4C4A8, #E8DDC8);"></span>
+                            米驼
+                        </button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h4>字体</h4>
+                    <div class="font-options">
+                        <button class="font-btn active" data-font="serif">
+                            <span class="font-sample">宋</span>
+                            衬线体
+                        </button>
+                        <button class="font-btn" data-font="sans">
+                            <span class="font-sample">黑</span>
+                            无衬线
+                        </button>
+                        <button class="font-btn" data-font="mono">
+                            <span class="font-sample">M</span>
+                            等宽
+                        </button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h4>正文字号</h4>
+                    <div class="size-options">
+                        <button class="size-btn" data-size="small">A-</button>
+                        <button class="size-btn active" data-size="medium">A</button>
+                        <button class="size-btn" data-size="large">A+</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h4>段落间距</h4>
+                    <div class="spacing-options">
+                        <button class="spacing-btn active" data-spacing="compact">紧</button>
+                        <button class="spacing-btn" data-spacing="normal">中</button>
+                        <button class="spacing-btn" data-spacing="loose">松</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h4>字间距</h4>
+                    <div class="tracking-options">
+                        <button class="tracking-btn active" data-tracking="tight">紧</button>
+                        <button class="tracking-btn" data-tracking="normal">中</button>
+                        <button class="tracking-btn" data-tracking="loose">松</button>
+                    </div>
+                </div>
+            </aside>
+
+            <section class="editor-section">
+                <div class="import-bar">
+                    <div class="import-section">
+                        <label class="import-label" for="fileInput">
+                            <span class="import-icon">📄</span>
+                            <span>导入MD文件</span>
+                        </label>
+                        <input type="file" id="fileInput" accept=".md,.markdown,.txt" style="display:none;">
+                    </div>
+                    <div class="import-divider"></div>
+                    <div class="import-section link-section">
+                        <div class="link-input-wrapper">
+                            <span class="link-icon">🔗</span>
+                            <input type="text" id="urlInput" placeholder="粘贴文章链接，自动解析排版..." />
+                            <button class="link-btn" id="parseUrlBtn">解析</button>
+                        </div>
+                    </div>
+                    <div class="import-divider"></div>
+                    <div class="import-section">
+                        <button class="smart-btn" id="smartFormatBtn">
+                            <span class="import-icon">✨</span>
+                            <span>智能排版</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="editor-toolbar">
+                    <div class="toolbar-group">
+                        <button class="tool-btn" data-action="bold" title="加粗 (Ctrl+B)">
+                            <span class="tool-text-bold">B</span>
+                        </button>
+                        <button class="tool-btn" data-action="italic" title="斜体 (Ctrl+I)">
+                            <span class="tool-text-italic">I</span>
+                        </button>
+                        <button class="tool-btn" data-action="h2" title="小标题">H</button>
+                    </div>
+                    <div class="toolbar-divider"></div>
+                    <div class="toolbar-group">
+                        <button class="tool-btn" data-action="list" title="列表">☰</button>
+                        <button class="tool-btn" data-action="quote" title="引用">❝</button>
+                        <button class="tool-btn" data-action="divider" title="分割线">—</button>
+                    </div>
+                    <div class="toolbar-divider"></div>
+                    <div class="toolbar-group">
+                        <button class="tool-btn" data-action="link" title="链接">🔗</button>
+                        <button class="tool-btn" data-action="image" title="图片">🖼</button>
+                        <button class="tool-btn" data-action="code" title="代码">&lt;/&gt;</button>
+                    </div>
+                    <div class="toolbar-divider"></div>
+                    <div class="toolbar-group">
+                        <button class="tool-btn" data-action="undo" title="撤销 (Ctrl+Z)">↶</button>
+                        <button class="tool-btn" data-action="redo" title="重做 (Ctrl+Y)">↷</button>
+                    </div>
+                </div>
+                <div id="editor" class="editor-rich" contenteditable="true" placeholder="在此书写你的文章...
+
+支持 Markdown 语法与富文本粘贴：
+# 大标题
+## 小标题
+**加粗** *斜体*
+- 列表项
+> 引用内容
+行内代码
+---
+可直接拖拽图片或文件到此处"></div>
+            </section>
+
+            <section class="preview-section">
+                <div class="preview-label">
+                    <span>预览</span>
+                </div>
+                <div class="preview-container">
+                    <div class="phone-frame">
+                        <div class="phone-header-bar"></div>
+                        <div class="wechat-content" id="preview">
+                            <div class="article-body" id="articleBody"></div>
+                        </div>
+                        <div class="phone-footer-bar"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="script.js?v=4"></script>
+</body>
+</html>
