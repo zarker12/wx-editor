@@ -4,10 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>公众号文章排版助手</title>
-    <link rel="stylesheet" href="styles.css?v=2">
+    <link rel="stylesheet" href="styles.css?v=3">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -29,6 +32,18 @@
             </div>
         </header>
 
+        <div class="tab-bar">
+            <button class="tab-btn active" data-tab="editor">
+                <span class="tab-icon">✎</span>
+                排版助手
+            </button>
+            <button class="tab-btn" data-tab="image">
+                <span class="tab-icon">🖼</span>
+                图片生成
+            </button>
+        </div>
+
+        <div class="tab-content active" id="tab-editor">
         <main class="main-content">
             <aside class="sidebar">
                 <div class="section">
@@ -219,6 +234,153 @@
                 </div>
             </section>
         </main>
+        </div>
+
+        <div class="tab-content" id="tab-image">
+            <div class="image-gen-container">
+                <aside class="image-sidebar">
+                    <div class="section">
+                        <h4>生成模式</h4>
+                        <div class="mode-tabs">
+                            <button class="mode-btn active" data-mode="cover">
+                                <span class="mode-icon">📌</span>
+                                <div>
+                                    <div class="mode-title">封面图</div>
+                                    <div class="mode-desc">标题/短句，单张</div>
+                                </div>
+                            </button>
+                            <button class="mode-btn" data-mode="article">
+                                <span class="mode-icon">📄</span>
+                                <div>
+                                    <div class="mode-title">文章长图</div>
+                                    <div class="mode-desc">整篇文章，自动分页</div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h4>图片尺寸</h4>
+                        <div class="size-grid">
+                            <button class="size-card active" data-size="xhs">
+                                <div class="size-ratio">3:4</div>
+                                <div class="size-name">小红书</div>
+                            </button>
+                            <button class="size-card" data-size="pyq">
+                                <div class="size-ratio">1:1</div>
+                                <div class="size-name">朋友圈</div>
+                            </button>
+                            <button class="size-card" data-size="wb">
+                                <div class="size-ratio">16:9</div>
+                                <div class="size-name">微博横图</div>
+                            </button>
+                            <button class="size-card" data-size="story">
+                                <div class="size-ratio">9:16</div>
+                                <div class="size-name">竖版故事</div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h4>模板风格</h4>
+                        <div class="tpl-list">
+                            <button class="tpl-btn active" data-tpl="minimal">
+                                <div class="tpl-preview tpl-minimal"></div>
+                                <span>极简白</span>
+                            </button>
+                            <button class="tpl-btn" data-tpl="gradient">
+                                <div class="tpl-preview tpl-gradient"></div>
+                                <span>渐变风</span>
+                            </button>
+                            <button class="tpl-btn" data-tpl="magazine">
+                                <div class="tpl-preview tpl-magazine"></div>
+                                <span>杂志风</span>
+                            </button>
+                            <button class="tpl-btn" data-tpl="dark">
+                                <div class="tpl-preview tpl-dark"></div>
+                                <span>暗黑风</span>
+                            </button>
+                            <button class="tpl-btn" data-tpl="fresh">
+                                <div class="tpl-preview tpl-fresh"></div>
+                                <span>清新绿</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h4>主题色</h4>
+                        <div class="color-list">
+                            <button class="color-btn active" data-img-color="emerald">
+                                <span class="color-dot" style="background: linear-gradient(135deg, #10B981, #34D399);"></span>
+                                翠绿
+                            </button>
+                            <button class="color-btn" data-img-color="blue">
+                                <span class="color-dot" style="background: linear-gradient(135deg, #3B82F6, #60A5FA);"></span>
+                                湖蓝
+                            </button>
+                            <button class="color-btn" data-img-color="orange">
+                                <span class="color-dot" style="background: linear-gradient(135deg, #F97316, #FB923C);"></span>
+                                暖橙
+                            </button>
+                            <button class="color-btn" data-img-color="purple">
+                                <span class="color-dot" style="background: linear-gradient(135deg, #8B5CF6, #A78BFA);"></span>
+                                紫藤
+                            </button>
+                            <button class="color-btn" data-img-color="pink">
+                                <span class="color-dot" style="background: linear-gradient(135deg, #EC4899, #F472B6);"></span>
+                                玫红
+                            </button>
+                            <button class="color-btn" data-img-color="black">
+                                <span class="color-dot" style="background: linear-gradient(135deg, #1F2937, #4B5563);"></span>
+                                墨灰
+                            </button>
+                        </div>
+                    </div>
+                </aside>
+
+                <div class="image-workspace">
+                    <div class="image-input-section">
+                        <div class="input-header">
+                            <span class="input-title" id="inputTitle">输入标题</span>
+                            <span class="input-hint" id="inputHint">建议20字以内</span>
+                        </div>
+                        <textarea id="imageInput" class="image-textarea" placeholder="在这里输入内容..."></textarea>
+                        <div class="input-actions">
+                            <button class="btn btn-ghost" id="clearImageBtn">清空</button>
+                            <button class="btn btn-primary" id="generateBtn">
+                                <span class="btn-icon">✨</span>
+                                生成图片
+                            </button>
+                            <button class="btn btn-outline" id="downloadBtn">
+                                <span class="btn-icon">⬇</span>
+                                下载图片
+                            </button>
+                            <button class="btn btn-outline" id="downloadAllBtn" style="display:none;">
+                                <span class="btn-icon">📦</span>
+                                打包下载全部
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="image-preview-section">
+                        <div class="preview-header">
+                            <span class="preview-title">预览</span>
+                            <span class="page-info" id="pageInfo" style="display:none;">第 1 / 1 张</span>
+                        </div>
+                        <div class="image-preview-wrap" id="imagePreviewWrap">
+                            <div class="image-placeholder">
+                                <div class="placeholder-icon">🖼</div>
+                                <div class="placeholder-text">输入内容后点击生成图片</div>
+                            </div>
+                        </div>
+                        <div class="page-nav" id="pageNav" style="display:none;">
+                            <button class="page-btn" id="prevPage">← 上一张</button>
+                            <button class="page-btn" id="nextPage">下一张 →</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="themes/minimal.js"></script>
@@ -226,6 +388,6 @@
     <script src="themes/cyber.js"></script>
     <script src="themes/magazine.js"></script>
     <script src="themes/fresh.js"></script>
-    <script src="script.js?v=4"></script>
+    <script src="script.js?v=5"></script>
 </body>
 </html>
