@@ -165,27 +165,32 @@ function markdownToHTML(text) {
         return blockId;
     });
 
-    html = html.replace(/^# (.+)$/gim, '<h1>$1</h1>');
-    html = html.replace(/^## (.+)$/gim, '<h2>$1</h2>');
+    html = html.replace(/^###### (.+)$/gim, '<h6>$1</h6>');
+    html = html.replace(/^##### (.+)$/gim, '<h5>$1</h5>');
+    html = html.replace(/^#### (.+)$/gim, '<h4>$1</h4>');
     html = html.replace(/^### (.+)$/gim, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gim, '<h2>$1</h2>');
+    html = html.replace(/^# (.+)$/gim, '<h1>$1</h1>');
 
     html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
 
     html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
     html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    html = html.replace(/___(.+?)___/g, '<strong><em>$1</em></strong>');
+    html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+    html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
 
     html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
 
-    html = html.replace(/^---$/gm, '<hr>');
-    html = html.replace(/^———$/gm, '<hr>');
-
-    html = html.replace(/^> (.+)$/gim, '<blockquote>$1</blockquote>');
+    html = html.replace(/^(-{3,}|\*{3,}|_{3,})$/gm, '<hr>');
 
     const lines = html.split('\n');
     const processedLines = [];
     let inUl = false;
     let inOl = false;
+    let inBlockquote = false;
+    let blockquoteBuffer = [];
     let olCounter = 0;
 
     function closeLists() {
@@ -193,9 +198,29 @@ function markdownToHTML(text) {
         if (inOl) { processedLines.push('</ol>'); inOl = false; olCounter = 0; }
     }
 
+    function closeBlockquote() {
+        if (inBlockquote && blockquoteBuffer.length > 0) {
+            processedLines.push(`<blockquote>${blockquoteBuffer.join('<br>')}</blockquote>`);
+            blockquoteBuffer = [];
+            inBlockquote = false;
+        }
+    }
+
     lines.forEach((line) => {
-        const ulMatch = line.match(/^[-*•] (.+)$/);
-        const olMatch = line.match(/^(\d+)[.、）)]\s*(.+)$/);
+        const trimmed = line.trim();
+        
+        const blockquoteMatch = trimmed.match(/^>\s?(.*)$/);
+        if (blockquoteMatch) {
+            closeLists();
+            inBlockquote = true;
+            blockquoteBuffer.push(blockquoteMatch[1]);
+            return;
+        } else {
+            closeBlockquote();
+        }
+
+        const ulMatch = trimmed.match(/^[-*•·▪▸▹►▻◆◇★☆✓✔]+\s+(.+)$/);
+        const olMatch = trimmed.match(/^(\d+)[.、）)]\s*(.+)$/);
 
         if (ulMatch) {
             if (inOl) closeLists();
@@ -208,17 +233,17 @@ function markdownToHTML(text) {
             processedLines.push(`<li>${olMatch[2]}</li>`);
         } else {
             closeLists();
-            const trimmed = line.trim();
-            if (trimmed && !trimmed.match(/^<\/?(ul|ol|li|blockquote|pre|h[1-6]|div|p|hr|a|strong|em|code|span)/i)
+            if (trimmed && !trimmed.match(/^<\/?(ul|ol|li|blockquote|pre|h[1-6]|div|p|hr|a|strong|em|code|span|img|br)/i)
                 && !trimmed.startsWith('__CODEBLOCK_') && !trimmed.includes('__CODEBLOCK_')) {
                 processedLines.push(`<p>${trimmed}</p>`);
-            } else {
-                processedLines.push(line);
+            } else if (trimmed) {
+                processedLines.push(trimmed);
             }
         }
     });
 
     closeLists();
+    closeBlockquote();
 
     let result = processedLines.join('\n');
     codeBlocks.forEach((block, idx) => {
@@ -242,10 +267,29 @@ function renderStyledHTML(editorHTML) {
     const doc = parser.parseFromString(`<div id="__root__">${editorHTML}</div>`, 'text/html');
     const root = doc.getElementById('__root__');
 
-    // 为样式追加字体（微信公众号需要每个元素都明确指定字体）
+    const baseTextStyle = `font-family:${font};font-weight:${fontWeight};font-size:${s.fontSize};line-height:${sp.lineHeight};color:${theme.textColor};${t.letterSpacing ? `letter-spacing:${t.letterSpacing};` : ''}`;
+
     const appendFont = (style, useMono = false) => {
         const fontFamily = useMono ? fontFamilies.mono : font;
         return style + `font-family:${fontFamily};`;
+    };
+
+    const addBaseTextStyles = (style, useMono = false) => {
+        const fontFamily = useMono ? fontFamilies.mono : font;
+        let result = style;
+        if (!result.includes('font-family:')) {
+            result += `font-family:${fontFamily};`;
+        }
+        if (!result.includes('font-size:')) {
+            result += `font-size:${s.fontSize};`;
+        }
+        if (!result.includes('line-height:')) {
+            result += `line-height:${sp.lineHeight};`;
+        }
+        if (!result.includes('letter-spacing:') && t.letterSpacing) {
+            result += `letter-spacing:${t.letterSpacing};`;
+        }
+        return result;
     };
 
     function walk(node) {
@@ -262,11 +306,13 @@ function renderStyledHTML(editorHTML) {
 
         switch (tag) {
             case 'h1': {
-                const style = appendFont(theme.h1Style(c, s, sp, t));
+                let style = theme.h1Style(c, s, sp, t);
+                style = addBaseTextStyles(style);
                 return `<h1 style="${style}">${children}</h1>`;
             }
             case 'h2': {
-                const style = appendFont(theme.h2Style(c, s, sp, t));
+                let style = theme.h2Style(c, s, sp, t);
+                style = addBaseTextStyles(style);
                 const h2Decor = theme.h2Decor ? theme.h2Decor(c) : '';
                 if (h2Decor) {
                     return `<div style="margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0;"><h2 style="${style}">${children}</h2>${h2Decor}</div>`;
@@ -274,20 +320,24 @@ function renderStyledHTML(editorHTML) {
                 return `<h2 style="${style}">${children}</h2>`;
             }
             case 'h3': {
-                const style = appendFont(theme.h2Style(c, s, sp, t));
+                let style = theme.h2Style(c, s, sp, t);
+                style = addBaseTextStyles(style);
                 return `<h3 style="${style}">${children}</h3>`;
             }
             case 'p': {
-                const style = appendFont(theme.pStyle(c, sp));
+                let style = theme.pStyle(c, sp);
+                style = addBaseTextStyles(style);
                 return `<p style="${style}">${children}</p>`;
             }
             case 'blockquote': {
-                const style = appendFont(theme.blockquoteStyle(c));
+                let style = theme.blockquoteStyle(c);
+                style = addBaseTextStyles(style);
                 return `<blockquote style="${style}">${children}</blockquote>`;
             }
             case 'ul': {
                 const style = theme.ulStyle(c);
-                const liStyle = appendFont(theme.liStyle(c));
+                let liStyle = theme.liStyle(c);
+                liStyle = addBaseTextStyles(liStyle);
                 const liIcon = theme.liIcon ? theme.liIcon(c) : '';
                 let lis = '';
                 let idx = 0;
@@ -302,7 +352,8 @@ function renderStyledHTML(editorHTML) {
             }
             case 'ol': {
                 const style = theme.olStyle(c);
-                const liStyle = appendFont(theme.liStyle(c));
+                let liStyle = theme.liStyle(c);
+                liStyle = addBaseTextStyles(liStyle);
                 let lis = '';
                 let idx = 0;
                 Array.from(node.children).forEach(li => {
@@ -317,22 +368,25 @@ function renderStyledHTML(editorHTML) {
             }
             case 'hr': {
                 const style = theme.hrStyle(c);
-                const hrDecor = theme.hrDecor ? `<span style="display:block;text-align:center;color:${c.accent}80;font-size:18px;letter-spacing:12px;margin:-28px 0 48px 0;">${theme.hrDecor(c)}</span>` : '';
+                const hrDecor = theme.hrDecor ? `<span style="display:block;text-align:center;color:${c.accent}80;font-size:18px;letter-spacing:12px;margin:-28px 0 48px 0;font-family:${font};">${theme.hrDecor(c)}</span>` : '';
                 return `<hr style="${style}">${hrDecor}`;
             }
             case 'a': {
-                const style = appendFont(theme.aStyle(c));
+                let style = theme.aStyle(c);
+                style = addBaseTextStyles(style);
                 const href = node.getAttribute('href') || '#';
                 return `<a href="${href}" style="${style}">${children}</a>`;
             }
             case 'strong':
             case 'b': {
-                const style = appendFont(theme.strongStyle(c));
+                let style = theme.strongStyle(c);
+                style = addBaseTextStyles(style);
                 return `<strong style="${style}">${children}</strong>`;
             }
             case 'em':
             case 'i': {
-                const style = appendFont(theme.emStyle(c));
+                let style = theme.emStyle(c);
+                style = addBaseTextStyles(style);
                 return `<em style="${style}">${children}</em>`;
             }
             case 'code': {
@@ -340,14 +394,19 @@ function renderStyledHTML(editorHTML) {
                 if (parentTag === 'pre') {
                     return children;
                 }
-                const style = appendFont(theme.codeStyle(c), true); // code使用等宽字体
+                let style = theme.codeStyle(c);
+                style = addBaseTextStyles(style, true);
                 return `<code style="${style}">${children}</code>`;
             }
             case 'pre': {
-                const preStyle = appendFont(theme.preStyle(c), true);
-                const codeStyle = appendFont(theme.preCodeStyle(c), true);
-                const copyBtnStyle = appendFont(theme.codeCopyBtnStyle(c), true);
-                const hintStyle = appendFont(theme.scrollHintStyle(c), true);
+                let preStyle = theme.preStyle(c);
+                preStyle = addBaseTextStyles(preStyle, true);
+                let codeStyle = theme.preCodeStyle(c);
+                codeStyle = addBaseTextStyles(codeStyle, true);
+                let copyBtnStyle = theme.codeCopyBtnStyle(c);
+                copyBtnStyle = addBaseTextStyles(copyBtnStyle, true);
+                let hintStyle = theme.scrollHintStyle(c);
+                hintStyle = addBaseTextStyles(hintStyle, true);
                 let codeText = '';
                 const codeEl = node.querySelector('code');
                 if (codeEl) {
@@ -408,36 +467,78 @@ function debouncedUpdatePreview() {
 
 // ===== 导出 =====
 function generateExportHTML() {
-    const clone = articleBody.cloneNode(true);
-    clone.querySelectorAll('.code-copy-btn').forEach(btn => btn.remove());
-    clone.querySelectorAll('.code-scroll-hint').forEach(hint => hint.remove());
-    return clone.innerHTML;
+    const c = getColorConfig();
+    const s = getSizeConfig();
+    const sp = getSpacingConfig();
+    const t = getTrackingConfig();
+    const font = getFontFamily();
+    const fontWeight = getFontWeight();
+    const theme = getStyleTheme();
+
+    const bodyStyle = theme.bodyStyle(c, s, sp, t, font);
+
+    const styledContent = renderStyledHTML(editor.innerHTML);
+
+    const fullHTML = `<section id="articleContent" style="max-width:677px;margin:0 auto;background:${theme.canvasBg};font-family:${font};font-weight:${fontWeight};color:${theme.textColor};line-height:${sp.lineHeight};${t.letterSpacing ? `letter-spacing:${t.letterSpacing};` : ''}word-break:break-word;">
+        <section style="padding:32px 28px;">
+            ${styledContent}
+        </section>
+    </section>`;
+
+    return fullHTML;
 }
 
 function generateRawHTML() {
-    return articleBody.innerHTML;
+    return generateExportHTML();
 }
 
 async function copyToClipboard() {
     const html = generateExportHTML();
+    const textContent = articleBody.innerText || editor.innerText;
+
     try {
-        const blob = new Blob([html], { type: 'text/html' });
-        const item = new ClipboardItem({ 'text/html': blob });
+        const htmlBlob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const textBlob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+        const item = new ClipboardItem({
+            'text/html': htmlBlob,
+            'text/plain': textBlob
+        });
         await navigator.clipboard.write([item]);
         showToast('排版已复制，可直接粘贴到公众号！');
     } catch (err) {
-        fallbackCopy(html, '排版已复制，请粘贴到公众号编辑器');
+        fallbackCopyWithHTML(html, '排版已复制，请粘贴到公众号编辑器');
     }
 }
 
 async function copyRawHTML() {
-    const html = generateRawHTML();
+    const html = generateExportHTML();
     try {
         await navigator.clipboard.writeText(html);
         showToast('HTML源码已复制！');
     } catch (err) {
         fallbackCopy(html, 'HTML源码已复制');
     }
+}
+
+function fallbackCopyWithHTML(html, msg) {
+    const container = document.createElement('div');
+    container.innerHTML = html;
+    container.style.cssText = 'position:fixed;left:-9999px;top:0;';
+    document.body.appendChild(container);
+
+    const range = document.createRange();
+    range.selectNodeContents(container);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    try {
+        document.execCommand('copy');
+    } catch (e) {}
+
+    selection.removeAllRanges();
+    document.body.removeChild(container);
+    showToast(msg);
 }
 
 function fallbackCopy(text, msg) {
@@ -699,13 +800,34 @@ function handlePaste(e) {
     const textData = clipboardData.getData('text/plain');
     if (textData) {
         const trimmed = textData.trim();
-        const looksLikeMarkdown = /^#\s|^##\s|```|\*\*|^-\s|^>\s/.test(trimmed) || trimmed.length > 200;
-        if (looksLikeMarkdown) {
+        if (!trimmed) return;
+
+        const hasMarkdownSyntax = /^#\s|^##\s|```|^-\s|^>\s|\*\*.+\*\*/.test(trimmed);
+        const isLongText = trimmed.length > 300;
+        const hasMultipleLines = trimmed.split('\n').filter(l => l.trim()).length > 5;
+
+        if (hasMarkdownSyntax || isLongText || hasMultipleLines) {
             const formatted = smartFormatText(trimmed);
             const html = markdownToHTML(formatted);
             insertHTMLAtCursor(html);
         } else {
-            insertHTMLAtCursor(`<p>${trimmed.replace(/\n/g, '<br>')}</p>`);
+            const lines = trimmed.split('\n');
+            const paragraphs = [];
+            let paraBuffer = [];
+            for (const line of lines) {
+                if (line.trim() === '') {
+                    if (paraBuffer.length > 0) {
+                        paragraphs.push(`<p>${paraBuffer.join('')}</p>`);
+                        paraBuffer = [];
+                    }
+                } else {
+                    paraBuffer.push(line);
+                }
+            }
+            if (paraBuffer.length > 0) {
+                paragraphs.push(`<p>${paraBuffer.join('')}</p>`);
+            }
+            insertHTMLAtCursor(paragraphs.join(''));
         }
     }
 }
@@ -760,9 +882,12 @@ function handleDrop(e) {
 
     const textData = e.dataTransfer.getData('text/plain');
     if (textData) {
-        const formatted = smartFormatText(textData.trim());
-        const html = markdownToHTML(formatted);
-        insertHTMLAtCursor(html);
+        const trimmed = textData.trim();
+        if (trimmed) {
+            const formatted = smartFormatText(trimmed);
+            const html = markdownToHTML(formatted);
+            insertHTMLAtCursor(html);
+        }
     }
 }
 
@@ -789,11 +914,9 @@ function smartFormat() {
     if (/^#\s/.test(text) || /```/.test(text)) {
         if (!confirm('内容可能已经是Markdown格式，确定要重新智能排版吗？')) return;
     }
-    editor.focus();
-    document.execCommand('selectAll', false, null);
     const formatted = smartFormatText(text);
     const html = markdownToHTML(formatted);
-    document.execCommand('insertHTML', false, html);
+    editor.innerHTML = html;
     updatePreview();
     showToast('智能排版完成！');
 }
@@ -803,31 +926,51 @@ function smartFormatText(text) {
     
     lines = normalizeWhitespace(lines);
     
-    const result = [];
-    let paraBuffer = [];
-    let inCodeBlock = false;
-    let codeBuffer = [];
+    let processed = [];
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const nextLine = i + 1 < lines.length ? lines[i + 1] : '';
+        const nextNextLine = i + 2 < lines.length ? lines[i + 2] : '';
+        
+        if (line.trim() && /^["""「『【「]/.test(line.trim()) && /["""」』】」[。！？!?]$/.test(line.trim()) &&
+            nextLine.trim() === '' && nextNextLine.trim() && /^[——\-]+\s*[\u4e00-\u9fa5]/.test(nextNextLine.trim())) {
+            processed.push(line);
+            processed.push(nextNextLine);
+            i += 2;
+            continue;
+        }
+        
+        processed.push(line);
+    }
+    lines = processed;
     
     const cleanLines = collapseEmptyLines(lines);
     const nonEmpty = cleanLines.filter(l => l.trim());
     if (nonEmpty.length === 0) return text;
 
-    let titleLine = -1;
-    if (isLikelyTitle(nonEmpty[0].trim()) && nonEmpty.length > 1) titleLine = 0;
+    const result = [];
+    let paraBuffer = [];
+    let inCodeBlock = false;
+    let codeBuffer = [];
+    let inQuoteBlock = false;
+    let quoteBuffer = [];
 
-    let subtitleLine = -1;
-    if (titleLine === 0 && nonEmpty.length > 2) {
-        if (isLikelySubtitle(nonEmpty[1].trim(), nonEmpty[0].trim())) subtitleLine = 1;
-    }
+    const analysis = analyzeTextStructure(cleanLines, nonEmpty);
 
     for (let i = 0; i < cleanLines.length; i++) {
         const line = cleanLines[i];
         const trimmed = line.trim();
+        const nonEmptyIdx = getNonEmptyIndex(cleanLines, i);
         
         if (trimmed === '') {
             if (inCodeBlock) {
                 codeBuffer.push('');
                 continue;
+            }
+            if (inQuoteBlock && quoteBuffer.length > 0) {
+                result.push(quoteBuffer.map(l => `> ${l}`).join('\n'));
+                quoteBuffer = [];
+                inQuoteBlock = false;
             }
             if (paraBuffer.length > 0) {
                 result.push(paraBuffer.join(''));
@@ -858,55 +1001,257 @@ function smartFormatText(text) {
             codeBuffer.push(line);
             continue;
         }
-        
-        const idx = cleanLines.slice(0, i+1).filter(l => l.trim()).length - 1;
-        
-        if (idx === titleLine) {
-            result.push(`# ${trimmed}`);
-            continue;
-        }
-        if (idx === subtitleLine) {
-            result.push(`> ${trimmed}`);
-            result.push('');
-            continue;
-        }
-        
-        if (isLikelyHeading(trimmed, idx, cleanLines)) {
+
+        const lineType = analysis.lineTypes[nonEmptyIdx] || 'paragraph';
+
+        const flushQuote = () => {
+            if (inQuoteBlock && quoteBuffer.length > 0) {
+                result.push(quoteBuffer.map(l => `> ${l}`).join('\n'));
+                quoteBuffer = [];
+                inQuoteBlock = false;
+            }
+        };
+
+        const flushPara = () => {
             if (paraBuffer.length > 0) {
                 result.push(paraBuffer.join(''));
                 paraBuffer = [];
             }
-            result.push(`## ${trimmed.replace(/^[0-9]+[.、）)\s]+/, '').replace(/^[一二三四五六七八九十]+、\s*/, '')}`);
-            continue;
+        };
+
+        switch (lineType) {
+            case 'title':
+                flushQuote();
+                flushPara();
+                result.push(`# ${trimmed}`);
+                result.push('');
+                break;
+
+            case 'subtitle':
+                flushQuote();
+                flushPara();
+                result.push(`> ${trimmed}`);
+                result.push('');
+                break;
+
+            case 'h2':
+            case 'h3':
+                flushQuote();
+                flushPara();
+                const cleanHeading = cleanHeadingText(trimmed);
+                const headingPrefix = lineType === 'h2' ? '##' : '###';
+                result.push(`${headingPrefix} ${cleanHeading}`);
+                result.push('');
+                break;
+
+            case 'list-ul':
+            case 'list-ol':
+                flushQuote();
+                flushPara();
+                result.push(`- ${cleanListItemText(trimmed)}`);
+                break;
+
+            case 'quote':
+                flushPara();
+                inQuoteBlock = true;
+                quoteBuffer.push(cleanQuoteText(trimmed));
+                break;
+
+            case 'divider':
+                flushQuote();
+                flushPara();
+                result.push('---');
+                result.push('');
+                break;
+
+            default:
+                flushQuote();
+                paraBuffer.push(trimmed);
+                break;
         }
-        
-        if (isLikelyListItem(trimmed)) {
-            if (paraBuffer.length > 0) {
-                result.push(paraBuffer.join(''));
-                paraBuffer = [];
-            }
-            result.push(`- ${trimmed.replace(/^[0-9]+[.、）)\s]+/, '').replace(/^[-•·■▪▸▹►▻◆◇★☆✓✔]+\s*/, '')}`);
-            continue;
-        }
-        
-        if (isLikelyQuote(trimmed)) {
-            if (paraBuffer.length > 0) {
-                result.push(paraBuffer.join(''));
-                paraBuffer = [];
-            }
-            result.push(`> ${trimmed.replace(/^[>\""「『【\s]+/, '').replace(/[\""」』】\s]+$/, '')}`);
-            continue;
-        }
-        
-        paraBuffer.push(trimmed);
     }
     
     if (inCodeBlock && codeBuffer.length > 0) {
         result.push(codeBuffer.join('\n'));
     }
-    if (paraBuffer.length > 0) result.push(paraBuffer.join(''));
+    if (inQuoteBlock && quoteBuffer.length > 0) {
+        result.push(quoteBuffer.map(l => `> ${l}`).join('\n'));
+    }
+    if (paraBuffer.length > 0) {
+        result.push(paraBuffer.join(''));
+    }
     
     return highlightKeySentences(result.join('\n'));
+}
+
+function getNonEmptyIndex(cleanLines, currentIdx) {
+    let count = 0;
+    for (let i = 0; i <= currentIdx && i < cleanLines.length; i++) {
+        if (cleanLines[i].trim()) count++;
+    }
+    return count - 1;
+}
+
+function analyzeTextStructure(cleanLines, nonEmptyLines) {
+    const lineTypes = {};
+    const totalLines = nonEmptyLines.length;
+
+    if (totalLines === 0) return { lineTypes };
+
+    const firstLine = nonEmptyLines[0].trim();
+    if (isLikelyTitle(firstLine) && totalLines > 2) {
+        lineTypes[0] = 'title';
+        
+        if (totalLines > 1) {
+            const secondLine = nonEmptyLines[1].trim();
+            if (isLikelySubtitle(secondLine, firstLine)) {
+                lineTypes[1] = 'subtitle';
+            }
+        }
+    }
+
+    let lastHeadingLevel = 0;
+    for (let i = (lineTypes[0] === 'title' ? (lineTypes[1] === 'subtitle' ? 2 : 1) : 0); i < totalLines; i++) {
+        if (lineTypes[i]) continue;
+        
+        const line = nonEmptyLines[i].trim();
+        const prevLine = i > 0 ? nonEmptyLines[i - 1].trim() : '';
+        const nextLine = i < totalLines - 1 ? nonEmptyLines[i + 1].trim() : '';
+        const nextNextLine = i < totalLines - 2 ? nonEmptyLines[i + 2].trim() : '';
+
+        if (isLikelyDivider(line)) {
+            lineTypes[i] = 'divider';
+            continue;
+        }
+
+        if (isLikelyQuote(line, prevLine, nextLine)) {
+            lineTypes[i] = 'quote';
+            if (nextLine && /^[——\-]+\s*[\u4e00-\u9fa5]/.test(nextLine)) {
+                lineTypes[i + 1] = 'quote';
+            }
+            continue;
+        }
+
+        if (/^[——\-]+\s*[\u4e00-\u9fa5]/.test(line) && prevLine && lineTypes[i - 1] === 'quote') {
+            lineTypes[i] = 'quote';
+            continue;
+        }
+
+        const headingInfo = detectHeadingLevel(line, i, totalLines, prevLine, nextLine, lastHeadingLevel);
+        if (headingInfo) {
+            lineTypes[i] = headingInfo;
+            lastHeadingLevel = headingInfo === 'h2' ? 2 : 3;
+            continue;
+        }
+
+        if (isLikelyListItem(line)) {
+            lineTypes[i] = /^[0-9]+[.、）)]/.test(line) ? 'list-ol' : 'list-ul';
+            continue;
+        }
+    }
+
+    return { lineTypes };
+}
+
+function detectHeadingLevel(line, idx, totalLines, prevLine, nextLine, lastHeadingLevel) {
+    if (line.length < 2 || line.length > 60) return null;
+    if (/[。，；：、！？]$/.test(line)) return null;
+
+    if (/^[0-9]+\.[0-9]+/.test(line) || /^第[一二三四五六七八九十百千0-9]+[章节部分]/.test(line)) {
+        return 'h2';
+    }
+
+    if (/^[一二三四五六七八九十]+、/.test(line) && line.length > 4 && line.length < 30) {
+        const afterNum = line.replace(/^[一二三四五六七八九十]+、\s*/, '');
+        if (afterNum && !/[。！？，；：、]/.test(afterNum)) {
+            return 'h2';
+        }
+    }
+
+    const h2Keywords = [
+        '前言', '引言', '背景', '概述', '简介', '总结', '结语', '结论',
+        '核心要点', '重要提示', '写在最后', '最后总结',
+    ];
+    for (const kw of h2Keywords) {
+        if (line === kw || (line.startsWith(kw) && line.length <= 15)) return 'h2';
+    }
+
+    const questionPatterns = [
+        /^什么是/, /^为什么/, /^如何/, /^怎么/, /^哪些/,
+        /^如何做/, /^怎样/, /^为啥/, /^咋/,
+    ];
+    for (const pattern of questionPatterns) {
+        if (pattern.test(line) && line.length <= 25) {
+            if (prevLine && nextLine) return 'h2';
+        }
+    }
+
+    if (line.length <= 18 && /[\u4e00-\u9fa5]/.test(line) && !/[。！？，；：、]/.test(line)) {
+        if (idx > 2 && idx < totalLines - 2) {
+            const hasPrevContent = prevLine && prevLine.length > 10;
+            const hasNextContent = nextLine && nextLine.length > 10;
+            if (hasPrevContent && hasNextContent) {
+                const isShort = line.length <= 14;
+                const noListMark = !isLikelyListItem(line);
+                if (isShort && noListMark) {
+                    return lastHeadingLevel >= 2 ? 'h3' : 'h2';
+                }
+            }
+        }
+    }
+
+    return null;
+}
+
+function isLikelyDivider(line) {
+    if (/^[-—=*·•]{3,}\s*$/.test(line)) return true;
+    if (/^[-—]{5,}/.test(line)) return true;
+    if (/^[*·•]{3,}/.test(line)) return true;
+    if (/^[=]{3,}/.test(line)) return true;
+    return false;
+}
+
+function isLikelyQuote(line, prevLine, nextLine) {
+    if (/^[""「『【「].*[""」』】」]$/.test(line) && line.length > 10) return true;
+    
+    if (/^[""「『]/.test(line) && line.length > 10) {
+        if (nextLine && /[""」』]/.test(nextLine)) return true;
+    }
+    
+    if (/^[——\-]+\s*[\u4e00-\u9fa5]/.test(line) && line.length > 8) return true;
+    
+    if (/^摘自|^引自|^出自|^来源：|^来源[:：]/.test(line) && line.length > 6) return true;
+    
+    if (prevLine && prevLine.length > 5 && line.length > 5) {
+        const prevEndsQuote = /[""」』】」]$/.test(prevLine);
+        const startsDash = /^[——\-]+\s*/.test(line);
+        if (prevEndsQuote && startsDash) return true;
+    }
+
+    return false;
+}
+
+function cleanHeadingText(text) {
+    return text
+        .replace(/^[0-9]+[.、）)\s]+/, '')
+        .replace(/^[一二三四五六七八九十百千]+[、.）)\s]+/, '')
+        .replace(/^第[一二三四五六七八九十百千0-9]+[章节部分点条课节章][、.\s]*/, '')
+        .trim();
+}
+
+function cleanListItemText(text) {
+    return text
+        .replace(/^[0-9]+[.、）)\s]+/, '')
+        .replace(/^[一二三四五六七八九十百千]+、\s*/, '')
+        .replace(/^[-•·■▪▸▹►▻◆◇★☆✓✔✅☑️]+\s*/, '')
+        .trim();
+}
+
+function cleanQuoteText(text) {
+    return text
+        .replace(/^[>\""「『【「\s]+/, '')
+        .replace(/[\""」』】」\s]+$/, '')
+        .trim();
 }
 
 function normalizeWhitespace(lines) {
@@ -931,71 +1276,40 @@ function collapseEmptyLines(lines) {
 }
 
 function isLikelyTitle(text) {
-    if (text.length < 2 || text.length > 50) return false;
-    if (/[。，；：、！？]$/.test(text)) return false;
+    if (text.length < 3 || text.length > 60) return false;
+    if (/[。，；：、！？!?，；：]$/.test(text)) return false;
     if (/https?:\/\//.test(text)) return false;
     if (/^[0-9]+[.、）)]/.test(text)) return false;
-    return !/^[-•·]/.test(text);
+    if (/^[-•·]/.test(text)) return false;
+    if (text.length <= 6) return false;
+    return true;
 }
 
 function isLikelySubtitle(text, title) {
-    if (text.length < 4 || text.length > 80) return false;
+    if (text.length < 4 || text.length > 40) return false;
     if (text === title) return false;
-    return text.length < title.length * 2;
-}
-
-function isLikelyHeading(text, idx, allLines) {
-    if (text.length < 2 || text.length > 40) return false;
-    if (/[。，；：、！？]$/.test(text)) return false;
-    
-    if (/^[0-9]+(\.[0-9]+)+[\.、）)]/.test(text)) return true;
-    if (/^第[一二三四五六七八九十百千0-9]+[章节部分点条课节章]/i.test(text)) return true;
-    if (/^[第]?[一二三四五六七八九十百千]+[章节部分篇卷]/i.test(text)) return true;
-    
-    const headingKeywords = [
-        '前言', '引言', '背景', '概述', '简介', '总结', '结语', '结论',
-        '注意', '注意事项', '技巧', '方法', '步骤', '流程', '原理',
-        '什么是', '为什么', '如何', '怎么', '哪些', '如何做',
-        '优点', '缺点', '优势', '劣势', '区别', '对比',
-        '安装', '配置', '使用', '实现', '原理', '案例',
-        '开头', '结尾', '目录', '附录', '参考文献',
-    ];
-    for (const k of headingKeywords) {
-        if (text.startsWith(k) && text.length <= 20) return true;
-    }
-    
-    if (text.length <= 14 && /[\u4e00-\u9fa5]/.test(text) && !/[。！？，；：、]/.test(text)) {
-        const nonEmptyIdx = allLines.slice(0, idx+1).filter(l => l.trim()).length - 1;
-        if (nonEmptyIdx > 3 && text.length >= 4) {
-            const prevLine = allLines[idx-1] ? allLines[idx-1].trim() : '';
-            const nextLine = allLines[idx+1] ? allLines[idx+1].trim() : '';
-            if (prevLine && nextLine && !isLikelyListItem(prevLine) && !isLikelyListItem(nextLine)) {
-                return true;
-            }
-        }
-    }
-    
+    if (/^[0-9]+[.、）)]/.test(text)) return false;
+    if (/[。！？!?，；：、]/.test(text)) return false;
+    if (text.length > 20 && /[的是了在和与及]/.test(text)) return false;
     return false;
 }
 
 function isLikelyListItem(text) {
-    if (/^[0-9]+[.、）)\s]+/.test(text)) return true;
-    if (/^[一二三四五六七八九十百千]+、\s*/.test(text)) return true;
-    if (/^[-•·■▪▸▹►▻◆◇★☆✓✔]+\s*/.test(text)) return true;
-    return false;
-}
-
-function isLikelyQuote(text) {
-    if (/^[\""「『【]/.test(text) && /[\""」』】]/.test(text) && text.length > 10) return true;
-    if (/^[——-]+\s*[\u4e00-\u9fa5]/.test(text) && text.length > 10) return false;
+    if (/^[-•·■▪▸▹►▻◆◇★☆✓✔✅☑️]+\s+/.test(text)) return true;
+    if (/^[0-9]+[.、）)]\s+/.test(text)) return true;
     return false;
 }
 
 function highlightKeySentences(text) {
-    const strongKeywords = [
-        '重要', '关键', '核心', '必须', '切记', '注意', '特别',
-        '最重要的是', '值得注意的是', '需要强调的是',
-        '首先', '其次', '最后', '总之', '综上所述',
+    const strongPatterns = [
+        { pattern: /(最重要的是.{0,50}?[。！？!?])/g, priority: 1 },
+        { pattern: /(关键在于.{0,50}?[。！？!?])/g, priority: 1 },
+        { pattern: /(核心是.{0,50}?[。！？!?])/g, priority: 1 },
+        { pattern: /(需要注意的是.{0,50}?[。！？!?])/g, priority: 1 },
+        { pattern: /(值得注意的是.{0,50}?[。！？!?])/g, priority: 1 },
+        { pattern: /(必须.{0,30}?[。！？!?])/g, priority: 2 },
+        { pattern: /(一定要.{0,30}?[。！？!?])/g, priority: 2 },
+        { pattern: /(切记.{0,30}?[。！？!?])/g, priority: 2 },
     ];
     
     return text.split('\n').map(line => {
@@ -1004,13 +1318,32 @@ function highlightKeySentences(text) {
         
         let p = line;
         
-        for (const kw of strongKeywords) {
-            const regex = new RegExp(`(.{0,20}${kw}.{0,30}?[。！？!?])`, 'g');
-            p = p.replace(regex, m => {
+        for (const { pattern } of strongPatterns) {
+            p = p.replace(pattern, m => {
                 if (m.includes('**')) return m;
-                if (m.length < 8 || m.length > 80) return m;
+                if (m.length < 10 || m.length > 100) return m;
                 return `**${m}**`;
             });
+        }
+
+        if (!p.includes('**')) {
+            const sentences = p.match(/[^。！？!?]+[。！？!?]/g) || [p];
+            if (sentences.length >= 3) {
+                let maxLen = 0;
+                let maxIdx = -1;
+                sentences.forEach((s, idx) => {
+                    if (s.length > maxLen && s.length < 50 && s.length > 15) {
+                        maxLen = s.length;
+                        maxIdx = idx;
+                    }
+                });
+                if (maxIdx >= 0 && maxLen >= 20) {
+                    const target = sentences[maxIdx];
+                    if (!target.includes('**') && !target.startsWith('总之') && !target.startsWith('因此') && !target.startsWith('所以')) {
+                        p = p.replace(target, `**${target}**`);
+                    }
+                }
+            }
         }
         
         return p;
