@@ -91,16 +91,18 @@ function getColorConfig() {
 }
 
 // ===== 字体配置 =====
-// 微信公众号支持的系统内置字体（不支持外部字体链接）
+// 开源字体（OFL协议），微信端使用系统字体回退
 const fontFamilies = {
-    serif: "'Songti SC', 'SimSun', 'STSong', '华文宋体', Georgia, 'Times New Roman', serif",
-    sans: "'PingFang SC', 'Microsoft YaHei', '微软雅黑', 'SimHei', 'Helvetica Neue', Arial, sans-serif",
-    mono: "'Consolas', 'Courier New', 'SF Mono', monospace"
+    serif: "'Noto Serif SC', 'Songti SC', 'SimSun', 'STSong', '华文宋体', Georgia, 'Times New Roman', serif",
+    sans: "'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', '微软雅黑', 'SimHei', 'Helvetica Neue', Arial, sans-serif",
+    kai: "'LXGW WenKai', 'KaiTi', 'STKaiti', '楷体', '华文楷体', cursive",
+    mono: "'JetBrains Mono', 'Consolas', 'Courier New', 'SF Mono', monospace"
 };
 
 const fontWeights = {
     serif: '400',
     sans: '400',
+    kai: '400',
     mono: '400'
 };
 
@@ -160,7 +162,7 @@ function markdownToHTML(text) {
         let codeContent = code;
         if (langMatch) codeContent = code.substring(langMatch[1].length + 1);
         const escaped = codeContent.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        const blockId = `__CODEBLOCK_${codeBlocks.length}__`;
+        const blockId = `\x01CB${codeBlocks.length}\x01`;
         codeBlocks.push(`<pre><code>${escaped}</code></pre>`);
         return blockId;
     });
@@ -234,7 +236,7 @@ function markdownToHTML(text) {
         } else {
             closeLists();
             if (trimmed && !trimmed.match(/^<\/?(ul|ol|li|blockquote|pre|h[1-6]|div|p|hr|a|strong|em|code|span|img|br)/i)
-                && !trimmed.startsWith('__CODEBLOCK_') && !trimmed.includes('__CODEBLOCK_')) {
+                && !trimmed.includes('\x01')) {
                 processedLines.push(`<p>${trimmed}</p>`);
             } else if (trimmed) {
                 processedLines.push(trimmed);
@@ -247,7 +249,7 @@ function markdownToHTML(text) {
 
     let result = processedLines.join('\n');
     codeBlocks.forEach((block, idx) => {
-        result = result.replace(`__CODEBLOCK_${idx}__`, block);
+        result = result.replace(`\x01CB${idx}\x01`, block);
     });
 
     return result;
@@ -923,27 +925,25 @@ function smartFormat() {
 
 function smartFormatText(text) {
     let lines = text.split('\n').map(l => l.trimRight());
-    
     lines = normalizeWhitespace(lines);
-    
+
+    // 合并被空行分隔的引用+署名
     let processed = [];
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         const nextLine = i + 1 < lines.length ? lines[i + 1] : '';
         const nextNextLine = i + 2 < lines.length ? lines[i + 2] : '';
-        
-        if (line.trim() && /^["""「『【「]/.test(line.trim()) && /["""」』】」[。！？!?]$/.test(line.trim()) &&
+        if (line.trim() && /^[""「『【「]/.test(line.trim()) && /[""」』】」[。！？!?]$/.test(line.trim()) &&
             nextLine.trim() === '' && nextNextLine.trim() && /^[——\-]+\s*[\u4e00-\u9fa5]/.test(nextNextLine.trim())) {
             processed.push(line);
             processed.push(nextNextLine);
             i += 2;
             continue;
         }
-        
         processed.push(line);
     }
     lines = processed;
-    
+
     const cleanLines = collapseEmptyLines(lines);
     const nonEmpty = cleanLines.filter(l => l.trim());
     if (nonEmpty.length === 0) return text;
@@ -952,19 +952,58 @@ function smartFormatText(text) {
     let paraBuffer = [];
     let inCodeBlock = false;
     let codeBuffer = [];
+    let codeLang = '';
     let inQuoteBlock = false;
     let quoteBuffer = [];
+    let inTableBlock = false;
+    let tableBuffer = [];
 
     const analysis = analyzeTextStructure(cleanLines, nonEmpty);
+
+    const flushAll = () => {
+        if (inQuoteBlock && quoteBuffer.length > 0) {
+            result.push(quoteBuffer.map(l => `> ${l}`).join('\n'));
+            quoteBuffer = [];
+            inQuoteBlock = false;
+        }
+        if (paraBuffer.length > 0) {
+            result.push(paraBuffer.join(''));
+            paraBuffer = [];
+        }
+    };
 
     for (let i = 0; i < cleanLines.length; i++) {
         const line = cleanLines[i];
         const trimmed = line.trim();
         const nonEmptyIdx = getNonEmptyIndex(cleanLines, i);
-        
+
+        // === 空行处理 ===
         if (trimmed === '') {
-            if (inCodeBlock) {
+            if (inCodeBlock && codeLang === 'text') {
+                // 检查后面是否还有流程图/代码
+                let hasMore = false;
+                for (let j = i + 1; j < cleanLines.length; j++) {
+                    if (cleanLines[j].trim()) {
+                        if (isFlowChartLine(cleanLines[j].trim()) || isCodeLine(cleanLines[j].trim())) hasMore = true;
+                        break;
+                    }
+                }
+                if (!hasMore) {
+                    codeBuffer.push('```');
+                    result.push(codeBuffer.join('\n'));
+                    codeBuffer = [];
+                    inCodeBlock = false;
+                    result.push('');
+                    continue;
+                }
                 codeBuffer.push('');
+                continue;
+            }
+            if (inTableBlock && tableBuffer.length > 0) {
+                result.push(convertToMarkdownTable(tableBuffer));
+                tableBuffer = [];
+                inTableBlock = false;
+                result.push('');
                 continue;
             }
             if (inQuoteBlock && quoteBuffer.length > 0) {
@@ -979,7 +1018,8 @@ function smartFormatText(text) {
             result.push('');
             continue;
         }
-        
+
+        // === 已有的 Markdown 代码块 ===
         if (trimmed.startsWith('```') || /^[`]{3,}/.test(trimmed)) {
             if (inCodeBlock) {
                 codeBuffer.push(trimmed);
@@ -987,92 +1027,139 @@ function smartFormatText(text) {
                 codeBuffer = [];
                 inCodeBlock = false;
             } else {
-                if (paraBuffer.length > 0) {
-                    result.push(paraBuffer.join(''));
-                    paraBuffer = [];
-                }
+                flushAll();
                 inCodeBlock = true;
+                codeLang = trimmed.replace(/^```+/, '').trim();
                 codeBuffer = [trimmed];
             }
             continue;
         }
-        
-        if (inCodeBlock) {
+
+        // 已在非自动检测的代码块中
+        if (inCodeBlock && codeLang !== 'text') {
             codeBuffer.push(line);
             continue;
         }
 
+        // 已在自动检测的代码块中
+        if (inCodeBlock && codeLang === 'text') {
+            // 标题行结束代码块
+            if (/^[一二三四五六七八九十]+、/.test(trimmed) || /^[0-9]+[、.．]/.test(trimmed) || /^第[一二三四五六七八九十百千]+[章节部分]/.test(trimmed)) {
+                codeBuffer.push('```');
+                result.push(codeBuffer.join('\n'));
+                codeBuffer = [];
+                inCodeBlock = false;
+                // 继续往下处理标题
+            } else {
+                codeBuffer.push(line);
+                continue;
+            }
+        }
+
+        // === 表格检测 ===
+        if (isTableRow(trimmed) || isTableSeparator(trimmed)) {
+            flushAll();
+            if (inCodeBlock && codeLang === 'text') {
+                codeBuffer.push('```');
+                result.push(codeBuffer.join('\n'));
+                codeBuffer = [];
+                inCodeBlock = false;
+            }
+            if (!inTableBlock) {
+                inTableBlock = true;
+                tableBuffer = [];
+            }
+            tableBuffer.push(trimmed);
+            continue;
+        } else if (inTableBlock) {
+            result.push(convertToMarkdownTable(tableBuffer));
+            tableBuffer = [];
+            inTableBlock = false;
+            result.push('');
+            // 继续处理当前行
+        }
+
+        // === 流程图/代码自动检测 ===
+        if (isFlowChartLine(trimmed) || isCodeLine(trimmed)) {
+            flushAll();
+            if (inTableBlock && tableBuffer.length > 0) {
+                result.push(convertToMarkdownTable(tableBuffer));
+                tableBuffer = [];
+                inTableBlock = false;
+                result.push('');
+            }
+            if (!inCodeBlock) {
+                inCodeBlock = true;
+                codeLang = 'text';
+                codeBuffer = ['```text'];
+            }
+            codeBuffer.push(line);
+            continue;
+        }
+
+        // === 基于分析结果分类 ===
         const lineType = analysis.lineTypes[nonEmptyIdx] || 'paragraph';
-
-        const flushQuote = () => {
-            if (inQuoteBlock && quoteBuffer.length > 0) {
-                result.push(quoteBuffer.map(l => `> ${l}`).join('\n'));
-                quoteBuffer = [];
-                inQuoteBlock = false;
-            }
-        };
-
-        const flushPara = () => {
-            if (paraBuffer.length > 0) {
-                result.push(paraBuffer.join(''));
-                paraBuffer = [];
-            }
-        };
 
         switch (lineType) {
             case 'title':
-                flushQuote();
-                flushPara();
+                flushAll();
                 result.push(`# ${trimmed}`);
                 result.push('');
                 break;
 
             case 'subtitle':
-                flushQuote();
-                flushPara();
-                result.push(`> ${trimmed}`);
+                flushAll();
+                result.push(`## ${trimmed}`);
                 result.push('');
                 break;
 
             case 'h2':
             case 'h3':
-                flushQuote();
-                flushPara();
-                const cleanHeading = cleanHeadingText(trimmed);
-                const headingPrefix = lineType === 'h2' ? '##' : '###';
-                result.push(`${headingPrefix} ${cleanHeading}`);
+                flushAll();
+                result.push(`${lineType === 'h2' ? '##' : '###'} ${cleanHeadingText(trimmed)}`);
                 result.push('');
                 break;
 
             case 'list-ul':
             case 'list-ol':
-                flushQuote();
-                flushPara();
+                flushAll();
                 result.push(`- ${cleanListItemText(trimmed)}`);
                 break;
 
             case 'quote':
-                flushPara();
+                flushAll();
                 inQuoteBlock = true;
                 quoteBuffer.push(cleanQuoteText(trimmed));
                 break;
 
             case 'divider':
-                flushQuote();
-                flushPara();
+                flushAll();
                 result.push('---');
                 result.push('');
                 break;
 
             default:
-                flushQuote();
+                if (inQuoteBlock) {
+                    inQuoteBlock = false;
+                    if (quoteBuffer.length > 0) {
+                        result.push(quoteBuffer.map(l => `> ${l}`).join('\n'));
+                        quoteBuffer = [];
+                    }
+                }
                 paraBuffer.push(trimmed);
                 break;
         }
     }
-    
+
+    // 收尾：刷新所有缓冲区
     if (inCodeBlock && codeBuffer.length > 0) {
+        if (codeLang === 'text' && !codeBuffer[codeBuffer.length - 1].includes('```')) {
+            codeBuffer.push('```');
+        }
         result.push(codeBuffer.join('\n'));
+    }
+    if (inTableBlock && tableBuffer.length > 0) {
+        result.push(convertToMarkdownTable(tableBuffer));
     }
     if (inQuoteBlock && quoteBuffer.length > 0) {
         result.push(quoteBuffer.map(l => `> ${l}`).join('\n'));
@@ -1080,7 +1167,7 @@ function smartFormatText(text) {
     if (paraBuffer.length > 0) {
         result.push(paraBuffer.join(''));
     }
-    
+
     return highlightKeySentences(result.join('\n'));
 }
 
@@ -1157,43 +1244,67 @@ function detectHeadingLevel(line, idx, totalLines, prevLine, nextLine, lastHeadi
     if (line.length < 2 || line.length > 60) return null;
     if (/[。，；：、！？]$/.test(line)) return null;
 
-    if (/^[0-9]+\.[0-9]+/.test(line) || /^第[一二三四五六七八九十百千0-9]+[章节部分]/.test(line)) {
+    // 数字编号: 1. 2. 3. / 1、2、3、
+    if (/^[0-9]+[、.．]\s*[\u4e00-\u9fa5a-zA-Z]/.test(line) && line.length < 40) {
+        const afterNum = line.replace(/^[0-9]+[、.．]\s*/, '');
+        if (afterNum && !/[。！？，；：、]/.test(afterNum)) return 'h2';
+    }
+
+    // X.Y 编号: 1.1 1.2 2.1
+    if (/^[0-9]+\.[0-9]+/.test(line) && line.length < 40) {
         return 'h2';
     }
 
-    if (/^[一二三四五六七八九十]+、/.test(line) && line.length > 4 && line.length < 30) {
+    // 中文编号: 一、二、三、
+    if (/^[一二三四五六七八九十]+、/.test(line) && line.length > 3 && line.length < 35) {
         const afterNum = line.replace(/^[一二三四五六七八九十]+、\s*/, '');
-        if (afterNum && !/[。！？，；：、]/.test(afterNum)) {
-            return 'h2';
-        }
+        if (afterNum && !/[。！？，；：、]/.test(afterNum)) return 'h2';
     }
 
+    // 第X章/节/部分
+    if (/^第[一二三四五六七八九十百千0-9]+[章节部分条课]/.test(line)) {
+        return 'h2';
+    }
+
+    // (一)(二) 编号
+    if (/^\([一二三四五六七八九十]+\)/.test(line) && line.length < 35) {
+        return 'h3';
+    }
+
+    // 【小标题】格式
+    if (/^【[^】]+】$/.test(line) && line.length < 30) {
+        return 'h3';
+    }
+
+    // 关键词标题
     const h2Keywords = [
         '前言', '引言', '背景', '概述', '简介', '总结', '结语', '结论',
-        '核心要点', '重要提示', '写在最后', '最后总结',
+        '核心要点', '重要提示', '写在最后', '最后总结', '附录', '参考',
+        '正文', '开始', '引入', '分析', '方案', '对比', '展望',
     ];
     for (const kw of h2Keywords) {
-        if (line === kw || (line.startsWith(kw) && line.length <= 15)) return 'h2';
+        if (line === kw || (line.startsWith(kw) && line.length <= 12)) return 'h2';
     }
 
+    // 问句标题
     const questionPatterns = [
         /^什么是/, /^为什么/, /^如何/, /^怎么/, /^哪些/,
-        /^如何做/, /^怎样/, /^为啥/, /^咋/,
+        /^如何做/, /^怎样/, /^为啥/, /^咋/, /^什么是/,
     ];
     for (const pattern of questionPatterns) {
-        if (pattern.test(line) && line.length <= 25) {
+        if (pattern.test(line) && line.length <= 30 && !/[。！？]$/.test(line)) {
             if (prevLine && nextLine) return 'h2';
         }
     }
 
-    if (line.length <= 18 && /[\u4e00-\u9fa5]/.test(line) && !/[。！？，；：、]/.test(line)) {
-        if (idx > 2 && idx < totalLines - 2) {
-            const hasPrevContent = prevLine && prevLine.length > 10;
-            const hasNextContent = nextLine && nextLine.length > 10;
+    // 短行标题检测：中文为主、无标点、上下有内容
+    if (line.length <= 20 && /[\u4e00-\u9fa5]/.test(line) && !/[。！？，；：、]/.test(line)) {
+        if (idx > 1 && idx < totalLines - 1) {
+            const hasPrevContent = prevLine && prevLine.length > 8;
+            const hasNextContent = nextLine && nextLine.length > 8;
             if (hasPrevContent && hasNextContent) {
-                const isShort = line.length <= 14;
                 const noListMark = !isLikelyListItem(line);
-                if (isShort && noListMark) {
+                if (noListMark) {
                     return lastHeadingLevel >= 2 ? 'h3' : 'h2';
                 }
             }
@@ -1232,11 +1343,9 @@ function isLikelyQuote(line, prevLine, nextLine) {
 }
 
 function cleanHeadingText(text) {
-    return text
-        .replace(/^[0-9]+[.、）)\s]+/, '')
-        .replace(/^[一二三四五六七八九十百千]+[、.）)\s]+/, '')
-        .replace(/^第[一二三四五六七八九十百千0-9]+[章节部分点条课节章][、.\s]*/, '')
-        .trim();
+    // 仅去除可能残留的 Markdown 标记，保留编号（一、/1./第X章 等），
+    // 因为标题不像有序列表那样自动编号，去掉编号会丢失信息。
+    return text.replace(/^#{1,6}\s*/, '').trim();
 }
 
 function cleanListItemText(text) {
@@ -1291,13 +1400,86 @@ function isLikelySubtitle(text, title) {
     if (/^[0-9]+[.、）)]/.test(text)) return false;
     if (/[。！？!?，；：、]/.test(text)) return false;
     if (text.length > 20 && /[的是了在和与及]/.test(text)) return false;
-    return false;
+    return true;
 }
 
 function isLikelyListItem(text) {
     if (/^[-•·■▪▸▹►▻◆◇★☆✓✔✅☑️]+\s+/.test(text)) return true;
     if (/^[0-9]+[.、）)]\s+/.test(text)) return true;
     return false;
+}
+
+// ===== 代码行检测 =====
+function isCodeLine(line) {
+    const t = line.trim();
+    if (!t || t.length < 2) return false;
+    // 排除中文为主的行
+    const cjkCount = (t.match(/[\u4e00-\u9fa5]/g) || []).length;
+    if (cjkCount > t.length * 0.5) return false;
+    // 编程关键词
+    const codeKeywords = /\b(function|const|let|var|return|if|else|for|while|class|import|export|from|def|print|echo|require|module|async|await|new|typeof|instanceof|try|catch|throw|switch|case|break|continue|public|private|protected|static|void|int|string|boolean|true|false|null|undefined|None|True|False)\b/;
+    if (codeKeywords.test(t)) return true;
+    // 以分号结尾
+    if (/;$/.test(t) && /[a-zA-Z=(){}\[\]]/.test(t)) return true;
+    // 大括号行
+    if (/^[{}]\s*$/.test(t)) return true;
+    // 赋值语句
+    if (/^\s*(const|let|var|int|String|boolean|auto)\s+\w+\s*=/.test(t)) return true;
+    // 函数调用
+    if (/\w+\([^)]*\)/.test(t) && /[;{}]/.test(t)) return true;
+    // 缩进的代码行（有前导空格且包含代码特征）
+    if (/^\s{2,}/.test(line) && /[(){}=;]/.test(t) && !/[。！？，]/.test(t)) return true;
+    return false;
+}
+
+// ===== 表格检测 =====
+function isTableRow(line) {
+    const t = line.trim();
+    if (!t) return false;
+    // Markdown表格行: | col1 | col2 |
+    if (t.startsWith('|') && t.endsWith('|') && t.split('|').length >= 3) return true;
+    // 制表符分隔的行（至少2个tab）
+    if (t.split('\t').length >= 3) return true;
+    // 多列空格分隔（检测3个以上连续空格分隔的短词）
+    if (/\s{3,}/.test(t) && t.split(/\s{3,}/).length >= 3 && t.length < 100) return true;
+    return false;
+}
+
+function isTableSeparator(line) {
+    const t = line.trim();
+    if (!t) return false;
+    // | --- | --- | 或 |:---:|:---|
+    if (/^\|[\s:|\-]+$/.test(t) && t.includes('-') && t.includes('|')) return true;
+    return false;
+}
+
+function convertToMarkdownTable(tableLines) {
+    const normalized = tableLines.map(l => l.replace(/[丨｜]/g, '|').trim());
+    const hasSeparator = normalized.some(l => /^[\|:\- ]+$/.test(l) && l.includes('-'));
+    if (!hasSeparator && normalized.length >= 2) {
+        const firstLine = normalized[0];
+        const colCount = (firstLine.match(/\|/g) || []).length - 1;
+        if (colCount > 0) {
+            const separator = '|' + Array(colCount).fill('---').join('|') + '|';
+            normalized.splice(1, 0, separator);
+        }
+    }
+    return normalized.join('\n');
+}
+
+// ===== 流程图/架构图检测 =====
+function isFlowChartLine(line) {
+    const t = line.trim();
+    if (!t) return false;
+    const flowChars = ['│', '┃', '├', '┤', '┌', '┐', '└', '┘', '┼', '┴', '┬', '─', '━', '↓', '↑', '→', '←', '▼', '▲', '▶', '◀'];
+    let flowCount = 0;
+    let totalChars = 0;
+    for (const ch of t) {
+        if (ch === ' ' || ch === '\t') continue;
+        totalChars++;
+        if (flowChars.includes(ch)) flowCount++;
+    }
+    return (totalChars > 0 && flowCount / totalChars > 0.3) || /^[│|┃]\s*$/.test(t) || /^[├┝┠┣┌┍┏┐┑┓└┕┗┘┙┛]/.test(t);
 }
 
 function highlightKeySentences(text) {
@@ -1363,8 +1545,8 @@ async function parseUrl() {
     try {
         const html = await fetchWebpage(url);
         const content = extractArticleContent(html, url);
-        if (!content || content.trim().length < 20) {
-            showToast('未能提取到文章内容，请尝试其他链接');
+        if (!content || content.trim().length < 50) {
+            showToast('未能提取到文章内容，请尝试复制全文后使用智能排版');
             return;
         }
         const formatted = smartFormatText(content);
@@ -1374,7 +1556,7 @@ async function parseUrl() {
         showToast('文章解析完成！');
     } catch (err) {
         console.error(err);
-        showToast('解析失败，请检查链接或稍后重试');
+        showToast('解析失败：' + (err.message || '请检查链接或稍后重试'));
     } finally {
         parseUrlBtn.textContent = origText;
         parseUrlBtn.disabled = false;
@@ -1382,46 +1564,18 @@ async function parseUrl() {
 }
 
 async function fetchWebpage(url) {
-    const userAgents = [
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    ];
-
-    const acceptHeaders = [
-        'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-        'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'text/*',
-    ];
-
-    const acceptLangHeaders = [
-        'zh-CN,zh;q=0.9,en;q=0.8,ja;q=0.7',
-        'zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7',
-        'zh-CN,zh;q=0.9',
-    ];
-
     const proxies = [
         { url: `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, type: 'json' },
         { url: `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, type: 'raw' },
-        { url: `https://corsproxy.io/?${encodeURIComponent(url)}`, type: 'raw' },
+        { url: `https://corsproxy.io/?url=${encodeURIComponent(url)}`, type: 'raw' },
         { url: `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`, type: 'raw' },
         { url: `https://thingproxy.freeboard.io/fetch/${url}`, type: 'raw' },
-        { url: `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`, type: 'json-rss' },
         { url: `https://jsonp.afeld.me/?url=${encodeURIComponent(url)}`, type: 'jsonp' },
-        { url: `https://cors-anywhere.herokuapp.com/${url}`, type: 'raw' },
-        { url: `https://crossorigin.me/${url}`, type: 'raw' },
-        { url: `https://api.allorigins.xyz/get?url=${encodeURIComponent(url)}`, type: 'json' },
     ];
 
-    const randomDelay = () => new Promise(r => setTimeout(r, Math.random() * 500 + 300));
+    const randomDelay = () => new Promise(r => setTimeout(r, Math.random() * 400 + 200));
 
     for (let attempt = 0; attempt < 3; attempt++) {
-        const userAgent = userAgents[Math.floor(Math.random() * userAgents.length)];
-        const accept = acceptHeaders[Math.floor(Math.random() * acceptHeaders.length)];
-        const acceptLang = acceptLangHeaders[Math.floor(Math.random() * acceptLangHeaders.length)];
-
         const shuffledProxies = [...proxies].sort(() => Math.random() - 0.5);
 
         for (const proxy of shuffledProxies) {
@@ -1429,24 +1583,10 @@ async function fetchWebpage(url) {
                 await randomDelay();
 
                 const resp = await fetch(proxy.url, {
-                    signal: AbortSignal.timeout(18000),
+                    signal: AbortSignal.timeout(15000),
                     method: 'GET',
                     headers: {
-                        'User-Agent': userAgent,
-                        'Accept': accept,
-                        'Accept-Language': acceptLang,
-                        'Accept-Encoding': 'gzip, deflate, br, zstd',
-                        'Cache-Control': 'no-cache',
-                        'Pragma': 'no-cache',
-                        'Connection': 'keep-alive',
-                        'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-                        'Sec-Ch-Ua-Mobile': '?0',
-                        'Sec-Ch-Ua-Platform': '"macOS"',
-                        'Sec-Fetch-Dest': 'document',
-                        'Sec-Fetch-Mode': 'navigate',
-                        'Sec-Fetch-Site': 'cross-site',
-                        'Sec-Fetch-User': '?1',
-                        'Upgrade-Insecure-Requests': '1',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                     },
                     credentials: 'omit',
                     mode: 'cors',
@@ -1455,23 +1595,17 @@ async function fetchWebpage(url) {
                 if (resp.ok && resp.status === 200) {
                     const text = await resp.text();
 
+                    // 检测微信反爬页面
+                    const antiScrapKeywords = ['请在微信客户端打开', '环境异常', '访问过于频繁', '请验证'];
+                    if (antiScrapKeywords.some(kw => text.includes(kw))) {
+                        throw new Error('微信文章需要验证，建议复制全文后使用智能排版');
+                    }
+
                     if (proxy.type === 'json') {
                         try {
                             const data = JSON.parse(text);
                             if (data.contents && data.contents.length > 50) {
                                 return data.contents;
-                            }
-                            if (data.responseText && data.responseText.length > 50) {
-                                return data.responseText;
-                            }
-                        } catch (e) {}
-                    }
-
-                    if (proxy.type === 'json-rss') {
-                        try {
-                            const data = JSON.parse(text);
-                            if (data.items && data.items.length > 0 && data.items[0].description) {
-                                return data.items[0].description;
                             }
                         } catch (e) {}
                     }
@@ -1491,14 +1625,13 @@ async function fetchWebpage(url) {
                             try {
                                 const data = JSON.parse(text);
                                 if (data.contents) return data.contents;
-                                if (data.data && data.data.html) return data.data.html;
-                                if (data.response) return data.response;
                             } catch (e) {}
                         }
                         return text;
                     }
                 }
             } catch (e) {
+                if (e.message && e.message.includes('微信文章')) throw e;
                 console.warn(`Proxy ${proxy.url} failed:`, e.message);
                 continue;
             }
@@ -1509,25 +1642,40 @@ async function fetchWebpage(url) {
         }
     }
 
-    throw new Error('所有代理都失败了');
+    throw new Error('所有代理均无法访问，建议复制全文后使用智能排版');
 }
 
-function extractArticleContent(html) {
+function extractArticleContent(html, sourceUrl) {
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    
+
+    // 移除无关元素
     doc.querySelectorAll('script,style,noscript,iframe,nav,header,footer,aside,svg').forEach(el => el.remove());
     doc.querySelectorAll('.sidebar,.menu,.nav,.comment,.comments,.share,.ad,.ads,.advertisement,.recommend,.related,.sidebar-widget,.widget').forEach(el => el.remove());
-    
+
+    // 微信公众号专用选择器（优先级最高）
+    const wxSelectors = ['#js_content', '.rich_media_content', '.rich_media_main'];
+    for (const sel of wxSelectors) {
+        const el = doc.querySelector(sel);
+        if (el && (el.innerText || '').trim().length > 50) {
+            // 恢复懒加载图片
+            el.querySelectorAll('img').forEach(img => {
+                if (img.dataset.src) img.src = img.dataset.src;
+                if (img.getAttribute('data-original')) img.src = img.getAttribute('data-original');
+            });
+            return extractText(el);
+        }
+    }
+
+    // 通用选择器
     const selectors = [
         'article', '.article-content', '.article-body', '.post-content',
         '.entry-content', '.content-article', '#article-content', '#artibody',
-        '.rich_media_content', '.rich_media_main', '#js_content',
         'main', '#content', '.markdown-body', '.post-body',
         '.content', '.article', '.detail-content', '.news-content',
     ];
-    
+
     let best = null, bestScore = 0;
-    
+
     for (const sel of selectors) {
         const el = doc.querySelector(sel);
         if (el) {
@@ -1538,7 +1686,7 @@ function extractArticleContent(html) {
             }
         }
     }
-    
+
     if (!best || bestScore < 200) {
         doc.querySelectorAll('div').forEach(d => {
             const sc = scoreElement(d);
@@ -1548,14 +1696,14 @@ function extractArticleContent(html) {
             }
         });
     }
-    
+
     if (best) {
         best.querySelectorAll('img').forEach(img => {
             if (img.dataset.src) img.src = img.dataset.src;
             if (img.getAttribute('data-original')) img.src = img.getAttribute('data-original');
         });
     }
-    
+
     return best ? extractText(best) : '';
 }
 

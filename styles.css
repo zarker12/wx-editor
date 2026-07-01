@@ -22,6 +22,7 @@
 
     --font-serif: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
     --font-sans: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', sans-serif;
+    --font-kai: 'LXGW WenKai', 'KaiTi', 'STKaiti', '楷体', cursive;
     --font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', 'Menlo', monospace;
     --font-body: var(--font-sans);
     --font-article: var(--font-sans);
@@ -364,7 +365,7 @@ body {
 
 .font-btn[data-font="serif"] .font-sample { font-family: var(--font-serif); }
 .font-btn[data-font="sans"] .font-sample { font-family: var(--font-sans); }
-.font-btn[data-font="mono"] .font-sample { font-family: var(--font-mono); }
+.font-btn[data-font="kai"] .font-sample { font-family: var(--font-kai); }
 
 .font-btn.active .font-sample {
     background: white;
