@@ -61,5 +61,8 @@ window.styleThemes.luxury = {
     },
     emStyle(c) {
         return `color:${c.accent};font-style:italic;`;
+    },
+    metaLineStyle(c) {
+        return `font-size:13px;color:${this.metaColor};text-align:center;margin:0 0 32px 0;letter-spacing:3px;font-style:italic;`;
     }
 };

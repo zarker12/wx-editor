@@ -58,5 +58,8 @@ window.styleThemes.cyber = {
     },
     emStyle(c) {
         return `color:${c.accent};font-style:italic;`;
+    },
+    metaLineStyle(c) {
+        return `font-size:13px;color:${this.metaColor};text-align:left;margin:0 0 24px 0;font-family:${fontFamilies.mono};letter-spacing:1px;`;
     }
 };

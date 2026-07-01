@@ -58,5 +58,8 @@ window.styleThemes.fresh = {
     },
     emStyle(c) {
         return `color:${c.accent};font-style:italic;`;
+    },
+    metaLineStyle(c) {
+        return `font-size:13px;color:${this.metaColor};text-align:center;margin:0 0 28px 0;letter-spacing:1px;`;
     }
 };

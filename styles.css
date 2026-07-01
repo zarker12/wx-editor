@@ -20,10 +20,9 @@
     --border-light: #F3F4F6;
     --border-default: #E5E7EB;
 
-    --font-serif: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
-    --font-sans: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', sans-serif;
-    --font-kai: 'LXGW WenKai', 'KaiTi', 'STKaiti', '楷体', cursive;
-    --font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', 'Menlo', monospace;
+    --font-serif: 'Noto Serif SC', 'Songti SC', 'SimSun', 'STSong', '华文宋体', Georgia, 'Times New Roman', serif;
+    --font-sans: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', '微软雅黑', 'SimHei', 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Consolas', 'Courier New', 'SF Mono', Menlo, Monaco, monospace;
     --font-body: var(--font-sans);
     --font-article: var(--font-sans);
 
@@ -365,7 +364,7 @@ body {
 
 .font-btn[data-font="serif"] .font-sample { font-family: var(--font-serif); }
 .font-btn[data-font="sans"] .font-sample { font-family: var(--font-sans); }
-.font-btn[data-font="kai"] .font-sample { font-family: var(--font-kai); }
+.font-btn[data-font="mono"] .font-sample { font-family: var(--font-mono); }
 
 .font-btn.active .font-sample {
     background: white;
@@ -643,6 +642,12 @@ body {
     margin: 0 auto;
     overflow-y: auto;
     word-break: break-word;
+    --editor-accent: var(--accent-500);
+    --editor-accent-light: var(--accent-400);
+    --editor-accent-dark: var(--accent-600);
+    --editor-accent-soft: var(--accent-soft);
+    --editor-accent-border: var(--accent-soft2);
+    --editor-meta: var(--text-tertiary);
 }
 
 #editor:empty::before {
@@ -670,7 +675,7 @@ body {
 #editor h1,
 #editor h2,
 #editor h3 {
-    color: var(--text-article-strong);
+    color: var(--editor-accent-dark);
     line-height: 1.5;
     margin: 28px 0 16px 0;
 }
@@ -684,7 +689,7 @@ body {
 #editor h2 {
     font-size: 19px;
     font-weight: 600;
-    border-left: 4px solid var(--accent-500);
+    border-left: 4px solid var(--editor-accent);
     padding-left: 12px;
 }
 
@@ -692,11 +697,19 @@ body {
     margin: 0 0 16px 0;
 }
 
+#editor .meta-line,
+#editor p.meta-line {
+    font-size: 13px;
+    color: var(--editor-meta);
+    text-align: center;
+    margin: 0 0 20px 0;
+}
+
 #editor blockquote {
-    border-left: 3px solid var(--accent-500);
+    border-left: 3px solid var(--editor-accent);
     padding: 12px 20px;
     margin: 20px 0;
-    background: var(--accent-soft);
+    background: var(--editor-accent-soft);
     border-radius: 0 6px 6px 0;
     color: var(--text-secondary);
 }
@@ -719,18 +732,18 @@ body {
 }
 
 #editor a {
-    color: var(--accent-600);
+    color: var(--editor-accent-dark);
     text-decoration: none;
-    border-bottom: 1px solid var(--accent-soft);
+    border-bottom: 1px solid var(--editor-accent-soft);
 }
 
 #editor code {
-    background: var(--accent-soft);
+    background: var(--editor-accent-soft);
     padding: 2px 8px;
     border-radius: 4px;
     font-size: 13px;
     font-family: var(--font-mono);
-    color: var(--accent-600);
+    color: var(--editor-accent-dark);
 }
 
 #editor pre {
@@ -754,7 +767,7 @@ body {
 }
 
 #editor em {
-    color: var(--accent-600);
+    color: var(--editor-accent);
     font-style: italic;
 }
 

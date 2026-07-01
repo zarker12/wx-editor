@@ -91,18 +91,16 @@ function getColorConfig() {
 }
 
 // ===== 字体配置 =====
-// 开源字体（OFL协议），微信端使用系统字体回退
+// 三种经典字体（均为 OFL 协议免版权），微信端回退系统字体确保可识别
 const fontFamilies = {
-    serif: "'Noto Serif SC', 'Songti SC', 'SimSun', 'STSong', '华文宋体', Georgia, 'Times New Roman', serif",
-    sans: "'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', '微软雅黑', 'SimHei', 'Helvetica Neue', Arial, sans-serif",
-    kai: "'LXGW WenKai', 'KaiTi', 'STKaiti', '楷体', '华文楷体', cursive",
-    mono: "'JetBrains Mono', 'Consolas', 'Courier New', 'SF Mono', monospace"
+    serif: "'Noto Serif SC', 'Songti SC', 'SimSun', 'STSong', '华文宋体', 'Source Han Serif SC', Georgia, 'Times New Roman', serif",
+    sans: "'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', '微软雅黑', 'SimHei', 'Source Han Sans SC', 'Helvetica Neue', Arial, sans-serif",
+    mono: "'JetBrains Mono', 'Consolas', 'Courier New', 'SF Mono', Menlo, Monaco, monospace"
 };
 
 const fontWeights = {
     serif: '400',
-    sans: '400',
-    kai: '400',
+    sans: '300',
     mono: '400'
 };
 
@@ -322,11 +320,24 @@ function renderStyledHTML(editorHTML) {
                 return `<h2 style="${style}">${children}</h2>`;
             }
             case 'h3': {
-                let style = theme.h2Style(c, s, sp, t);
+                let style;
+                if (theme.h3Style) {
+                    style = theme.h3Style(c, s, sp, t);
+                } else {
+                    style = theme.h2Style(c, s, sp, t);
+                    style = style.replace(/font-size:[^;]+;/, `font-size:${parseInt(s.h2Size) - 2}px;`);
+                    style = style.replace(/font-weight:[^;]+;/, 'font-weight:500;');
+                }
                 style = addBaseTextStyles(style);
                 return `<h3 style="${style}">${children}</h3>`;
             }
             case 'p': {
+                const isMeta = node.classList && node.classList.contains('meta-line');
+                if (isMeta && theme.metaLineStyle) {
+                    let style = theme.metaLineStyle(c);
+                    style = addBaseTextStyles(style);
+                    return `<p style="${style}">${children}</p>`;
+                }
                 let style = theme.pStyle(c, sp);
                 style = addBaseTextStyles(style);
                 return `<p style="${style}">${children}</p>`;
@@ -569,9 +580,35 @@ function showToast(message) {
 }
 
 // ===== 设置函数 =====
+function syncEditorToTheme() {
+    const c = getColorConfig();
+    const s = getSizeConfig();
+    const sp = getSpacingConfig();
+    const t = getTrackingConfig();
+    const font = getFontFamily();
+    const fontWeight = getFontWeight();
+    const theme = getStyleTheme();
+
+    editor.style.fontFamily = font;
+    editor.style.fontWeight = fontWeight;
+    editor.style.fontSize = s.fontSize;
+    editor.style.lineHeight = sp.lineHeight;
+    editor.style.color = theme.textColor;
+    editor.style.backgroundColor = theme.canvasBg;
+    if (t.letterSpacing) editor.style.letterSpacing = t.letterSpacing;
+
+    editor.style.setProperty('--editor-accent', c.accent);
+    editor.style.setProperty('--editor-accent-light', c.accentLight);
+    editor.style.setProperty('--editor-accent-dark', c.accentDark);
+    editor.style.setProperty('--editor-accent-soft', c.accentSoft);
+    editor.style.setProperty('--editor-accent-border', c.accentBorder);
+    editor.style.setProperty('--editor-meta', theme.metaColor);
+}
+
 function setStyle(style) {
     currentStyle = style;
     styleButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.style === style));
+    syncEditorToTheme();
     updatePreview();
 }
 
@@ -580,32 +617,35 @@ function setColor(color) {
     currentColor = color;
     document.body.classList.add(`theme-${color}`);
     colorButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.color === color));
+    syncEditorToTheme();
     updatePreview();
 }
 
 function setSize(size) {
     currentSize = size;
     sizeButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.size === size));
+    syncEditorToTheme();
     updatePreview();
 }
 
 function setSpacing(spacing) {
     currentSpacing = spacing;
     spacingButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.spacing === spacing));
+    syncEditorToTheme();
     updatePreview();
 }
 
 function setFont(font) {
     currentFont = font;
-    editor.style.fontFamily = fontFamilies[font];
-    editor.style.fontWeight = fontWeights[font];
     fontButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.font === font));
+    syncEditorToTheme();
     updatePreview();
 }
 
 function setTracking(tracking) {
     currentTracking = tracking;
     trackingButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.tracking === tracking));
+    syncEditorToTheme();
     updatePreview();
 }
 
@@ -1113,10 +1153,22 @@ function smartFormatText(text) {
                 result.push('');
                 break;
 
+            case 'h1':
+                flushAll();
+                result.push(`# ${cleanHeadingText(trimmed)}`);
+                result.push('');
+                break;
+
             case 'h2':
             case 'h3':
                 flushAll();
                 result.push(`${lineType === 'h2' ? '##' : '###'} ${cleanHeadingText(trimmed)}`);
+                result.push('');
+                break;
+
+            case 'meta':
+                flushAll();
+                result.push(`<p class="meta-line">${trimmed}</p>`);
                 result.push('');
                 break;
 
@@ -1198,13 +1250,15 @@ function analyzeTextStructure(cleanLines, nonEmptyLines) {
     }
 
     let lastHeadingLevel = 0;
-    for (let i = (lineTypes[0] === 'title' ? (lineTypes[1] === 'subtitle' ? 2 : 1) : 0); i < totalLines; i++) {
+    const startIdx = (lineTypes[0] === 'title' ? (lineTypes[1] === 'subtitle' ? 2 : 1) : 0);
+
+    for (let i = 0; i < totalLines; i++) {
         if (lineTypes[i]) continue;
         
         const line = nonEmptyLines[i].trim();
         const prevLine = i > 0 ? nonEmptyLines[i - 1].trim() : '';
         const nextLine = i < totalLines - 1 ? nonEmptyLines[i + 1].trim() : '';
-        const nextNextLine = i < totalLines - 2 ? nonEmptyLines[i + 2].trim() : '';
+        const prevPrevLine = i > 1 ? nonEmptyLines[i - 2].trim() : '';
 
         if (isLikelyDivider(line)) {
             lineTypes[i] = 'divider';
@@ -1213,21 +1267,28 @@ function analyzeTextStructure(cleanLines, nonEmptyLines) {
 
         if (isLikelyQuote(line, prevLine, nextLine)) {
             lineTypes[i] = 'quote';
-            if (nextLine && /^[——\-]+\s*[\u4e00-\u9fa5]/.test(nextLine)) {
+            if (nextLine && /^[—]{2,}\s*[\u4e00-\u9fa5]/.test(nextLine)) {
                 lineTypes[i + 1] = 'quote';
             }
             continue;
         }
 
-        if (/^[——\-]+\s*[\u4e00-\u9fa5]/.test(line) && prevLine && lineTypes[i - 1] === 'quote') {
+        if (/^[—]{2,}\s*[\u4e00-\u9fa5]/.test(line) && prevLine && lineTypes[i - 1] === 'quote') {
             lineTypes[i] = 'quote';
+            continue;
+        }
+
+        if (isAuthorDateLine(line, prevLine, nextLine, i, totalLines)) {
+            lineTypes[i] = 'meta';
             continue;
         }
 
         const headingInfo = detectHeadingLevel(line, i, totalLines, prevLine, nextLine, lastHeadingLevel);
         if (headingInfo) {
             lineTypes[i] = headingInfo;
-            lastHeadingLevel = headingInfo === 'h2' ? 2 : 3;
+            if (headingInfo === 'h1') lastHeadingLevel = 1;
+            else if (headingInfo === 'h2') lastHeadingLevel = 2;
+            else if (headingInfo === 'h3') lastHeadingLevel = 3;
             continue;
         }
 
@@ -1240,71 +1301,103 @@ function analyzeTextStructure(cleanLines, nonEmptyLines) {
     return { lineTypes };
 }
 
+function isAuthorDateLine(line, prevLine, nextLine, idx, totalLines) {
+    const t = line.trim();
+    if (t.length < 5 || t.length > 80) return false;
+
+    const authorPatterns = [
+        /^文\s*[\/／]\s*/,
+        /^作者[：:]\s*/,
+        /^撰文[：:]\s*/,
+        /^原创\s*[：:]/,
+    ];
+    const datePatterns = [
+        /\d{4}年\d{1,2}月\d{1,2}日/,
+        /\d{4}[-\/]\d{1,2}[-\/]\d{1,2}/,
+        /日期[：:]\s*\d/,
+    ];
+
+    let hasAuthor = false;
+    for (const p of authorPatterns) {
+        if (p.test(t)) { hasAuthor = true; break; }
+    }
+
+    let hasDate = false;
+    for (const p of datePatterns) {
+        if (p.test(t)) { hasDate = true; break; }
+    }
+
+    if (hasAuthor && hasDate) return true;
+    if (hasAuthor && idx < 5) return true;
+    if (hasDate && idx < 5) return true;
+
+    if (idx < 3 && /^(文\s*[\/／]|作者[：:]|撰文[：:])/.test(t)) return true;
+
+    return false;
+}
+
 function detectHeadingLevel(line, idx, totalLines, prevLine, nextLine, lastHeadingLevel) {
-    if (line.length < 2 || line.length > 60) return null;
-    if (/[。，；：、！？]$/.test(line)) return null;
+    const t = line.trim();
+    if (t.length < 2) return null;
 
-    // 数字编号: 1. 2. 3. / 1、2、3、
-    if (/^[0-9]+[、.．]\s*[\u4e00-\u9fa5a-zA-Z]/.test(line) && line.length < 40) {
-        const afterNum = line.replace(/^[0-9]+[、.．]\s*/, '');
-        if (afterNum && !/[。！？，；：、]/.test(afterNum)) return 'h2';
+    const h1Patterns = [
+        /^第[一二三四五六七八九十百千0-9]+部分[：: ]/,
+        /^第[一二三四五六七八九十百千0-9]+章[、\s]/,
+        /^第[一二三四五六七八九十百千0-9]+篇[、\s]/,
+        /^第[一二三四五六七八九十百千0-9]+辑[、\s]/,
+        /^第[一二三四五六七八九十百千0-9]+卷[、\s]/,
+        /^Part\s+[0-9A-Z]+[:,]/i,
+        /^Chapter\s+[0-9]+[:,]/i,
+    ];
+    for (const p of h1Patterns) {
+        if (p.test(t)) return 'h1';
     }
 
-    // X.Y 编号: 1.1 1.2 2.1
-    if (/^[0-9]+\.[0-9]+/.test(line) && line.length < 40) {
-        return 'h2';
+    const h2Patterns = [
+        /^[一二三四五六七八九十百千]+、\s*\S/,
+        /^[一二三四五六七八九十百千]+\.\s*\S/,
+        /^[一二三四五六七八九十百千]+）\s*\S/,
+        /^\([一二三四五六七八九十]+\)\s*\S/,
+        /^（[一二三四五六七八九十]+）\s*\S/,
+        /^第[一二三四五六七八九十百千0-9]+节[、\s]/,
+        /^第[一二三四五六七八九十百千0-9]+条[、\s]/,
+        /^第[一二三四五六七八九十百千0-9]+点[、\s]/,
+        /^第[一二三四五六七八九十百千0-9]+讲[、\s]/,
+    ];
+    for (const p of h2Patterns) {
+        if (p.test(t) && t.length < 70) return 'h2';
     }
 
-    // 中文编号: 一、二、三、
-    if (/^[一二三四五六七八九十]+、/.test(line) && line.length > 3 && line.length < 35) {
-        const afterNum = line.replace(/^[一二三四五六七八九十]+、\s*/, '');
-        if (afterNum && !/[。！？，；：、]/.test(afterNum)) return 'h2';
+    const h3Patterns = [
+        /^[0-9]+[、.．]\s+\S/,
+        /^[0-9]+\.[0-9]+\s+\S/,
+        /^[0-9]+\.[0-9]+\.[0-9]+\s+\S/,
+        /^[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮]\s*\S/,
+        /^[⒈⒉⒊⒋⒌⒍⒎⒏⒐⒑]\s*\S/,
+    ];
+    for (const p of h3Patterns) {
+        if (p.test(t) && t.length < 60) return 'h3';
     }
 
-    // 第X章/节/部分
-    if (/^第[一二三四五六七八九十百千0-9]+[章节部分条课]/.test(line)) {
-        return 'h2';
-    }
-
-    // (一)(二) 编号
-    if (/^\([一二三四五六七八九十]+\)/.test(line) && line.length < 35) {
-        return 'h3';
-    }
-
-    // 【小标题】格式
-    if (/^【[^】]+】$/.test(line) && line.length < 30) {
-        return 'h3';
-    }
-
-    // 关键词标题
     const h2Keywords = [
-        '前言', '引言', '背景', '概述', '简介', '总结', '结语', '结论',
-        '核心要点', '重要提示', '写在最后', '最后总结', '附录', '参考',
-        '正文', '开始', '引入', '分析', '方案', '对比', '展望',
+        /^前言$/, /^引言$/, /^背景$/, /^概述$/, /^简介$/,
+        /^总结$/, /^结语$/, /^结论$/, /^正文$/,
+        /^核心要点$/, /^重要提示$/, /^写在最后$/, /^最后总结$/,
+        /^附录$/, /^参考资料$/, /^参考文献$/,
+        /^什么是/, /^为什么/, /^如何/, /^怎么/, /^哪些/, /^怎样/,
     ];
-    for (const kw of h2Keywords) {
-        if (line === kw || (line.startsWith(kw) && line.length <= 12)) return 'h2';
-    }
-
-    // 问句标题
-    const questionPatterns = [
-        /^什么是/, /^为什么/, /^如何/, /^怎么/, /^哪些/,
-        /^如何做/, /^怎样/, /^为啥/, /^咋/, /^什么是/,
-    ];
-    for (const pattern of questionPatterns) {
-        if (pattern.test(line) && line.length <= 30 && !/[。！？]$/.test(line)) {
-            if (prevLine && nextLine) return 'h2';
+    for (const p of h2Keywords) {
+        if (p.test(t) && t.length < 25) {
+            if (!/[。！？]$/.test(t)) return 'h2';
         }
     }
 
-    // 短行标题检测：中文为主、无标点、上下有内容
-    if (line.length <= 20 && /[\u4e00-\u9fa5]/.test(line) && !/[。！？，；：、]/.test(line)) {
-        if (idx > 1 && idx < totalLines - 1) {
-            const hasPrevContent = prevLine && prevLine.length > 8;
-            const hasNextContent = nextLine && nextLine.length > 8;
-            if (hasPrevContent && hasNextContent) {
-                const noListMark = !isLikelyListItem(line);
-                if (noListMark) {
+    if (t.length >= 4 && t.length <= 32 && /[\u4e00-\u9fa5]/.test(t)) {
+        const hasEndPunct = /[。！？，；：、]$/.test(t);
+        const startsWithListMark = /^[-•·■▪▸▹►▻◆◇★☆✓✔✅☑️]/.test(t);
+        if (!hasEndPunct && !startsWithListMark) {
+            if (prevLine && prevLine.length > 10 && nextLine && nextLine.length > 10) {
+                if (idx > 2 && idx < totalLines - 1) {
                     return lastHeadingLevel >= 2 ? 'h3' : 'h2';
                 }
             }
@@ -1323,19 +1416,24 @@ function isLikelyDivider(line) {
 }
 
 function isLikelyQuote(line, prevLine, nextLine) {
-    if (/^[""「『【「].*[""」』】」]$/.test(line) && line.length > 10) return true;
+    const t = line.trim();
     
-    if (/^[""「『]/.test(line) && line.length > 10) {
+    if (/^[-*•·▪▸▹►▻◆◇★☆✓✔✅☑️]\s+/.test(t)) return false;
+    if (/^[0-9]+[.、）)]\s/.test(t)) return false;
+    
+    if (/^[""「『【「].*[""」』】」]$/.test(t) && t.length > 10) return true;
+    
+    if (/^[""「『]/.test(t) && t.length > 10) {
         if (nextLine && /[""」』]/.test(nextLine)) return true;
     }
     
-    if (/^[——\-]+\s*[\u4e00-\u9fa5]/.test(line) && line.length > 8) return true;
+    if (/^[—]{2,}\s*[\u4e00-\u9fa5]/.test(t) && t.length > 8) return true;
     
-    if (/^摘自|^引自|^出自|^来源：|^来源[:：]/.test(line) && line.length > 6) return true;
+    if (/^摘自|^引自|^出自|^来源：|^来源[:：]/.test(t) && t.length > 6) return true;
     
-    if (prevLine && prevLine.length > 5 && line.length > 5) {
+    if (prevLine && prevLine.length > 5 && t.length > 5) {
         const prevEndsQuote = /[""」』】」]$/.test(prevLine);
-        const startsDash = /^[——\-]+\s*/.test(line);
+        const startsDash = /^[—]{2,}\s*/.test(t);
         if (prevEndsQuote && startsDash) return true;
     }
 
@@ -1867,6 +1965,7 @@ editor.innerHTML = `<h1>公众号文章标题</h1>
 <p><img src="https://picsum.photos/600/300" alt="示例图片"></p>
 <p>图片支持粘贴和拖拽上传，会自动转换为 base64 嵌入文档中。</p>`;
 
+syncEditorToTheme();
 updatePreview();
 
 // =============================================

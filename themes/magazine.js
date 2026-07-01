@@ -61,5 +61,8 @@ window.styleThemes.magazine = {
     },
     emStyle(c) {
         return `color:${this.metaColor};font-style:italic;`;
+    },
+    metaLineStyle(c) {
+        return `font-size:13px;color:${this.metaColor};text-align:center;margin:0 0 36px 0;letter-spacing:6px;font-style:italic;`;
     }
 };
