@@ -456,11 +456,258 @@ function renderStyledHTML(editorHTML) {
     return result;
 }
 
+// ===== 字数统计 =====
+function updateWordCount() {
+    const text = editor.innerText || '';
+    const trimmed = text.trim();
+
+    const charCount = text.length;
+
+    let wordCount = 0;
+    if (trimmed) {
+        const chineseChars = (trimmed.match(/[\u4e00-\u9fa5]/g) || []).length;
+        const englishWords = trimmed.replace(/[\u4e00-\u9fa5]/g, ' ').trim().split(/\s+/).filter(w => w.length > 0).length;
+        wordCount = chineseChars + englishWords;
+    }
+
+    let paraCount = 0;
+    const children = editor.children;
+    for (let i = 0; i < children.length; i++) {
+        const tag = children[i].tagName.toLowerCase();
+        if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'ul', 'ol', 'hr', 'div'].includes(tag)) {
+            if (children[i].innerText && children[i].innerText.trim()) {
+                paraCount++;
+            } else if (tag === 'hr') {
+                paraCount++;
+            }
+        }
+    }
+    if (paraCount === 0 && trimmed) {
+        paraCount = 1;
+    }
+
+    const wcEl = document.getElementById('wordCount');
+    const ccEl = document.getElementById('charCount');
+    const lcEl = document.getElementById('lineCount');
+    if (wcEl) wcEl.textContent = wordCount;
+    if (ccEl) ccEl.textContent = charCount;
+    if (lcEl) lcEl.textContent = paraCount;
+}
+
+// ===== 规范化编辑器HTML，确保所见即所得同步 =====
+function normalizeEditorHTML(html) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(`<div id="__norm__">${html}</div>`, 'text/html');
+    const root = doc.getElementById('__norm__');
+
+    const result = [];
+    let currentPara = [];
+
+    function flushPara() {
+        if (currentPara.length > 0) {
+            result.push(`<p>${currentPara.join('')}</p>`);
+            currentPara = [];
+        }
+    }
+
+    function processNode(node) {
+        if (node.nodeType === 3) {
+            const text = node.textContent;
+            if (text.trim() || text.includes('\n')) {
+                currentPara.push(text.replace(/\n/g, ''));
+            }
+            return;
+        }
+
+        if (node.nodeType !== 1) return;
+
+        const tag = node.tagName.toLowerCase();
+
+        const blockTags = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'ul', 'ol', 'hr', 'figure'];
+
+        if (blockTags.includes(tag)) {
+            flushPara();
+            result.push(node.outerHTML);
+            return;
+        }
+
+        if (tag === 'br') {
+            flushPara();
+            return;
+        }
+
+        if (tag === 'div') {
+            flushPara();
+            const divHTML = node.innerHTML.trim();
+            if (divHTML && divHTML !== '<br>') {
+                result.push(`<p>${divHTML}</p>`);
+            }
+            return;
+        }
+
+        if (tag === 'span' || tag === 'strong' || tag === 'b' || tag === 'em' || tag === 'i' ||
+            tag === 'a' || tag === 'code' || tag === 'img') {
+            currentPara.push(node.outerHTML);
+            return;
+        }
+
+        for (const child of node.childNodes) {
+            processNode(child);
+        }
+    }
+
+    for (const child of root.childNodes) {
+        processNode(child);
+    }
+    flushPara();
+
+    if (result.length === 0 && html.trim()) {
+        return `<p>${html}</p>`;
+    }
+
+    return result.join('\n');
+}
+
+// ===== 底部名片渲染 =====
+function getIntroCardHTML() {
+    const enabledEl = document.getElementById('introEnabled');
+    if (enabledEl && !enabledEl.checked) return '';
+
+    const name = document.getElementById('introName')?.value || '';
+    const title = document.getElementById('introTitle')?.value || '';
+    const focus = document.getElementById('introFocus')?.value || '';
+    const output = document.getElementById('introOutput')?.value || '';
+    const slogan = document.getElementById('introSlogan')?.value || '';
+    const disclaimer1 = document.getElementById('introDisclaimer1')?.value || '';
+    const disclaimer2 = document.getElementById('introDisclaimer2')?.value || '';
+
+    const c = getColorConfig();
+    const s = getSizeConfig();
+    const sp = getSpacingConfig();
+    const font = getFontFamily();
+
+    const cardStyle = `
+        margin-top: ${sp.pMargin};
+        padding: 20px 18px;
+        background: ${c.accentSoft};
+        border-radius: 12px;
+        border: 1px solid ${c.accentSoft};
+        font-family: ${font};
+        font-size: ${s.fontSize};
+        line-height: ${sp.lineHeight};
+        color: var(--text-article);
+    `;
+
+    const rowStyle = `
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 6px;
+        font-size: ${s.fontSize};
+    `;
+
+    const iconStyle = `
+        flex-shrink: 0;
+        width: 20px;
+        text-align: center;
+        font-size: 15px;
+    `;
+
+    const textStyle = `
+        flex: 1;
+        color: var(--text-article);
+    `;
+
+    const sepStyle = `
+        color: ${c.accent};
+        flex-shrink: 0;
+    `;
+
+    const labelStyle = `
+        color: var(--text-tertiary);
+        flex-shrink: 0;
+        font-size: 13px;
+    `;
+
+    const sloganStyle = `
+        margin: 10px 0 10px 26px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        font-size: ${s.fontSize};
+    `;
+
+    const dividerStyle = `
+        height: 1px;
+        background: var(--border-light);
+        margin: 10px 0;
+    `;
+
+    const disclaimerStyle = `
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+        margin-bottom: 4px;
+        font-size: 12px;
+        color: var(--text-tertiary);
+        line-height: 1.6;
+    `;
+
+    let html = `<div style="${cardStyle}">`;
+
+    if (name || title) {
+        html += `<div style="${rowStyle}">
+            <span style="${iconStyle}">🧔</span>
+            <span style="${textStyle}"><strong>${name}</strong> <span style="${sepStyle}">｜</span> ${title}</span>
+        </div>`;
+    }
+
+    if (focus) {
+        html += `<div style="${rowStyle}">
+            <span style="${iconStyle}">🔭</span>
+            <span style="${labelStyle}">关注：</span>
+            <span style="${textStyle}">${focus}</span>
+        </div>`;
+    }
+
+    if (output) {
+        html += `<div style="${rowStyle}">
+            <span style="${iconStyle}">📦</span>
+            <span style="${labelStyle}">产出：</span>
+            <span style="${textStyle}">${output}</span>
+        </div>`;
+    }
+
+    if (slogan) {
+        html += `<div style="${sloganStyle}">${slogan}</div>`;
+    }
+
+    html += `<div style="${dividerStyle}"></div>`;
+
+    if (disclaimer1) {
+        html += `<div style="${disclaimerStyle}">
+            <span style="${iconStyle};font-size:13px;">⚠️</span>
+            <span>${disclaimer1}</span>
+        </div>`;
+    }
+
+    if (disclaimer2) {
+        html += `<div style="${disclaimerStyle}">
+            <span style="${iconStyle};font-size:13px;">📋</span>
+            <span>${disclaimer2}</span>
+        </div>`;
+    }
+
+    html += '</div>';
+
+    return html;
+}
+
 // ===== 更新预览 =====
 function updatePreview() {
-    const content = editor.innerHTML;
+    const content = normalizeEditorHTML(editor.innerHTML);
+    const introHTML = getIntroCardHTML();
     const parsed = renderStyledHTML(content);
-    articleBody.innerHTML = parsed;
+    articleBody.innerHTML = parsed + introHTML;
 
     const c = getColorConfig();
     const s = getSizeConfig();
@@ -471,6 +718,8 @@ function updatePreview() {
 
     const bodyStyle = theme.bodyStyle(c, s, sp, t, font);
     articleBody.style.cssText = bodyStyle;
+
+    updateWordCount();
 }
 
 function debouncedUpdatePreview() {
@@ -489,12 +738,14 @@ function generateExportHTML() {
     const theme = getStyleTheme();
 
     const bodyStyle = theme.bodyStyle(c, s, sp, t, font);
+    const normalizedContent = normalizeEditorHTML(editor.innerHTML);
+    const styledContent = renderStyledHTML(normalizedContent);
+    const introHTML = getIntroCardHTML();
 
-    const styledContent = renderStyledHTML(editor.innerHTML);
-
-    const fullHTML = `<section id="articleContent" style="max-width:677px;margin:0 auto;background:${theme.canvasBg};font-family:${font};font-weight:${fontWeight};color:${theme.textColor};line-height:${sp.lineHeight};${t.letterSpacing ? `letter-spacing:${t.letterSpacing};` : ''}word-break:break-word;">
-        <section style="padding:32px 28px;">
+    const fullHTML = `<section id="articleContent" style="max-width:677px;margin:0 auto;background:${theme.canvasBg};word-break:break-word;">
+        <section style="${bodyStyle}">
             ${styledContent}
+            ${introHTML}
         </section>
     </section>`;
 
@@ -1928,6 +2179,15 @@ fileInput.addEventListener('change', handleFileUpload);
 parseUrlBtn.addEventListener('click', parseUrl);
 smartFormatBtn.addEventListener('click', smartFormat);
 urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') parseUrl(); });
+
+const introInputs = document.querySelectorAll('.intro-input');
+introInputs.forEach(input => {
+    input.addEventListener('input', debouncedUpdatePreview);
+});
+const introEnabled = document.getElementById('introEnabled');
+if (introEnabled) {
+    introEnabled.addEventListener('change', debouncedUpdatePreview);
+}
 
 document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'b') { e.preventDefault(); handleToolAction('bold'); }

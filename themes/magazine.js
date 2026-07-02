@@ -7,7 +7,7 @@ window.styleThemes.magazine = {
     metaColor: '#666666',
 
     bodyStyle(c, s, sp, t, font) {
-        return `font-family:${font};font-weight:${getFontWeight()};font-size:15px;line-height:2.15;color:${this.textColor};background-color:${this.canvasBg};padding:48px 36px 72px;text-align:justify;letter-spacing:${t.letterSpacing};word-break:break-word;`;
+        return `font-family:${font};font-weight:${getFontWeight()};font-size:15px;line-height:2.15;color:${this.textColor};background-color:${this.canvasBg};padding:40px 24px 60px;text-align:justify;letter-spacing:${t.letterSpacing};word-break:break-word;`;
     },
     pStyle(c, sp) {
         return `margin:0 0 ${sp.pMargin} 0;color:${this.textColor};text-indent:2em;`;

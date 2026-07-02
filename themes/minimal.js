@@ -7,7 +7,7 @@ window.styleThemes.minimal = {
     metaColor: '#8A8A8A',
 
     bodyStyle(c, s, sp, t, font) {
-        return `font-family:${font};font-weight:${getFontWeight()};font-size:${s.fontSize};line-height:${sp.lineHeight};color:${this.textColor};background-color:${this.canvasBg};padding:40px 32px 60px;letter-spacing:${t.letterSpacing};word-break:break-word;`;
+        return `font-family:${font};font-weight:${getFontWeight()};font-size:${s.fontSize};line-height:${sp.lineHeight};color:${this.textColor};background-color:${this.canvasBg};padding:32px 20px 48px;letter-spacing:${t.letterSpacing};word-break:break-word;`;
     },
     pStyle(c, sp) {
         return `margin:0 0 ${sp.pMargin} 0;color:${this.textColor};`;

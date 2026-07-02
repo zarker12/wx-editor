@@ -217,6 +217,56 @@
 行内代码
 ---
 可直接拖拽图片或文件到此处"></div>
+
+                <div class="intro-card-editor">
+                    <div class="intro-card-title">
+                        <span>底部名片</span>
+                        <label class="intro-toggle">
+                            <input type="checkbox" id="introEnabled" checked>
+                            <span>显示</span>
+                        </label>
+                    </div>
+                    <div class="intro-fields">
+                        <div class="intro-row">
+                            <span class="intro-icon">🧔</span>
+                            <input type="text" id="introName" class="intro-input" value="北苠" data-field="name">
+                            <span class="intro-sep">｜</span>
+                            <input type="text" id="introTitle" class="intro-input" value="10年互联网老炮 · 大厂运营" data-field="title">
+                        </div>
+                        <div class="intro-row">
+                            <span class="intro-icon">🔭</span>
+                            <span class="intro-label">关注：</span>
+                            <input type="text" id="introFocus" class="intro-input" value="互联网风向 | AI落地实操 | OPC | 副业玩法" data-field="focus">
+                        </div>
+                        <div class="intro-row">
+                            <span class="intro-icon">📦</span>
+                            <span class="intro-label">产出：</span>
+                            <input type="text" id="introOutput" class="intro-input" value="资讯速递 + 干货拆解 + 十年心得笔记" data-field="output">
+                        </div>
+                        <div class="intro-row intro-slogan-row">
+                            <input type="text" id="introSlogan" class="intro-input intro-slogan" value="随缘更新，想到啥写啥，感谢关注" data-field="slogan">
+                        </div>
+                        <div class="intro-divider"></div>
+                        <div class="intro-row">
+                            <span class="intro-icon">⚠️</span>
+                            <input type="text" id="introDisclaimer1" class="intro-input" value="个人观点，仅供参考" data-field="disclaimer1">
+                        </div>
+                        <div class="intro-row">
+                            <span class="intro-icon">📋</span>
+                            <input type="text" id="introDisclaimer2" class="intro-input" value="素材及资讯来源网络，如有错误或侵权，请及时联系删除。" data-field="disclaimer2">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="editor-footer">
+                    <div class="word-count">
+                        <span class="wc-item"><b id="wordCount">0</b> 字</span>
+                        <span class="wc-divider">·</span>
+                        <span class="wc-item"><b id="charCount">0</b> 字符</span>
+                        <span class="wc-divider">·</span>
+                        <span class="wc-item"><b id="lineCount">0</b> 段</span>
+                    </div>
+                </div>
             </section>
 
             <section class="preview-section">
@@ -388,6 +438,6 @@
     <script src="themes/cyber.js"></script>
     <script src="themes/magazine.js"></script>
     <script src="themes/fresh.js"></script>
-    <script src="script.js?v=5"></script>
+    <script src="script.js?v=7"></script>
 </body>
 </html>

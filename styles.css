@@ -792,6 +792,133 @@ body {
     pointer-events: none;
 }
 
+.intro-card-editor {
+    border-top: 1px dashed var(--border-default);
+    padding: 16px 24px;
+    background: var(--bg-page);
+    flex-shrink: 0;
+}
+
+.intro-card-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.intro-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-tertiary);
+    font-weight: normal;
+}
+
+.intro-toggle input {
+    cursor: pointer;
+}
+
+.intro-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.intro-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.intro-icon {
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+    font-size: 14px;
+}
+
+.intro-label {
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
+.intro-sep {
+    flex-shrink: 0;
+    color: var(--text-tertiary);
+    font-size: 12px;
+}
+
+.intro-input {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid transparent;
+    background: var(--bg-surface);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--text-article);
+    font-family: inherit;
+    transition: all 0.15s ease;
+}
+
+.intro-input:focus {
+    outline: none;
+    border-color: var(--accent-400);
+    background: var(--bg-surface);
+}
+
+.intro-input:hover {
+    border-color: var(--border-default);
+}
+
+.intro-slogan-row .intro-input {
+    margin-left: 26px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.intro-divider {
+    height: 1px;
+    background: var(--border-light);
+    margin: 4px 0;
+}
+
+.editor-footer {
+    padding: 10px 24px;
+    border-top: 1px solid var(--border-light);
+    background: var(--bg-surface);
+    font-size: 12px;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+}
+
+.word-count {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.wc-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.wc-item b {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.wc-divider {
+    color: var(--border-default);
+}
+
 /* ===== Preview Section ===== */
 .preview-section {
     width: 400px;

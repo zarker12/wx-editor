@@ -7,7 +7,7 @@ window.styleThemes.cyber = {
     metaColor: '#64748B',
 
     bodyStyle(c, s, sp, t, font) {
-        return `font-family:${font};font-weight:${getFontWeight()};font-size:${s.fontSize};line-height:1.85;color:${this.textColor};background-color:${this.canvasBg};padding:36px 28px 56px;letter-spacing:${t.letterSpacing};word-break:break-word;`;
+        return `font-family:${font};font-weight:${getFontWeight()};font-size:${s.fontSize};line-height:1.85;color:${this.textColor};background-color:${this.canvasBg};padding:30px 18px 48px;letter-spacing:${t.letterSpacing};word-break:break-word;`;
     },
     pStyle(c, sp) {
         return `margin:0 0 ${sp.pMargin} 0;color:${this.textColor};`;

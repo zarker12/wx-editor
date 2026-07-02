@@ -7,7 +7,7 @@ window.styleThemes.luxury = {
     metaColor: '#999999',
 
     bodyStyle(c, s, sp, t, font) {
-        return `font-family:${font};font-weight:${getFontWeight()};font-size:${s.fontSize};line-height:2.0;color:${this.textColor};background-color:${this.canvasBg};padding:40px 32px 60px;text-align:justify;letter-spacing:${t.letterSpacing};word-break:break-word;`;
+        return `font-family:${font};font-weight:${getFontWeight()};font-size:${s.fontSize};line-height:2.0;color:${this.textColor};background-color:${this.canvasBg};padding:32px 20px 52px;text-align:justify;letter-spacing:${t.letterSpacing};word-break:break-word;`;
     },
     pStyle(c, sp) {
         return `margin:0 0 ${sp.pMargin} 0;color:${this.textColor};`;
