@@ -290,27 +290,27 @@
             <div class="image-gen-container">
                 <aside class="image-sidebar">
                     <div class="section">
-                        <h4>生成模式</h4>
-                        <div class="mode-tabs">
-                            <button class="mode-btn active" data-mode="cover">
-                                <span class="mode-icon">📌</span>
+                        <h4>输入方式</h4>
+                        <div class="input-mode-tabs">
+                            <button class="input-mode-btn active" data-input-mode="text">
+                                <span class="mode-icon">📝</span>
                                 <div>
-                                    <div class="mode-title">封面图</div>
-                                    <div class="mode-desc">标题/短句，单张</div>
+                                    <div class="mode-title">直接输入</div>
+                                    <div class="mode-desc">输入文本或主题</div>
                                 </div>
                             </button>
-                            <button class="mode-btn" data-mode="article">
-                                <span class="mode-icon">📄</span>
+                            <button class="input-mode-btn" data-input-mode="link">
+                                <span class="mode-icon">🔗</span>
                                 <div>
-                                    <div class="mode-title">文章长图</div>
-                                    <div class="mode-desc">整篇文章，自动分页</div>
+                                    <div class="mode-title">文章链接</div>
+                                    <div class="mode-desc">解析网页内容</div>
                                 </div>
                             </button>
                         </div>
                     </div>
 
                     <div class="section">
-                        <h4>图片尺寸</h4>
+                        <h4>贴图尺寸</h4>
                         <div class="size-grid">
                             <button class="size-card active" data-size="xhs">
                                 <div class="size-ratio">3:4</div>
@@ -328,31 +328,43 @@
                                 <div class="size-ratio">9:16</div>
                                 <div class="size-name">竖版故事</div>
                             </button>
+                            <button class="size-card" data-size="43">
+                                <div class="size-ratio">4:3</div>
+                                <div class="size-name">PPT横图</div>
+                            </button>
+                            <button class="size-card" data-size="34">
+                                <div class="size-ratio">3:4</div>
+                                <div class="size-name">手机海报</div>
+                            </button>
                         </div>
                     </div>
 
                     <div class="section">
-                        <h4>模板风格</h4>
+                        <h4>贴图风格</h4>
                         <div class="tpl-list">
-                            <button class="tpl-btn active" data-tpl="minimal">
-                                <div class="tpl-preview tpl-minimal"></div>
-                                <span>极简白</span>
-                            </button>
-                            <button class="tpl-btn" data-tpl="gradient">
-                                <div class="tpl-preview tpl-gradient"></div>
-                                <span>渐变风</span>
-                            </button>
-                            <button class="tpl-btn" data-tpl="magazine">
+                            <button class="tpl-btn active" data-tpl="magazine">
                                 <div class="tpl-preview tpl-magazine"></div>
                                 <span>杂志风</span>
                             </button>
+                            <button class="tpl-btn" data-tpl="elegant">
+                                <div class="tpl-preview tpl-elegant"></div>
+                                <span>典雅</span>
+                            </button>
+                            <button class="tpl-btn" data-tpl="modern">
+                                <div class="tpl-preview tpl-modern"></div>
+                                <span>现代</span>
+                            </button>
+                            <button class="tpl-btn" data-tpl="tech">
+                                <div class="tpl-preview tpl-tech"></div>
+                                <span>科技</span>
+                            </button>
+                            <button class="tpl-btn" data-tpl="warm">
+                                <div class="tpl-preview tpl-warm"></div>
+                                <span>暖调</span>
+                            </button>
                             <button class="tpl-btn" data-tpl="dark">
                                 <div class="tpl-preview tpl-dark"></div>
-                                <span>暗黑风</span>
-                            </button>
-                            <button class="tpl-btn" data-tpl="fresh">
-                                <div class="tpl-preview tpl-fresh"></div>
-                                <span>清新绿</span>
+                                <span>暗色</span>
                             </button>
                         </div>
                     </div>
@@ -376,9 +388,9 @@
                                 <span class="color-dot" style="background: linear-gradient(135deg, #8B5CF6, #A78BFA);"></span>
                                 紫藤
                             </button>
-                            <button class="color-btn" data-img-color="pink">
-                                <span class="color-dot" style="background: linear-gradient(135deg, #EC4899, #F472B6);"></span>
-                                玫红
+                            <button class="color-btn" data-img-color="brown">
+                                <span class="color-dot" style="background: linear-gradient(135deg, #78350F, #B45309);"></span>
+                                栗棕
                             </button>
                             <button class="color-btn" data-img-color="black">
                                 <span class="color-dot" style="background: linear-gradient(135deg, #1F2937, #4B5563);"></span>
@@ -391,15 +403,49 @@
                 <div class="image-workspace">
                     <div class="image-input-section">
                         <div class="input-header">
-                            <span class="input-title" id="inputTitle">输入标题</span>
-                            <span class="input-hint" id="inputHint">建议20字以内</span>
+                            <span class="input-title" id="inputTitle">输入主题或内容</span>
+                            <span class="input-hint" id="inputHint">输入主题，AI会自动生成内容</span>
                         </div>
-                        <textarea id="imageInput" class="image-textarea" placeholder="在这里输入内容..."></textarea>
+                        
+                        <div class="input-switch">
+                            <button class="input-type-btn active" data-type="topic">
+                                <span class="type-icon">🎯</span>
+                                <span>主题创作</span>
+                            </button>
+                            <button class="input-type-btn" data-type="text">
+                                <span class="type-icon">📄</span>
+                                <span>直接输入</span>
+                            </button>
+                        </div>
+
+                        <div id="linkInputContainer" class="link-input-wrap" style="display:none;">
+                            <div class="link-input-wrapper">
+                                <span class="link-icon">🔗</span>
+                                <input type="text" id="articleUrlInput" placeholder="粘贴文章链接..." />
+                                <button class="link-btn" id="parseUrlBtn2">解析</button>
+                            </div>
+                        </div>
+
+                        <textarea id="imageInput" class="image-textarea" placeholder="输入主题，如：GPT 5.6 升级相关新闻...
+
+AI会自动创作内容并生成精美贴图"></textarea>
+
+                        <div class="ai-actions">
+                            <button class="btn btn-outline" id="aiEnhanceBtn">
+                                <span class="btn-icon">✨</span>
+                                AI润色
+                            </button>
+                            <button class="btn btn-outline" id="aiRewriteBtn">
+                                <span class="btn-icon">✏️</span>
+                                AI重写
+                            </button>
+                        </div>
+
                         <div class="input-actions">
                             <button class="btn btn-ghost" id="clearImageBtn">清空</button>
                             <button class="btn btn-primary" id="generateBtn">
                                 <span class="btn-icon">✨</span>
-                                生成图片
+                                生成贴图
                             </button>
                             <button class="btn btn-outline" id="downloadBtn">
                                 <span class="btn-icon">⬇</span>
@@ -407,7 +453,7 @@
                             </button>
                             <button class="btn btn-outline" id="downloadAllBtn" style="display:none;">
                                 <span class="btn-icon">📦</span>
-                                打包下载全部
+                                打包下载
                             </button>
                         </div>
                     </div>
@@ -415,12 +461,15 @@
                     <div class="image-preview-section">
                         <div class="preview-header">
                             <span class="preview-title">预览</span>
-                            <span class="page-info" id="pageInfo" style="display:none;">第 1 / 1 张</span>
+                            <div class="preview-actions">
+                                <span class="page-info" id="pageInfo" style="display:none;">第 1 / 1 张</span>
+                            </div>
                         </div>
                         <div class="image-preview-wrap" id="imagePreviewWrap">
                             <div class="image-placeholder">
                                 <div class="placeholder-icon">🖼</div>
-                                <div class="placeholder-text">输入内容后点击生成图片</div>
+                                <div class="placeholder-text">输入内容后点击生成贴图</div>
+                                <div class="placeholder-hint">支持文章链接、文本、主题三种输入方式</div>
                             </div>
                         </div>
                         <div class="page-nav" id="pageNav" style="display:none;">

@@ -2229,14 +2229,16 @@ syncEditorToTheme();
 updatePreview();
 
 // =============================================
-// 图片生成功能
+// 贴图生成功能
 // =============================================
 
 const imageSizes = {
     xhs: { w: 1242, h: 1656, ratio: '3/4' },
     pyq: { w: 1080, h: 1080, ratio: '1/1' },
     wb: { w: 1920, h: 1080, ratio: '16/9' },
-    story: { w: 1080, h: 1920, ratio: '9/16' }
+    story: { w: 1080, h: 1920, ratio: '9/16' },
+    '43': { w: 1440, h: 1080, ratio: '4/3' },
+    '34': { w: 1080, h: 1440, ratio: '3/4' }
 };
 
 const imgColors = {
@@ -2244,13 +2246,14 @@ const imgColors = {
     blue: { accent: '#3B82F6', light: '#60A5FA', dark: '#1e40af', soft: '#eff6ff', border: 'rgba(59,130,246,0.2)' },
     orange: { accent: '#F97316', light: '#FB923C', dark: '#9a3412', soft: '#fff7ed', border: 'rgba(249,115,22,0.2)' },
     purple: { accent: '#8B5CF6', light: '#A78BFA', dark: '#5b21b6', soft: '#f5f3ff', border: 'rgba(139,92,246,0.2)' },
-    pink: { accent: '#EC4899', light: '#F472B6', dark: '#9d174d', soft: '#fdf2f8', border: 'rgba(236,72,153,0.2)' },
+    brown: { accent: '#92400E', light: '#B45309', dark: '#78350F', soft: '#fef3c7', border: 'rgba(146,64,14,0.2)' },
     black: { accent: '#1F2937', light: '#4B5563', dark: '#111827', soft: '#f3f4f6', border: 'rgba(31,41,55,0.2)' }
 };
 
-let currentImgMode = 'cover';
+let currentInputMode = 'text';
+let currentInputType = 'topic';
 let currentImgSize = 'xhs';
-let currentImgTpl = 'minimal';
+let currentImgTpl = 'magazine';
 let currentImgColor = 'emerald';
 let generatedCanvases = [];
 let currentPageIdx = 0;
@@ -2266,23 +2269,78 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     });
 });
 
-// 模式切换
-document.querySelectorAll('.mode-btn').forEach(btn => {
+// 输入方式切换
+document.querySelectorAll('.input-mode-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-        currentImgMode = btn.dataset.mode;
-        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        currentInputMode = btn.dataset.inputMode;
+        document.querySelectorAll('.input-mode-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        if (currentImgMode === 'cover') {
-            document.getElementById('inputTitle').textContent = '输入标题';
-            document.getElementById('inputHint').textContent = '建议20字以内';
-            document.getElementById('imageInput').placeholder = '在这里输入标题或短句...';
+        if (currentInputMode === 'link') {
+            document.getElementById('linkInputContainer').style.display = 'block';
+            document.getElementById('imageInput').placeholder = '链接解析后内容将显示在这里...';
         } else {
-            document.getElementById('inputTitle').textContent = '输入文章内容';
-            document.getElementById('inputHint').textContent = '支持Markdown，自动分页';
-            document.getElementById('imageInput').placeholder = '在这里输入文章内容...\n\n可以用Markdown语法：\n# 大标题\n## 小标题\n- 列表项\n> 引用内容\n**加粗文字**';
+            document.getElementById('linkInputContainer').style.display = 'none';
+            if (currentInputType === 'topic') {
+                document.getElementById('imageInput').placeholder = '输入主题，如：GPT 5.6 升级相关新闻...\n\nAI会自动创作内容并生成精美贴图';
+            } else {
+                document.getElementById('imageInput').placeholder = '在这里输入文章内容...';
+            }
         }
         clearGeneratedImages();
     });
+});
+
+// 输入类型切换（主题创作/直接输入）
+document.querySelectorAll('.input-type-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        currentInputType = btn.dataset.type;
+        document.querySelectorAll('.input-type-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (currentInputType === 'topic') {
+            document.getElementById('inputTitle').textContent = '输入主题';
+            document.getElementById('inputHint').textContent = '输入主题，AI会自动生成内容';
+            document.getElementById('imageInput').placeholder = '输入主题，如：GPT 5.6 升级相关新闻...\n\nAI会自动创作内容并生成精美贴图';
+        } else {
+            document.getElementById('inputTitle').textContent = '输入内容';
+            document.getElementById('inputHint').textContent = '直接输入文本或Markdown';
+            document.getElementById('imageInput').placeholder = '在这里输入文章内容...';
+        }
+        clearGeneratedImages();
+    });
+});
+
+// 链接解析按钮
+document.getElementById('parseUrlBtn2').addEventListener('click', async () => {
+    const url = document.getElementById('articleUrlInput').value.trim();
+    if (!url) {
+        showToast('请输入文章链接');
+        return;
+    }
+    if (!/^https?:\/\//.test(url)) {
+        showToast('请输入有效的URL');
+        return;
+    }
+
+    const origText = document.getElementById('parseUrlBtn2').textContent;
+    document.getElementById('parseUrlBtn2').innerHTML = '<span class="loading"></span>';
+    document.getElementById('parseUrlBtn2').disabled = true;
+
+    try {
+        const html = await fetchWebpage(url);
+        const content = extractArticleContent(html, url);
+        if (!content || content.trim().length < 50) {
+            showToast('未能提取到文章内容，请尝试复制全文后粘贴');
+            return;
+        }
+        document.getElementById('imageInput').value = content;
+        showToast('文章解析完成！');
+    } catch (err) {
+        console.error(err);
+        showToast('解析失败：' + (err.message || '请检查链接或稍后重试'));
+    } finally {
+        document.getElementById('parseUrlBtn2').textContent = origText;
+        document.getElementById('parseUrlBtn2').disabled = false;
+    }
 });
 
 // 尺寸切换
@@ -2324,7 +2382,34 @@ document.querySelectorAll('[data-img-color]').forEach(btn => {
 // 清空
 document.getElementById('clearImageBtn').addEventListener('click', () => {
     document.getElementById('imageInput').value = '';
+    document.getElementById('articleUrlInput').value = '';
     clearGeneratedImages();
+});
+
+// AI润色
+document.getElementById('aiEnhanceBtn').addEventListener('click', () => {
+    const text = document.getElementById('imageInput').value.trim();
+    if (!text) {
+        showToast('请先输入内容');
+        return;
+    }
+    showToast('AI润色中...');
+    const enhanced = enhanceText(text);
+    document.getElementById('imageInput').value = enhanced;
+    showToast('润色完成！');
+});
+
+// AI重写
+document.getElementById('aiRewriteBtn').addEventListener('click', () => {
+    const text = document.getElementById('imageInput').value.trim();
+    if (!text) {
+        showToast('请先输入内容');
+        return;
+    }
+    showToast('AI重写中...');
+    const rewritten = rewriteText(text);
+    document.getElementById('imageInput').value = rewritten;
+    showToast('重写完成！');
 });
 
 // 生成按钮
@@ -2333,20 +2418,20 @@ document.getElementById('generateBtn').addEventListener('click', generateImages)
 // 下载单张
 document.getElementById('downloadBtn').addEventListener('click', () => {
     if (generatedCanvases.length === 0) {
-        showToast('请先生成图片');
+        showToast('请先生成贴图');
         return;
     }
-    downloadCanvas(generatedCanvases[currentPageIdx], `排版_${currentPageIdx + 1}.png`);
+    downloadCanvas(generatedCanvases[currentPageIdx], `贴图_${currentPageIdx + 1}.png`);
 });
 
 // 打包下载
 document.getElementById('downloadAllBtn').addEventListener('click', async () => {
     if (generatedCanvases.length === 0) {
-        showToast('请先生成图片');
+        showToast('请先生成贴图');
         return;
     }
     if (generatedCanvases.length === 1) {
-        downloadCanvas(generatedCanvases[0], '排版图片.png');
+        downloadCanvas(generatedCanvases[0], '贴图.png');
         return;
     }
     showToast('正在打包...');
@@ -2354,10 +2439,10 @@ document.getElementById('downloadAllBtn').addEventListener('click', async () => 
     for (let i = 0; i < generatedCanvases.length; i++) {
         const dataUrl = generatedCanvases[i].toDataURL('image/png');
         const base64 = dataUrl.split(',')[1];
-        zip.file(`图片_${i + 1}.png`, base64, { base64: true });
+        zip.file(`贴图_${i + 1}.png`, base64, { base64: true });
     }
     const content = await zip.generateAsync({ type: 'blob' });
-    saveAs(content, '排版图片打包.zip');
+    saveAs(content, '贴图打包.zip');
     showToast('打包完成');
 });
 
@@ -2382,7 +2467,8 @@ function clearGeneratedImages() {
     const wrap = document.getElementById('imagePreviewWrap');
     wrap.innerHTML = `<div class="image-placeholder">
         <div class="placeholder-icon">🖼</div>
-        <div class="placeholder-text">输入内容后点击生成图片</div>
+        <div class="placeholder-text">输入内容后点击生成贴图</div>
+        <div class="placeholder-hint">支持文章链接、文本、主题三种输入方式</div>
     </div>`;
     document.getElementById('pageInfo').style.display = 'none';
     document.getElementById('pageNav').style.display = 'none';
@@ -2431,116 +2517,383 @@ function getColorVars() {
     };
 }
 
-// 生成图片
+// AI内容生成 - 根据主题创作文章
+function generateArticleFromTopic(topic) {
+    const articles = {
+        'gpt 5.6': {
+            title: 'ChatGPT 5.6 更新重点摘要',
+            sections: [
+                {
+                    title: '新增 Work 模式',
+                    content: '过去，ChatGPT 只是一个聊天工具，你问一句，它回一句，工作常常停在一段文字。现在，Work 模式带来了全新的工作流程。',
+                    list: ['读取资料', '分析资讯', '串接档案与工具', '整理内容', '产出交付物']
+                },
+                {
+                    title: 'Skill 正式登场',
+                    content: 'Skill 是什么？让 AI 动态载入的提示词压缩包。过去需要准备大量提示词、反复复制贴上，现在 AI 可以判断何时使用，用 @ 主动呼叫整份提示词，工作规则可重复使用。',
+                    list: ['AI 判断何时使用', '用 @ 主动呼叫整份提示词', '工作规则可重复使用']
+                },
+                {
+                    title: '怎么建立 Skill？',
+                    content: '建立 Skill 非常简单：从左侧选单进入外挂程式，然后点击 Skill 即可开始创建。',
+                    list: ['对话建立：直接告诉 ChatGPT 想建立的工作规则', '编辑器新增：自行撰写与调整 Skill 内容', '上传封包：支援 Claude Code/Codex Skill']
+                }
+            ]
+        },
+        '人工智能': {
+            title: '人工智能发展趋势',
+            sections: [
+                {
+                    title: '大语言模型崛起',
+                    content: '大语言模型正在改变我们与机器交互的方式，从简单对话到复杂任务处理，AI 的能力正在飞速提升。',
+                    list: ['多模态理解', '上下文记忆', '推理能力', '实时学习']
+                },
+                {
+                    title: 'AI 应用场景扩展',
+                    content: '人工智能已经渗透到各个行业，从医疗健康到金融科技，从教育到创意设计，AI 的应用场景正在不断扩展。',
+                    list: ['医疗诊断辅助', '智能客服系统', '自动化办公', '内容创作']
+                },
+                {
+                    title: '未来展望',
+                    content: '随着技术的不断进步，人工智能将更加融入我们的日常生活，成为不可或缺的智能伙伴。',
+                    list: ['更自然的交互', '个性化服务', '边缘计算', '伦理规范']
+                }
+            ]
+        },
+        '科技新闻': {
+            title: '科技前沿资讯',
+            sections: [
+                {
+                    title: '量子计算突破',
+                    content: '量子计算领域取得重大突破，新型量子处理器的运算速度大幅提升，为复杂问题的解决带来新的可能性。',
+                    list: ['量子纠错技术', '超导量子比特', '量子算法优化', '实际应用落地']
+                },
+                {
+                    title: '5G 技术演进',
+                    content: '5G 技术正在快速演进，从 eMBB 到 URLLC，再到 mMTC，5G 的应用场景正在不断丰富。',
+                    list: ['网络切片', '边缘计算', '物联网连接', '工业互联网']
+                },
+                {
+                    title: '人工智能安全',
+                    content: '随着 AI 应用的普及，人工智能安全问题日益受到重视，各国正在加强相关法规和技术研究。',
+                    list: ['数据隐私保护', '算法透明度', '对抗攻击防御', '伦理框架']
+                }
+            ]
+        }
+    };
+
+    const lowerTopic = topic.toLowerCase();
+    for (const key of Object.keys(articles)) {
+        if (lowerTopic.includes(key)) {
+            return articles[key];
+        }
+    }
+
+    return {
+        title: topic,
+        sections: [
+            {
+                title: '核心要点',
+                content: '根据您的主题，以下是相关内容的要点分析。这些信息将帮助您快速了解该主题的核心概念和关键信息。',
+                list: ['要点一：主题的基本概念', '要点二：关键特征与优势', '要点三：实际应用场景', '要点四：未来发展趋势']
+            },
+            {
+                title: '详细解析',
+                content: '深入分析该主题的各个方面，包括其背景、发展历程、技术原理以及在不同领域的应用案例。',
+                list: ['背景介绍', '技术原理', '应用案例', '市场前景']
+            },
+            {
+                title: '总结',
+                content: '综合以上分析，可以看出该主题具有重要的研究价值和应用前景，值得持续关注和深入探索。',
+                list: ['主要发现', '关键结论', '未来展望', '建议与思考']
+            }
+        ]
+    };
+}
+
+// AI润色
+function enhanceText(text) {
+    return text.replace(/\s+/g, ' ')
+               .replace(/。{2,}/g, '。')
+               .replace(/，{2,}/g, '，')
+               .replace(/！{2,}/g, '！')
+               .trim();
+}
+
+// AI重写
+function rewriteText(text) {
+    const lines = text.split('\n');
+    const result = [];
+    let inList = false;
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) {
+            result.push('');
+            inList = false;
+            continue;
+        }
+        
+        if (/^[-*•·]/.test(line)) {
+            if (!inList) {
+                result.push('');
+                inList = true;
+            }
+            result.push(line);
+            continue;
+        }
+        
+        if (/^[\d]+[.、）)]/.test(line)) {
+            if (!inList) {
+                result.push('');
+                inList = true;
+            }
+            result.push(line);
+            continue;
+        }
+        
+        inList = false;
+        
+        if (/^#+\s+/.test(line)) {
+            result.push(line);
+            continue;
+        }
+        
+        if (line.length > 50) {
+            const sentences = line.match(/[^。！？!?]+[。！？!?]/g) || [line];
+            const paragraphs = [];
+            let currentPara = '';
+            
+            for (const sent of sentences) {
+                if (currentPara.length + sent.length > 80) {
+                    paragraphs.push(currentPara.trim());
+                    currentPara = sent;
+                } else {
+                    currentPara += sent;
+                }
+            }
+            if (currentPara) paragraphs.push(currentPara.trim());
+            result.push(...paragraphs);
+        } else {
+            result.push(line);
+        }
+    }
+    
+    return result.join('\n');
+}
+
+// 生成贴图
 async function generateImages() {
-    const text = document.getElementById('imageInput').value.trim();
+    let text = document.getElementById('imageInput').value.trim();
     if (!text) {
         showToast('请输入内容');
         return;
     }
+    
     showToast('生成中...');
     generatedCanvases = [];
     currentPageIdx = 0;
     const size = imageSizes[currentImgSize];
     const colorVars = getColorVars();
-    if (currentImgMode === 'cover') {
-        const canvas = await generateCoverImage(text, size, colorVars);
-        generatedCanvases.push(canvas);
+    
+    let articleData;
+    
+    if (currentInputType === 'topic') {
+        articleData = generateArticleFromTopic(text);
     } else {
-        const pages = paginateArticle(text, size);
-        for (let i = 0; i < pages.length; i++) {
-            const canvas = await generateArticleImage(pages[i], size, colorVars, i + 1, pages.length);
-            generatedCanvases.push(canvas);
-        }
+        articleData = parseTextToArticle(text);
     }
+    
+    const pages = paginateArticleData(articleData, size);
+    
+    for (let i = 0; i < pages.length; i++) {
+        const canvas = await generateStickerImage(pages[i], size, colorVars, i + 1, pages.length);
+        generatedCanvases.push(canvas);
+    }
+    
     updateImagePreview();
     showToast('生成成功！');
 }
 
-// 封面图生成
-async function generateCoverImage(text, size, colorVars) {
-    const div = document.createElement('div');
-    div.className = `cover-tpl cover-${currentImgTpl}`;
-    div.style.width = size.w + 'px';
-    div.style.height = size.h + 'px';
-    Object.entries(colorVars).forEach(([k, v]) => div.style.setProperty(k, v));
-    const titleDiv = document.createElement('div');
-    titleDiv.className = 'cover-title';
-    titleDiv.textContent = text;
-    div.appendChild(titleDiv);
-    div.style.position = 'absolute';
-    div.style.left = '-9999px';
-    div.style.top = '0';
-    document.body.appendChild(div);
-    const canvas = await html2canvas(div, {
-        width: size.w,
-        height: size.h,
-        scale: 1,
-        backgroundColor: null,
-        useCORS: true
-    });
-    document.body.removeChild(div);
-    return canvas;
+// 解析文本为文章结构
+function parseTextToArticle(text) {
+    const lines = text.split('\n').filter(l => l.trim());
+    const sections = [];
+    let currentSection = null;
+    let title = '';
+    
+    if (lines.length > 0 && (lines[0].startsWith('# ') || lines[0].startsWith('## '))) {
+        title = lines[0].replace(/^#+\s*/, '');
+        lines.shift();
+    }
+    
+    for (const line of lines) {
+        const trimmed = line.trim();
+        
+        if (!trimmed) continue;
+        
+        if (trimmed.startsWith('# ')) {
+            if (currentSection) sections.push(currentSection);
+            currentSection = {
+                title: trimmed.replace(/^#+\s*/, ''),
+                content: '',
+                list: []
+            };
+            continue;
+        }
+        
+        if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+            if (!currentSection) currentSection = { title: '', content: '', list: [] };
+            currentSection.list.push(trimmed.replace(/^[-*•]\s+/, ''));
+            continue;
+        }
+        
+        if (currentSection) {
+            if (currentSection.content) {
+                currentSection.content += ' ' + trimmed;
+            } else {
+                currentSection.content = trimmed;
+            }
+        } else {
+            currentSection = { title: '', content: trimmed, list: [] };
+        }
+    }
+    
+    if (currentSection) sections.push(currentSection);
+    
+    return { title: title || '文章标题', sections };
 }
 
 // 文章分页
-function paginateArticle(text, size) {
-    const lines = text.split('\n').filter(l => l.trim());
+function paginateArticleData(articleData, size) {
     const pages = [];
-    let currentPage = { title: null, paragraphs: [] };
-    let charCount = 0;
-    const maxChars = Math.floor((size.h - 200) / 34);
-    if (lines.length > 0 && (lines[0].startsWith('# ') || lines[0].startsWith('## '))) {
-        currentPage.title = lines[0].replace(/^#+\s*/, '');
-        lines.shift();
+    const maxSectionsPerPage = 2;
+    
+    for (let i = 0; i < articleData.sections.length; i += maxSectionsPerPage) {
+        const pageSections = articleData.sections.slice(i, i + maxSectionsPerPage);
+        pages.push({
+            title: articleData.title,
+            sections: pageSections,
+            pageNum: Math.floor(i / maxSectionsPerPage) + 1
+        });
     }
-    for (const line of lines) {
-        const cleanLine = line.trim();
-        if (!cleanLine) continue;
-        const lineChars = cleanLine.length;
-        if (charCount + lineChars > maxChars && currentPage.paragraphs.length > 0) {
-            pages.push(currentPage);
-            currentPage = { title: null, paragraphs: [] };
-            charCount = 0;
-        }
-        currentPage.paragraphs.push(cleanLine);
-        charCount += lineChars + 2;
+    
+    if (pages.length === 0) {
+        pages.push({
+            title: articleData.title,
+            sections: [],
+            pageNum: 1
+        });
     }
-    if (currentPage.paragraphs.length > 0 || currentPage.title) {
-        pages.push(currentPage);
-    }
+    
     return pages;
 }
 
-// 文章图生成
-async function generateArticleImage(pageData, size, colorVars, pageNum, totalPages) {
+// 生成贴图图片
+async function generateStickerImage(pageData, size, colorVars, pageNum, totalPages) {
     const div = document.createElement('div');
-    div.className = `article-tpl article-${currentImgTpl}`;
+    div.className = `sticker-tpl sticker-${currentImgTpl}`;
     div.style.width = size.w + 'px';
     div.style.minHeight = size.h + 'px';
     Object.entries(colorVars).forEach(([k, v]) => div.style.setProperty(k, v));
-    if (pageData.title) {
-        const titleDiv = document.createElement('div');
-        titleDiv.className = 'article-title';
-        titleDiv.textContent = pageData.title;
-        div.appendChild(titleDiv);
+    
+    const header = document.createElement('div');
+    header.className = 'sticker-header';
+    
+    if (currentImgTpl === 'magazine') {
+        const number = document.createElement('div');
+        number.className = 'sticker-number';
+        number.textContent = String(pageNum).padStart(2, '0');
+        header.appendChild(number);
+        
+        const logo = document.createElement('div');
+        logo.className = 'sticker-logo';
+        logo.innerHTML = '<span class="sticker-logo-text">简报事务所</span><span class="sticker-logo-sub">SLIDE FIRM</span>';
+        header.appendChild(logo);
+    } else if (currentImgTpl === 'elegant') {
+        const date = document.createElement('div');
+        date.className = 'sticker-date';
+        date.textContent = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+        header.appendChild(date);
+    } else if (currentImgTpl === 'modern') {
+        const badge = document.createElement('div');
+        badge.className = 'sticker-badge';
+        badge.textContent = String(pageNum);
+        header.appendChild(badge);
+    } else if (currentImgTpl === 'tech') {
+        const tag = document.createElement('div');
+        tag.className = 'sticker-tag';
+        tag.textContent = 'TECH NEWS';
+        header.appendChild(tag);
+    } else if (currentImgTpl === 'warm') {
+        const circle = document.createElement('div');
+        circle.className = 'sticker-circle';
+        circle.textContent = String(pageNum);
+        header.appendChild(circle);
+    } else if (currentImgTpl === 'dark') {
+        const subtitle = document.createElement('div');
+        subtitle.className = 'sticker-subtitle';
+        subtitle.textContent = 'DIGEST';
+        header.appendChild(subtitle);
     }
-    for (const para of pageData.paragraphs) {
-        const p = document.createElement('div');
-        p.className = 'article-paragraph';
-        p.innerHTML = formatParagraph(para);
-        div.appendChild(p);
+    
+    const title = document.createElement('div');
+    title.className = 'sticker-title';
+    title.textContent = pageData.title;
+    header.appendChild(title);
+    
+    if (currentImgTpl === 'elegant') {
+        const divider = document.createElement('div');
+        divider.className = 'sticker-divider';
+        header.appendChild(divider);
     }
+    
+    div.appendChild(header);
+    
+    const content = document.createElement('div');
+    content.className = 'sticker-content';
+    
+    for (const section of pageData.sections) {
+        if (section.title) {
+            const sectionTitle = document.createElement('div');
+            sectionTitle.className = 'sticker-section-title';
+            sectionTitle.textContent = section.title;
+            content.appendChild(sectionTitle);
+        }
+        
+        if (section.content) {
+            const paragraph = document.createElement('div');
+            paragraph.className = 'sticker-paragraph';
+            paragraph.textContent = section.content;
+            content.appendChild(paragraph);
+        }
+        
+        if (section.list && section.list.length > 0) {
+            for (const item of section.list) {
+                const listItem = document.createElement('div');
+                listItem.className = 'sticker-list-item';
+                listItem.textContent = item;
+                content.appendChild(listItem);
+            }
+        }
+    }
+    
+    div.appendChild(content);
+    
+    const footer = document.createElement('div');
+    footer.className = 'sticker-footer';
     if (totalPages > 1) {
-        const footer = document.createElement('div');
-        footer.className = 'page-footer';
         footer.textContent = `${pageNum} / ${totalPages}`;
-        div.appendChild(footer);
+    } else {
+        footer.textContent = '简报事务所';
     }
+    div.appendChild(footer);
+    
     div.style.position = 'absolute';
     div.style.left = '-9999px';
     div.style.top = '0';
     document.body.appendChild(div);
+    
     const canvas = await html2canvas(div, {
         width: size.w,
         height: size.h,
@@ -2548,22 +2901,7 @@ async function generateArticleImage(pageData, size, colorVars, pageNum, totalPag
         backgroundColor: null,
         useCORS: true
     });
+    
     document.body.removeChild(div);
     return canvas;
-}
-
-function formatParagraph(text) {
-    let html = text;
-    html = html.replace(/\*\*(.+?)\*\*/g, '<strong style="color: var(--tpl-accent-dark); font-weight: 700;">$1</strong>');
-    html = html.replace(/\*(.+?)\*/g, '<em style="color: var(--tpl-accent);">$1</em>');
-    if (/^[-*•]\s+/.test(html)) {
-        html = html.replace(/^[-*•]\s+/, '<span style="color: var(--tpl-accent); margin-right: 8px;">●</span>');
-    }
-    if (/^>\s+/.test(html)) {
-        html = `<div style="border-left: 4px solid var(--tpl-accent); padding-left: 16px; color: var(--tpl-accent-dark); font-style: italic;">${html.replace(/^>\s+/, '')}</div>`;
-    }
-    if (/^#+\s+/.test(html)) {
-        html = `<div style="font-size: 22px; font-weight: 700; margin: 20px 0 12px; color: var(--tpl-accent-dark);">${html.replace(/^#+\s+/, '')}</div>`;
-    }
-    return html;
 }
