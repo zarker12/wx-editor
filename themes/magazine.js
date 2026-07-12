@@ -18,6 +18,11 @@ window.styleThemes.magazine = {
     h2Style(c, s, sp, t) {
         return `font-size:${s.h2Size + 2}px;font-weight:700;margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0;text-align:center;color:${c.accentDark};letter-spacing:3px;line-height:1.4;`;
     },
+    // 大数字居中样式变体：当 h2 以数字开头（如 "01 章节标题"）时，数字部分的渲染样式
+    // 杂志风采用更大的字号与字间距，强化视觉层次
+    h2NumberStyle(c, s, sp, t) {
+        return `display:block;text-align:center;font-size:56px;font-weight:700;color:${c.accent};line-height:1.2;letter-spacing:4px;margin:0 0 12px 0;`;
+    },
     blockquoteStyle(c) {
         return `border-top:1px solid ${c.accent}40;border-bottom:1px solid ${c.accent}40;padding:28px 48px;margin:36px 0;text-align:center;color:${this.metaColor};font-style:italic;font-size:15px;line-height:1.9;`;
     },

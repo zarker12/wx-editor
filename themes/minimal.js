@@ -18,6 +18,11 @@ window.styleThemes.minimal = {
     h2Style(c, s, sp, t) {
         return `font-size:${s.h2Size};font-weight:500;margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0;line-height:1.4;background:${c.gradient};-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:${t.letterSpacing};`;
     },
+    // 大数字居中样式变体：当 h2 以数字开头（如 "01 章节标题"）时，数字部分的渲染样式
+    // 数字使用主题色 accent 实色（非渐变），大号粗体居中，占据一整行
+    h2NumberStyle(c, s, sp, t) {
+        return `display:block;text-align:center;font-size:48px;font-weight:700;color:${c.accent};line-height:1.2;letter-spacing:2px;margin:0 0 10px 0;`;
+    },
     blockquoteStyle(c) {
         return `border-left:2px solid ${c.accent};padding:14px 0 14px 20px;margin:24px 0;color:${this.metaColor};font-size:14px;line-height:1.8;`;
     },

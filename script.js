@@ -165,12 +165,15 @@ function markdownToHTML(text) {
         return blockId;
     });
 
-    html = html.replace(/^###### (.+)$/gim, '<h6>$1</h6>');
-    html = html.replace(/^##### (.+)$/gim, '<h5>$1</h5>');
-    html = html.replace(/^#### (.+)$/gim, '<h4>$1</h4>');
-    html = html.replace(/^### (.+)$/gim, '<h3>$1</h3>');
-    html = html.replace(/^## (.+)$/gim, '<h2>$1</h2>');
-    html = html.replace(/^# (.+)$/gim, '<h1>$1</h1>');
+    // 修复：允许行首 0-3 个空格/Tab 缩进（兼容 CommonMark 规范），
+    // # 后需 1 个或多个空白字符（空格或 Tab），避免 Tab/多空格导致井号泄漏；
+    // 使用 (.+?)\s*$ 非贪婪匹配并去除尾部空白，保证标题文本干净
+    html = html.replace(/^[ \t]{0,3}######[ \t]+(.+?)\s*$/gim, '<h6>$1</h6>');
+    html = html.replace(/^[ \t]{0,3}#####[ \t]+(.+?)\s*$/gim, '<h5>$1</h5>');
+    html = html.replace(/^[ \t]{0,3}####[ \t]+(.+?)\s*$/gim, '<h4>$1</h4>');
+    html = html.replace(/^[ \t]{0,3}###[ \t]+(.+?)\s*$/gim, '<h3>$1</h3>');
+    html = html.replace(/^[ \t]{0,3}##[ \t]+(.+?)\s*$/gim, '<h2>$1</h2>');
+    html = html.replace(/^[ \t]{0,3}#[ \t]+(.+?)\s*$/gim, '<h1>$1</h1>');
 
     // ⚠ 必须在链接替换之前处理图片语法，否则 [alt](src) 会被链接正则吃掉
     html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2">');
@@ -317,6 +320,25 @@ function renderStyledHTML(editorHTML) {
                 let style = theme.h2Style(c, s, sp, t);
                 style = addBaseTextStyles(style);
                 const h2Decor = theme.h2Decor ? theme.h2Decor(c) : '';
+
+                // 大数字居中样式：检测 h2 内容是否以数字开头（如 "01 章节标题"）
+                // 若匹配，将开头的数字提取为大号居中粗体显示，下方显示章节标题
+                // 仅对以数字开头且紧跟分隔符的 h2 生效，避免误伤普通标题
+                const h2Text = node.textContent.trim();
+                const numMatch = h2Text.match(/^(\d+)[\s、.）)]+(.+)$/);
+                if (numMatch) {
+                    const num = numMatch[1];        // 开头数字，如 "01"
+                    const title = numMatch[2].trim(); // 章节标题文字
+                    // 数字大号居中粗体，使用主题色 accent
+                    // 主题可通过 h2NumberStyle 自定义数字样式，未定义则使用内置默认样式
+                    const numStyle = theme.h2NumberStyle
+                        ? theme.h2NumberStyle(c, s, sp, t)
+                        : `display:block;text-align:center;font-size:48px;font-weight:700;color:${c.accent};line-height:1.2;letter-spacing:2px;margin:0 0 8px 0;`;
+                    // 标题用正常 h2 字号，居中显示（沿用主题 h2Style，仅覆盖对齐方式）
+                    const titleStyle = style.replace(/text-align:[^;]+;?/g, '') + 'text-align:center;display:block;margin:0;';
+                    return `<div style="margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0;text-align:center;"><div style="${numStyle}">${num}</div><h2 style="${titleStyle}">${title}</h2>${h2Decor}</div>`;
+                }
+
                 if (h2Decor) {
                     return `<div style="margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0;"><h2 style="${style}">${children}</h2>${h2Decor}</div>`;
                 }
@@ -1378,8 +1400,8 @@ function smartFormatText(text) {
 
         // 已在自动检测的代码块中
         if (inCodeBlock && codeLang === 'text') {
-            // 标题行结束代码块
-            if (/^[一二三四五六七八九十]+、/.test(trimmed) || /^[0-9]+[、.．]/.test(trimmed) || /^第[一二三四五六七八九十百千]+[章节部分]/.test(trimmed)) {
+            // 标题行结束代码块（包括中文风格标题和标准 Markdown # 标题）
+            if (/^[一二三四五六七八九十]+、/.test(trimmed) || /^[0-9]+[、.．]/.test(trimmed) || /^第[一二三四五六七八九十百千]+[章节部分]/.test(trimmed) || /^#{1,6}[ \t]+/.test(trimmed)) {
                 codeBuffer.push('```');
                 result.push(codeBuffer.join('\n'));
                 codeBuffer = [];
@@ -1412,6 +1434,16 @@ function smartFormatText(text) {
             inTableBlock = false;
             result.push('');
             // 继续处理当前行
+        }
+
+        // === 标准 Markdown 标题检测（# ~ ######） ===
+        // 必须在流程图/代码自动检测之前处理，避免含编程关键词的标题（如 "# Function"）
+        // 被误判为代码行；同时确保标题独立成段，防止与相邻段落内容被 paraBuffer 拼接合并
+        if (/^#{1,6}[ \t]+.+/.test(trimmed)) {
+            flushAll();
+            result.push(trimmed); // 保留原始 # 数量，不改变标题级别
+            result.push('');
+            continue;
         }
 
         // === 流程图/代码自动检测 ===
@@ -1888,8 +1920,10 @@ function highlightKeySentences(text) {
     ];
     
     return text.split('\n').map(line => {
-        if (line.startsWith('#') || line.startsWith('-') || line.startsWith('>') || 
-            line.startsWith('```') || line.startsWith('**') || !line.trim()) return line;
+        // 修复：使用 trimStart 后判断，避免缩进的标题（如 "  # 标题"）被误加粗
+        const _ts = line.trimStart();
+        if (_ts.startsWith('#') || _ts.startsWith('-') || _ts.startsWith('>') ||
+            _ts.startsWith('```') || _ts.startsWith('**') || !line.trim()) return line;
         
         let p = line;
         
@@ -2898,6 +2932,59 @@ ${topics.map((t, i) => `${i + 1}. ${t}`).join('\n')}
         return await callLLM(prompt, settings);
     }
 
+    // ===== 7.5 去 AI 化（基于 humanizer 项目的 33 条规则，让 LLM 重写文章）
+    // 集成 https://github.com/blader/humanizer 的核心规则
+    // 在生成文章后、进入编辑器前调用，通过朱雀等 AI 检测
+    async function humanizeArticle(article, settings) {
+        const prompt = `你是一位资深文字编辑，专门去除文章中的 AI 写作痕迹，让文章通过朱雀等 AI 检测。
+
+请对以下文章进行去 AI 化重写：
+
+${article}
+
+【去 AI 化规则·必须逐一执行】
+
+一、语言层面：
+1. 删除所有破折号（— –），用句号/逗号/冒号/括号替换
+2. 删除 AI 高频词汇：actually, additionally, crucial, delve, enhance, foster, highlight, interplay, intricate, landscape, pivotal, showcase, tapestry, testament, underscore, vibrant
+3. 中文对应删除：此外、值得一提的是、至关重要、深入探讨、增强、培育、彰显、交织、精妙、格局、关键、展示、见证、凸显、活力
+4. 删除"不仅是…更是…""不是…而是…"等否定平行结构
+5. 删除三连句式（A、B 和 C 改为 A 和 B，或拆成两句）
+6. 把被动语态改为主动语态
+7. 删除"-ing"式浅层分析（highlighting…, emphasizing…, reflecting…）
+
+二、结构层面：
+8. 打破"总分总"三段论，开头不要总述，结尾不要总结
+9. 删除"挑战与展望""未来发展方向"等模板段落
+10. 删除过渡词：首先/其次/最后/此外/然而/总之/综上所述
+11. 删除结尾的升华句："这不禁让我们思考…""这提醒我们…""未来必将…"
+12. 段落长度要变化：有的段落只有一句话，有的段落三四句
+
+三、风格层面：
+13. 加入口语化表达（说实话、坦白讲、老实说）
+14. 加入个人视角和情感体验（我注意到、我发现、我经历过）
+15. 用具体细节替代抽象概括（不说"很多人"，说"地铁上刷手机的打工人"）
+16. 句子长度要混排：短句有力。然后长句慢慢展开，把意思说透。再来个短的。
+17. 允许有跳跃思维、不完美的表达、生活化比喻
+18. 删除过度加粗（**文字**），只在真正关键处使用
+
+四、绝对禁止：
+19. 不出现 em dash（—）和 en dash（–）
+20. 不出现"在…的背景下""随着…的发展""在…的时代"开头
+21. 不出现连续3个以上相同句式的排比
+22. 不出现空泛总结（"意义远不止于此""正以前所未有的方式"）
+23. 不出现 emoji 装饰
+
+五、保留要求：
+24. 保留文章的核心观点和信息量
+25. 保留 Markdown 格式（# 标题、## 章节、> 引用块）
+26. 保留文章字数（1500-2000字）
+27. 不要在末尾加自我介绍或签名
+
+重写要求：直接输出重写后的完整 Markdown 文章，不要任何解释。`;
+        return await callLLM(prompt, settings);
+    }
+
     // ===== 8. 规划配图（让 LLM 生成英文图片 prompt）=====
     async function planImages(article, imageCount, settings) {
         const prompt = `你是一位图片编辑。请阅读以下文章，为文章规划 ${imageCount} 张配图。
@@ -2984,7 +3071,7 @@ ${article.substring(0, 3000)}
 
         const bgPrompt = `${stylePrompt}, ${plan.scene}, no text, no watermark, no logo`;
         const encoded = encodeURIComponent(bgPrompt);
-        const bgUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1280&height=720&nologo=true&seed=${seed}`;
+        const bgUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1280&height=720&nologo=true&seed=${seed}&model=flux-realism`;
 
         // 预加载背景图
         const bgDataUri = await preloadImageToDataUri(bgUrl, 90000);
@@ -3122,18 +3209,18 @@ ${article.substring(0, 3000)}
 
     async function generateImage(prompt, seed, timeoutMs = 90000) {
         const encoded = encodeURIComponent(prompt);
-        // 主图源：Pollinations.ai（免费无 key）
-        const primaryUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1280&height=720&nologo=true&seed=${seed}`;
-        // 备用图源 1：Picsum（随机真实照片，无 AI 但稳定可用）
-        const fallbackUrl1 = `https://picsum.photos/seed/${seed}/1280/720`;
-        // 备用图源 2：另一种 Pollinations 参数组合
-        const fallbackUrl2 = `https://image.pollinations.ai/prompt/${encoded}?width=1280&height=720&seed=${seed + 9999}`;
+        // 主图源：Pollinations.ai + flux-realism 模型（写实照片级，解决人脸变形问题）
+        const primaryUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1280&height=720&nologo=true&seed=${seed}&model=flux-realism`;
+        // 备用图源 1：flux 模型（通用高质量）
+        const fallbackUrl1 = `https://image.pollinations.ai/prompt/${encoded}?width=1280&height=720&nologo=true&seed=${seed}&model=flux`;
+        // 备用图源 2：Picsum（随机真实照片，无 AI 但稳定可用）
+        const fallbackUrl2 = `https://picsum.photos/seed/${seed}/1280/720`;
 
         // 依次尝试：主 → 备1 → 备2
         const candidates = [
-            { url: primaryUrl, label: 'Pollinations 主源' },
-            { url: fallbackUrl1, label: 'Picsum 备用' },
-            { url: fallbackUrl2, label: 'Pollinations 备用' }
+            { url: primaryUrl, label: 'Pollinations flux-realism' },
+            { url: fallbackUrl1, label: 'Pollinations flux' },
+            { url: fallbackUrl2, label: 'Picsum 备用' }
         ];
         for (const candidate of candidates) {
             try {
@@ -3224,11 +3311,23 @@ ${article.substring(0, 3000)}
             const article = await generateArticle(topic, settings);
             updateAIStatus('文章生成完成', `字数：约 ${article.length} 字`);
 
+            // 3.1 去 AI 化（基于 humanizer 规则重写，通过朱雀检测）
+            updateAIStatus('正在去 AI 化处理...', '基于 humanizer 27 条规则重写');
+            let finalArticle;
+            try {
+                finalArticle = await humanizeArticle(article, settings);
+                updateAIStatus('去 AI 化完成', `字数：约 ${finalArticle.length} 字`);
+            } catch (e) {
+                console.error('去 AI 化失败，使用原始文章:', e.message);
+                finalArticle = article;
+                updateAIStatus('去 AI 化失败，使用原始文章', '');
+            }
+
             // 3.5 生成封面图（Pollinations 背景 + Canvas 合成文字）
             let coverImage = null;
             try {
                 updateAIStatus('正在规划封面图...', '');
-                const coverPlan = await planCoverImage(article, settings);
+                const coverPlan = await planCoverImage(finalArticle, settings);
                 updateAIStatus('正在生成封面图...', `场景：${coverPlan.scene.substring(0, 20)}...`);
                 coverImage = await generateArticleCover(coverPlan, 88888);
                 updateAIStatus('封面图生成完成', '');
@@ -3242,7 +3341,7 @@ ${article.substring(0, 3000)}
             updateAIStatus('正在规划配图...', `计划 ${imageCount} 张`);
             let imagePrompts = [];
             try {
-                imagePrompts = await planImages(article, imageCount, settings);
+                imagePrompts = await planImages(finalArticle, imageCount, settings);
                 updateAIStatus('配图规划完成', `${imagePrompts.length} 个 prompt`);
             } catch (e) {
                 imagePrompts = [
@@ -3287,9 +3386,8 @@ ${article.substring(0, 3000)}
 
             // 6. 把图片插入文章（封面图插最开头，正文配图插章节后）
             updateAIStatus('正在排版...', `插入 ${imageUrls.length} 张配图（其中 ${successCount} 张成功）`);
-            let finalArticle = article;
             if (imageUrls.length > 0) {
-                finalArticle = insertImagesIntoArticle(article, imageUrls, imageCaptions);
+                finalArticle = insertImagesIntoArticle(finalArticle, imageUrls, imageCaptions);
             }
             // 封面图插入文章最开头
             if (coverImage) {
@@ -3699,64 +3797,87 @@ function clearGitHubToken() {
     localStorage.removeItem('wx_editor_github_token');
 }
 
-// GitHub OAuth 登录：打开授权页面
+// GitHub 登录：改用 Personal Access Token 方式（避免 OAuth code 交换的 CORS 问题）
+// OAuth 的 access_token 端点不支持 CORS，前端无法直接换 token
+// PAT 方式：用户生成 token 粘贴进来，前端直接用 token 调 GitHub API（支持 CORS）
 function githubLogin() {
-    if (!GITHUB_CLIENT_ID) {
-        showToast('请先配置 GitHub OAuth Client ID');
-        return;
-    }
-    const redirectUri = window.location.origin + window.location.pathname;
-    const scope = 'gist'; // 只请求 Gist 权限
-    const url = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&response_type=code`;
-    window.location.href = url;
-}
+    // 弹出 PAT 输入框
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000;';
+    modal.innerHTML = `
+        <div style="background:#fff;border-radius:12px;padding:32px;max-width:480px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+            <h3 style="margin:0 0 16px;font-size:20px;color:#111;">GitHub 登录</h3>
+            <p style="margin:0 0 12px;font-size:14px;color:#6B7280;line-height:1.6;">
+                由于 GitHub OAuth 在纯前端环境下有 CORS 限制，请使用 Personal Access Token 登录：
+            </p>
+            <ol style="margin:0 0 16px 16px;padding:0;font-size:13px;color:#374151;line-height:1.8;">
+                <li>打开 <a href="https://github.com/settings/tokens/new" target="_blank" style="color:#3B82F6;">github.com/settings/tokens/new</a></li>
+                <li>Note 填写 "wx-editor"</li>
+                <li>Expiration 选 "No expiration" 或 90 天</li>
+                <li>勾选 <strong>gist</strong> 权限（只需这一个）</li>
+                <li>点击 "Generate token"，复制生成的 token</li>
+                <li>粘贴到下方输入框</li>
+            </ol>
+            <input type="text" id="patInput" placeholder="ghp_xxxxxxxxxxxx" style="width:100%;padding:10px 12px;border:1px solid #D1D5DB;border-radius:6px;font-size:14px;font-family:monospace;box-sizing:border-box;">
+            <div id="patError" style="color:#EF4444;font-size:12px;margin-top:8px;display:none;"></div>
+            <div style="display:flex;gap:8px;margin-top:16px;">
+                <button id="patCancel" style="flex:1;padding:10px;border:1px solid #D1D5DB;border-radius:6px;background:#fff;color:#374151;cursor:pointer;font-size:14px;">取消</button>
+                <button id="patConfirm" style="flex:1;padding:10px;border:none;border-radius:6px;background:#111;color:#fff;cursor:pointer;font-size:14px;">登录</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
 
-// GitHub OAuth 回调：获取 token
-async function handleGitHubCallback() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    if (!code) return;
+    const input = modal.querySelector('#patInput');
+    const errorDiv = modal.querySelector('#patError');
+    const confirmBtn = modal.querySelector('#patConfirm');
+    const cancelBtn = modal.querySelector('#patCancel');
 
-    showToast('正在登录...');
-    try {
-        // 用 client_id + code 换 access_token（前端直接请求，无需后端）
-        const redirectUri = window.location.origin + window.location.pathname;
-        const resp = await fetch('https://github.com/login/oauth/access_token', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-                client_id: GITHUB_CLIENT_ID,
-                code: code,
-                redirect_uri: redirectUri
-            })
-        });
-        const data = await resp.json();
-        if (data.access_token) {
-            // 获取用户信息
-            const userResp = await fetch('https://api.github.com/user', {
-                headers: { 'Authorization': `Bearer ${data.access_token}` }
+    input.focus();
+
+    const close = () => modal.remove();
+    cancelBtn.onclick = close;
+    modal.onclick = (e) => { if (e.target === modal) close(); };
+
+    confirmBtn.onclick = async () => {
+        const token = input.value.trim();
+        if (!token) {
+            errorDiv.textContent = '请输入 token';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        confirmBtn.textContent = '验证中...';
+        confirmBtn.disabled = true;
+        try {
+            // 用 token 调 GitHub API 验证（支持 CORS）
+            const resp = await fetch('https://api.github.com/user', {
+                headers: { 'Authorization': `Bearer ${token}` }
             });
-            const user = await userResp.json();
+            if (!resp.ok) {
+                throw new Error(resp.status === 401 ? 'token 无效或已过期' : `HTTP ${resp.status}`);
+            }
+            const user = await resp.json();
             saveGitHubToken({
-                accessToken: data.access_token,
+                accessToken: token,
                 username: user.login,
                 avatar: user.avatar_url,
-                expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000 // 30天有效期
+                expiresAt: Date.now() + 90 * 24 * 60 * 60 * 1000 // 90天有效期
             });
-            // 清理 URL 中的 code 参数
-            history.replaceState({}, '', window.location.pathname);
-            await syncFromGist(); // 登录后自动从 Gist 同步数据
+            close();
+            await syncFromGist();
             updateUserUI();
             showToast(`登录成功！欢迎, ${user.login}`);
-        } else {
-            showToast('登录失败：' + (data.error_description || data.error));
+        } catch (e) {
+            errorDiv.textContent = '登录失败：' + e.message;
+            errorDiv.style.display = 'block';
+            confirmBtn.textContent = '登录';
+            confirmBtn.disabled = false;
         }
-    } catch (e) {
-        showToast('登录失败：' + e.message);
-    }
+    };
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') confirmBtn.click();
+    });
 }
 
 // 获取或创建用户数据 Gist
@@ -3939,9 +4060,6 @@ function showUserMenu() {
         });
     }
 
-    // 处理 OAuth 回调
-    handleGitHubCallback();
-
-    // 更新 UI
+    // 更新 UI（不再需要 OAuth 回调，改用 PAT 方式）
     updateUserUI();
 })();
