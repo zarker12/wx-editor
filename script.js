@@ -911,9 +911,9 @@ function syncEditorToTheme() {
     const alignMatch = bodyStyle.match(/text-align:\s*([^;]+);/);
     editor.style.textAlign = alignMatch ? alignMatch[1].trim() : 'left';
 
-    // 限制编辑器内容宽度与预览手机框一致（phone-frame max-width:340px）
+    // 限制编辑器内容宽度与预览手机框一致（phone-frame max-width:480px）
     // 让文字换行、图片缩放与预览完全 1:1
-    editor.style.maxWidth = '340px';
+    editor.style.maxWidth = '480px';
     editor.style.margin = '0 auto';
     editor.style.width = '100%';
 
@@ -2988,7 +2988,8 @@ ${topics.map((t, i) => `${i + 1}. ${t}`).join('\n')}
         return matched || selected || topics[0];
     }
 
-    // ===== 7. 写文章（用 LLM，优化后的 prompt）=====
+    // ===== 7. 写文章（已集成 humanizer 去 AI 化规则，一次成型，避免二次 LLM 调用）=====
+    // 基于 https://github.com/blader/humanizer 的核心规则
     async function generateArticle(topic, settings) {
         const prompt = `你是一位资深公众号主笔，擅长用独特的视角、扎实的数据和有温度的故事写出10w+爆款文章。
 
@@ -3004,18 +3005,30 @@ ${topics.map((t, i) => `${i + 1}. ${t}`).join('\n')}
 - 民族矛盾、种族冲突、地域歧视
 如果话题本身触碰红线，请转换角度，只写生活化、人性化、情感化的侧面，绝不触及敏感维度。
 
-【去AI化·必须遵循】你的文章将通过头条、公众号等平台的AI内容检测，以下特征是AI写作的典型标志，必须逐一规避：
-- 禁止"总分总"三段论结构（开头总述→分点论述→结尾总结），这是AI最典型的结构特征
-- 禁止每段都用"首先/其次/最后/此外/然而/总之"这类AI式过渡词
-- 禁止段落结尾用"这不禁让我们思考…""这提醒我们…""这让我们重新审视…"等AI式反思句
-- 禁止过度使用排比句（连续3个以上相同句式）
-- 禁止空泛的总结性陈述（"XX的意义远不止于此""XX正以前所未有的方式…"）
+【去AI化·一次成型·必须遵循】你的文章将通过头条、公众号等平台的朱雀AI检测，以下规则基于 humanizer 项目的去 AI 化规则，在写作时就严格执行：
+
+语言层面：
+- 禁止使用破折号（— –），用句号/逗号/冒号/括号替换
+- 禁止 AI 高频词汇：actually, additionally, crucial, delve, enhance, foster, highlight, interplay, intricate, landscape, pivotal, showcase, tapestry, testament, underscore, vibrant
+- 中文禁止：此外、值得一提的是、至关重要、深入探讨、增强、培育、彰显、交织、精妙、格局、关键、展示、见证、凸显、活力
+- 禁止"不仅是…更是…""不是…而是…"等否定平行结构
+- 禁止三连句式（A、B 和 C 改为 A 和 B，或拆成两句）
+- 把被动语态改为主动语态
+
+结构层面：
+- 禁止"总分总"三段论结构（开头总述→分点论述→结尾总结）
+- 禁止"首先/其次/最后/此外/然而/总之/综上所述"等AI式过渡词
+- 禁止段落结尾用"这不禁让我们思考…""这提醒我们…""未来必将…"等AI式反思句和升华句
 - 禁止"在XX的背景下""随着XX的发展""在XX的时代"等AI式开头
-- 禁止结尾升华到宏大叙事（"让我们共同期待…""未来必将…""历史会记住…"）
-- 要有口语化表达、断句节奏变化、偶尔的短句/长句混排
-- 要有个人视角和情感体验（"我注意到…""说实话…""坦白讲…"）
-- 要有具体细节而非抽象概括（不说"很多人"而说"地铁上刷手机的打工人"）
-- 允许有不完美的表达、跳跃的思维、生活化的比喻
+- 段落长度要变化：有的段落只有一句话，有的三四句
+
+风格层面：
+- 加入口语化表达（说实话、坦白讲、老实说）
+- 加入个人视角和情感体验（我注意到、我发现、我经历过）
+- 用具体细节替代抽象概括（不说"很多人"，说"地铁上刷手机的打工人"）
+- 句子长度要混排：短句有力。然后长句慢慢展开。再来个短的。
+- 允许跳跃思维、不完美的表达、生活化比喻
+- 只在真正关键处使用加粗，不要过度加粗
 
 写作要求（严格遵循）：
 1. 文章结构（必须用 Markdown 格式）：
@@ -3042,58 +3055,7 @@ ${topics.map((t, i) => `${i + 1}. ${t}`).join('\n')}
         return await callLLM(prompt, settings);
     }
 
-    // ===== 7.5 去 AI 化（基于 humanizer 项目的 33 条规则，让 LLM 重写文章）
-    // 集成 https://github.com/blader/humanizer 的核心规则
-    // 在生成文章后、进入编辑器前调用，通过朱雀等 AI 检测
-    async function humanizeArticle(article, settings) {
-        const prompt = `你是一位资深文字编辑，专门去除文章中的 AI 写作痕迹，让文章通过朱雀等 AI 检测。
-
-请对以下文章进行去 AI 化重写：
-
-${article}
-
-【去 AI 化规则·必须逐一执行】
-
-一、语言层面：
-1. 删除所有破折号（— –），用句号/逗号/冒号/括号替换
-2. 删除 AI 高频词汇：actually, additionally, crucial, delve, enhance, foster, highlight, interplay, intricate, landscape, pivotal, showcase, tapestry, testament, underscore, vibrant
-3. 中文对应删除：此外、值得一提的是、至关重要、深入探讨、增强、培育、彰显、交织、精妙、格局、关键、展示、见证、凸显、活力
-4. 删除"不仅是…更是…""不是…而是…"等否定平行结构
-5. 删除三连句式（A、B 和 C 改为 A 和 B，或拆成两句）
-6. 把被动语态改为主动语态
-7. 删除"-ing"式浅层分析（highlighting…, emphasizing…, reflecting…）
-
-二、结构层面：
-8. 打破"总分总"三段论，开头不要总述，结尾不要总结
-9. 删除"挑战与展望""未来发展方向"等模板段落
-10. 删除过渡词：首先/其次/最后/此外/然而/总之/综上所述
-11. 删除结尾的升华句："这不禁让我们思考…""这提醒我们…""未来必将…"
-12. 段落长度要变化：有的段落只有一句话，有的段落三四句
-
-三、风格层面：
-13. 加入口语化表达（说实话、坦白讲、老实说）
-14. 加入个人视角和情感体验（我注意到、我发现、我经历过）
-15. 用具体细节替代抽象概括（不说"很多人"，说"地铁上刷手机的打工人"）
-16. 句子长度要混排：短句有力。然后长句慢慢展开，把意思说透。再来个短的。
-17. 允许有跳跃思维、不完美的表达、生活化比喻
-18. 删除过度加粗（**文字**），只在真正关键处使用
-
-四、绝对禁止：
-19. 不出现 em dash（—）和 en dash（–）
-20. 不出现"在…的背景下""随着…的发展""在…的时代"开头
-21. 不出现连续3个以上相同句式的排比
-22. 不出现空泛总结（"意义远不止于此""正以前所未有的方式"）
-23. 不出现 emoji 装饰
-
-五、保留要求：
-24. 保留文章的核心观点和信息量
-25. 保留 Markdown 格式（# 标题、## 章节、> 引用块）
-26. 保留文章字数（1500-2000字）
-27. 不要在末尾加自我介绍或签名
-
-重写要求：直接输出重写后的完整 Markdown 文章，不要任何解释。`;
-        return await callLLM(prompt, settings);
-    }
+    // humanizeArticle 已删除——去 AI 化规则已合并进 generateArticle，避免二次 LLM 调用
 
     // ===== 8. 规划配图（让 LLM 生成英文图片 prompt）=====
     async function planImages(article, imageCount, settings) {
@@ -3416,22 +3378,10 @@ ${article.substring(0, 3000)}
                 updateAIStatus('话题筛选失败，随机选取', `话题：${topic}`);
             }
 
-            // 3. 写文章
-            updateAIStatus('AI 正在构思文章...', `话题：${topic}`);
-            const article = await generateArticle(topic, settings);
-            updateAIStatus('文章生成完成', `字数：约 ${article.length} 字`);
-
-            // 3.1 去 AI 化（基于 humanizer 规则重写，通过朱雀检测）
-            updateAIStatus('正在去 AI 化处理...', '基于 humanizer 27 条规则重写');
-            let finalArticle;
-            try {
-                finalArticle = await humanizeArticle(article, settings);
-                updateAIStatus('去 AI 化完成', `字数：约 ${finalArticle.length} 字`);
-            } catch (e) {
-                console.error('去 AI 化失败，使用原始文章:', e.message);
-                finalArticle = article;
-                updateAIStatus('去 AI 化失败，使用原始文章', '');
-            }
+            // 3. 写文章（已集成 humanizer 去 AI 化规则，一次成型）
+            updateAIStatus('AI 正在构思文章（含去 AI 化）...', `话题：${topic}`);
+            let finalArticle = await generateArticle(topic, settings);
+            updateAIStatus('文章生成完成', `字数：约 ${finalArticle.length} 字`);
 
             // 3.5 生成封面图（Pollinations 背景 + Canvas 合成文字）
             let coverImage = null;
