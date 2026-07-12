@@ -2573,15 +2573,67 @@ function formatParagraph(text) {
 (function () {
     'use strict';
 
+    // ===== LLM 提供商预设配置表 =====
+    const LLM_PROVIDERS = {
+        deepseek: {
+            name: 'DeepSeek（深度求索）',
+            baseUrl: 'https://api.deepseek.com/v1/chat/completions',
+            model: 'deepseek-chat',
+            helpText: '到 platform.deepseek.com 创建 API Key',
+            helpUrl: 'https://platform.deepseek.com/api_keys'
+        },
+        zhipu: {
+            name: '智谱 GLM-4',
+            baseUrl: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+            model: 'glm-4',
+            helpText: '到 open.bigmodel.cn 创建 API Key',
+            helpUrl: 'https://open.bigmodel.cn/usercenter/apikeys'
+        },
+        openai: {
+            name: 'OpenAI GPT-4o',
+            baseUrl: 'https://api.openai.com/v1/chat/completions',
+            model: 'gpt-4o',
+            helpText: '到 platform.openai.com 创建 API Key',
+            helpUrl: 'https://platform.openai.com/api-keys'
+        },
+        qwen: {
+            name: '通义千问 Qwen',
+            baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+            model: 'qwen-plus',
+            helpText: '到 dashscope.aliyun.com 创建 API Key',
+            helpUrl: 'https://dashscope.console.aliyun.com/apiKey'
+        },
+        moonshot: {
+            name: 'Moonshot Kimi',
+            baseUrl: 'https://api.moonshot.cn/v1/chat/completions',
+            model: 'moonshot-v1-8k',
+            helpText: '到 platform.moonshot.cn 创建 API Key',
+            helpUrl: 'https://platform.moonshot.cn/console/api-keys'
+        },
+        custom: {
+            name: '自定义',
+            baseUrl: '',
+            model: '',
+            helpText: '填写兼容 OpenAI 格式的 API 地址和模型名',
+            helpUrl: ''
+        }
+    };
+
     // ===== 1. 设置管理：从 localStorage 读取/保存 =====
     function getAISettings() {
         return {
+            provider: localStorage.getItem('llm_provider') || 'deepseek',
             apiKey: localStorage.getItem('llm_api_key') || '',
+            baseUrl: localStorage.getItem('llm_base_url') || '',
+            model: localStorage.getItem('llm_model') || '',
             imageCount: parseInt(localStorage.getItem('ai_image_count') || '4', 10)
         };
     }
-    function saveAISettings(apiKey, imageCount) {
+    function saveAISettings(provider, apiKey, imageCount, baseUrl, model) {
+        localStorage.setItem('llm_provider', provider);
         localStorage.setItem('llm_api_key', apiKey);
+        if (baseUrl !== undefined) localStorage.setItem('llm_base_url', baseUrl);
+        if (model !== undefined) localStorage.setItem('llm_model', model);
         localStorage.setItem('ai_image_count', String(imageCount));
     }
 
@@ -2591,8 +2643,36 @@ function formatParagraph(text) {
     const aiSettingsCancel = document.getElementById('aiSettingsCancel');
     const aiSettingsSave = document.getElementById('aiSettingsSave');
     const aiSettingsModal = document.getElementById('aiSettingsModal');
+    const llmProviderSelect = document.getElementById('llmProviderSelect');
     const llmApiKeyInput = document.getElementById('llmApiKeyInput');
+    const llmHelpText = document.getElementById('llmHelpText');
+    const customProviderFields = document.getElementById('customProviderFields');
+    const llmBaseUrlInput = document.getElementById('llmBaseUrlInput');
+    const llmModelInput = document.getElementById('llmModelInput');
     const imageCountInput = document.getElementById('imageCountInput');
+
+    // ===== 2. 设置弹窗交互 =====
+    // 切换 provider 时更新帮助文本和自定义字段显隐
+    function updateProviderUI() {
+        const provider = llmProviderSelect.value;
+        const config = LLM_PROVIDERS[provider];
+        if (!config) return;
+        // 更新帮助文本
+        if (llmHelpText) {
+            if (config.helpUrl) {
+                llmHelpText.innerHTML = `${config.helpText} → <a href="${config.helpUrl}" target="_blank" style="color:#3B82F6;">点击创建</a>`;
+            } else {
+                llmHelpText.textContent = config.helpText;
+            }
+        }
+        // 自定义 provider 显示额外字段
+        if (customProviderFields) {
+            customProviderFields.style.display = provider === 'custom' ? 'block' : 'none';
+        }
+    }
+    if (llmProviderSelect) {
+        llmProviderSelect.addEventListener('change', updateProviderUI);
+    }
 
     // ===== 3. 进度面板更新 =====
     function updateAIStatus(status, steps = '') {
@@ -2628,29 +2708,40 @@ function formatParagraph(text) {
             .filter(Boolean);
     }
 
-    // ===== 5. 调用智谱 LLM =====
-    async function callLLM(prompt, apiKey) {
-        const resp = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+    // ===== 5. 调用 LLM（根据 provider 选择不同 base URL 和 model）=====
+    async function callLLM(prompt, settings) {
+        // 确定 base URL 和 model
+        const config = LLM_PROVIDERS[settings.provider] || LLM_PROVIDERS.deepseek;
+        const baseUrl = settings.provider === 'custom' ? settings.baseUrl : config.baseUrl;
+        const model = settings.provider === 'custom' ? settings.model : config.model;
+
+        if (!baseUrl || !model) {
+            throw new Error('请先在设置中配置 API Base URL 和模型名称');
+        }
+
+        const resp = await fetch(baseUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
+                'Authorization': `Bearer ${settings.apiKey}`
             },
             body: JSON.stringify({
-                model: 'glm-4',
+                model: model,
                 messages: [{ role: 'user', content: prompt }],
                 temperature: 0.8,
                 max_tokens: 4000
             })
         });
-        if (!resp.ok) throw new Error(`LLM 调用失败: ${resp.status}`);
+        if (!resp.ok) {
+            const errText = await resp.text().catch(() => '');
+            throw new Error(`LLM 调用失败 (${resp.status}): ${errText.substring(0, 200)}`);
+        }
         const data = await resp.json();
         return data.choices[0].message.content;
     }
 
     // ===== 6. 写文章（用 LLM）=====
-    async function generateArticle(topic, apiKey) {
-        const settings = getAISettings();
+    async function generateArticle(topic, settings) {
         const prompt = `你是公众号爆款写手。基于以下热点话题，写一篇 1500-2000 字的公众号文章。
 
 热点话题：${topic}
@@ -2665,12 +2756,11 @@ function formatParagraph(text) {
 7. 在需要配图的位置插入 ![图片说明](IMAGE_PLACEHOLDER_{n}) 标记，共 ${settings.imageCount} 处
 
 直接输出 Markdown 内容，不要任何解释。`;
-        return await callLLM(prompt, apiKey);
+        return await callLLM(prompt, settings);
     }
 
     // ===== 7. 规划配图 =====
-    async function planImages(article, apiKey) {
-        const settings = getAISettings();
+    async function planImages(article, settings) {
         const prompt = `基于以下文章内容，为 ${settings.imageCount} 个 IMAGE_PLACEHOLDER 位置生成对应的英文 SDXL 图片生成 prompt。
 
 文章：
@@ -2688,7 +2778,7 @@ prompt1
 prompt2
 prompt3
 ...`;
-        const result = await callLLM(prompt, apiKey);
+        const result = await callLLM(prompt, settings);
         return result.split('\n')
             .map(s => s.trim())
             .filter(s => s && !s.startsWith('prompt') && s.length > 20);
@@ -2713,7 +2803,7 @@ prompt3
     async function aiWorkflow() {
         const settings = getAISettings();
         if (!settings.apiKey) {
-            showToast('请先在设置中配置 API Key');
+            showToast('请先在 AI 设置中配置 API Key');
             // 自动打开设置弹窗
             if (aiSettingsModal) aiSettingsModal.style.display = 'flex';
             return;
@@ -2737,14 +2827,14 @@ prompt3
 
             // 2. 写文章
             updateAIStatus('AI 正在构思文章...', `基于：${topic}`);
-            const article = await generateArticle(topic, settings.apiKey);
+            const article = await generateArticle(topic, settings);
             updateAIStatus('文章生成完成', `字数：约 ${article.length} 字`);
 
             // 3. 规划配图
             updateAIStatus('正在规划配图...', '');
             let imagePrompts = [];
             try {
-                imagePrompts = await planImages(article, settings.apiKey);
+                imagePrompts = await planImages(article, settings);
             } catch (e) {
                 // 失败用默认 prompt
                 imagePrompts = [
@@ -2803,8 +2893,12 @@ prompt3
     if (aiSettingsBtn) {
         aiSettingsBtn.addEventListener('click', () => {
             const s = getAISettings();
+            if (llmProviderSelect) llmProviderSelect.value = s.provider;
             if (llmApiKeyInput) llmApiKeyInput.value = s.apiKey;
+            if (llmBaseUrlInput) llmBaseUrlInput.value = s.baseUrl;
+            if (llmModelInput) llmModelInput.value = s.model;
             if (imageCountInput) imageCountInput.value = String(s.imageCount);
+            updateProviderUI();
             if (aiSettingsModal) aiSettingsModal.style.display = 'flex';
         });
     }
@@ -2815,10 +2909,13 @@ prompt3
     }
     if (aiSettingsSave) {
         aiSettingsSave.addEventListener('click', () => {
+            const provider = llmProviderSelect ? llmProviderSelect.value : 'deepseek';
             const apiKey = llmApiKeyInput ? llmApiKeyInput.value.trim() : '';
             const rawCount = imageCountInput ? parseInt(imageCountInput.value, 10) : 4;
             const imageCount = (isNaN(rawCount) || rawCount < 1) ? 4 : rawCount;
-            saveAISettings(apiKey, imageCount);
+            const baseUrl = llmBaseUrlInput ? llmBaseUrlInput.value.trim() : '';
+            const model = llmModelInput ? llmModelInput.value.trim() : '';
+            saveAISettings(provider, apiKey, imageCount, baseUrl, model);
             if (aiSettingsModal) aiSettingsModal.style.display = 'none';
             showToast('设置已保存');
         });
