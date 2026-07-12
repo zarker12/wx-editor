@@ -2567,3 +2567,260 @@ function formatParagraph(text) {
     }
     return html;
 }
+
+// ===== AI 一键工作流（抓热点 → 写文章 → 规划配图 → 生成图片 → 排版）=====
+// 用 IIFE 包裹避免污染全局，内部可直接访问外部的 editor / markdownToHTML / smartFormatText / updatePreview / showToast
+(function () {
+    'use strict';
+
+    // ===== 1. 设置管理：从 localStorage 读取/保存 =====
+    function getAISettings() {
+        return {
+            apiKey: localStorage.getItem('llm_api_key') || '',
+            imageCount: parseInt(localStorage.getItem('ai_image_count') || '4', 10)
+        };
+    }
+    function saveAISettings(apiKey, imageCount) {
+        localStorage.setItem('llm_api_key', apiKey);
+        localStorage.setItem('ai_image_count', String(imageCount));
+    }
+
+    // 缓存 DOM 节点
+    const aiWorkflowBtn = document.getElementById('aiWorkflowBtn');
+    const aiSettingsBtn = document.getElementById('aiSettingsBtn');
+    const aiSettingsCancel = document.getElementById('aiSettingsCancel');
+    const aiSettingsSave = document.getElementById('aiSettingsSave');
+    const aiSettingsModal = document.getElementById('aiSettingsModal');
+    const llmApiKeyInput = document.getElementById('llmApiKeyInput');
+    const imageCountInput = document.getElementById('imageCountInput');
+
+    // ===== 3. 进度面板更新 =====
+    function updateAIStatus(status, steps = '') {
+        const panel = document.getElementById('aiWorkflowPanel');
+        if (panel) panel.style.display = 'block';
+        const statusEl = document.getElementById('aiWorkflowStatus');
+        if (statusEl) statusEl.textContent = status;
+        const stepsEl = document.getElementById('aiWorkflowSteps');
+        if (stepsEl) stepsEl.textContent = steps;
+    }
+    function showAISpinner(show) {
+        const spinner = document.getElementById('aiWorkflowSpinner');
+        if (spinner) spinner.style.display = show ? 'inline' : 'none';
+    }
+
+    // ===== 4. 抓热点（微博热搜聚合，失败兜底）=====
+    async function fetchHotTopics() {
+        const fallback = [
+            'AI 最新进展',
+            '科技行业动态',
+            '生活感悟',
+            '职场成长',
+            '情感故事'
+        ];
+        const resp = await fetch('https://api.vvhan.com/api/hotlist/wbHot');
+        if (!resp.ok) throw new Error('热搜 API 返回异常');
+        const data = await resp.json();
+        if (!data || !Array.isArray(data.data) || data.data.length === 0) {
+            return fallback;
+        }
+        return data.data.slice(0, 10)
+            .map(item => item.name || item.title)
+            .filter(Boolean);
+    }
+
+    // ===== 5. 调用智谱 LLM =====
+    async function callLLM(prompt, apiKey) {
+        const resp = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: 'glm-4',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.8,
+                max_tokens: 4000
+            })
+        });
+        if (!resp.ok) throw new Error(`LLM 调用失败: ${resp.status}`);
+        const data = await resp.json();
+        return data.choices[0].message.content;
+    }
+
+    // ===== 6. 写文章（用 LLM）=====
+    async function generateArticle(topic, apiKey) {
+        const settings = getAISettings();
+        const prompt = `你是公众号爆款写手。基于以下热点话题，写一篇 1500-2000 字的公众号文章。
+
+热点话题：${topic}
+
+要求：
+1. 标题吸引眼球（用 # 一级标题）
+2. 用 ## 二级标题分 3-4 个章节
+3. 开头有引言（用 > 引用块）
+4. 结尾有互动引导和签名（用"我是XXX"格式）
+5. 输出纯 Markdown 格式
+6. 内容有观点、有数据、有故事，不要套话
+7. 在需要配图的位置插入 ![图片说明](IMAGE_PLACEHOLDER_{n}) 标记，共 ${settings.imageCount} 处
+
+直接输出 Markdown 内容，不要任何解释。`;
+        return await callLLM(prompt, apiKey);
+    }
+
+    // ===== 7. 规划配图 =====
+    async function planImages(article, apiKey) {
+        const settings = getAISettings();
+        const prompt = `基于以下文章内容，为 ${settings.imageCount} 个 IMAGE_PLACEHOLDER 位置生成对应的英文 SDXL 图片生成 prompt。
+
+文章：
+${article.substring(0, 2000)}
+
+要求：
+1. 每行一个 prompt，顺序对应 IMAGE_PLACEHOLDER_1, _2, _3...
+2. prompt 必须是英文
+3. 结构：[类型] + [主体] + [场景] + [色调] + ultra detailed, professional photography, 8k quality, no text
+4. 风格统一（如都是 editorial photography 风格）
+5. 只输出 prompt，每行一个，不要其他内容
+
+输出格式：
+prompt1
+prompt2
+prompt3
+...`;
+        const result = await callLLM(prompt, apiKey);
+        return result.split('\n')
+            .map(s => s.trim())
+            .filter(s => s && !s.startsWith('prompt') && s.length > 20);
+    }
+
+    // ===== 8. 生成图片（Pollinations.ai）=====
+    async function generateImage(prompt, seed) {
+        const encoded = encodeURIComponent(prompt);
+        const url = `https://image.pollinations.ai/prompt/${encoded}?width=1280&height=720&nologo=true&seed=${seed}`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('图片生成失败');
+        const blob = await resp.blob();
+        // 转 data URI
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    // ===== 9. 主工作流 =====
+    async function aiWorkflow() {
+        const settings = getAISettings();
+        if (!settings.apiKey) {
+            showToast('请先在设置中配置 API Key');
+            // 自动打开设置弹窗
+            if (aiSettingsModal) aiSettingsModal.style.display = 'flex';
+            return;
+        }
+
+        const btn = document.getElementById('aiWorkflowBtn');
+        try {
+            showAISpinner(true);
+            if (btn) btn.disabled = true;
+
+            // 1. 抓热点
+            updateAIStatus('正在抓取今日热点...', '');
+            let topics = [];
+            try {
+                topics = await fetchHotTopics();
+            } catch (e) {
+                topics = ['AI 最新进展', '科技行业动态', '生活感悟'];
+            }
+            const topic = topics[Math.floor(Math.random() * topics.length)];
+            updateAIStatus('已选中热点', `话题：${topic}`);
+
+            // 2. 写文章
+            updateAIStatus('AI 正在构思文章...', `基于：${topic}`);
+            const article = await generateArticle(topic, settings.apiKey);
+            updateAIStatus('文章生成完成', `字数：约 ${article.length} 字`);
+
+            // 3. 规划配图
+            updateAIStatus('正在规划配图...', '');
+            let imagePrompts = [];
+            try {
+                imagePrompts = await planImages(article, settings.apiKey);
+            } catch (e) {
+                // 失败用默认 prompt
+                imagePrompts = [
+                    'editorial photography, modern cityscape, warm sunset light, ultra detailed, 8k quality, no text',
+                    'editorial photography, technology concept, blue tones, ultra detailed, 8k quality, no text',
+                    'editorial photography, lifestyle scene, warm atmosphere, ultra detailed, 8k quality, no text',
+                    'editorial photography, abstract concept, minimal composition, ultra detailed, 8k quality, no text'
+                ].slice(0, settings.imageCount);
+            }
+
+            // 4. 生成图片
+            updateAIStatus('正在生成配图...', `共 ${imagePrompts.length} 张`);
+            const imageUrls = [];
+            for (let i = 0; i < imagePrompts.length; i++) {
+                updateAIStatus('正在生成配图...', `第 ${i + 1}/${imagePrompts.length} 张`);
+                try {
+                    const dataUri = await generateImage(imagePrompts[i], 1000 + i * 111);
+                    imageUrls.push(dataUri);
+                } catch (e) {
+                    console.error('图片生成失败', e);
+                }
+            }
+
+            // 5. 把图片 URL 替换进文章
+            let finalArticle = article;
+            imageUrls.forEach((url, i) => {
+                finalArticle = finalArticle.replace(`IMAGE_PLACEHOLDER_${i + 1}`, url);
+            });
+            // 没生成成功的占位符清掉
+            finalArticle = finalArticle.replace(/!\[([^\]]*)\]\(IMAGE_PLACEHOLDER_\d+\)/g, '');
+
+            // 6. 排版 + 预览（复用外部全局函数）
+            updateAIStatus('正在排版...', '');
+            const formatted = smartFormatText(finalArticle);
+            const html = markdownToHTML(formatted);
+            editor.innerHTML = html;
+            updatePreview();
+
+            updateAIStatus('完成！可以切换主题/颜色后复制到公众号', `话题：${topic} | 配图：${imageUrls.length} 张`);
+            showAISpinner(false);
+            showToast('AI 工作流完成！');
+        } catch (e) {
+            console.error(e);
+            updateAIStatus('出错了：' + e.message, '');
+            showAISpinner(false);
+            showToast('工作流出错：' + e.message);
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    // ===== 10. 事件绑定 =====
+    if (aiWorkflowBtn) {
+        aiWorkflowBtn.addEventListener('click', aiWorkflow);
+    }
+    if (aiSettingsBtn) {
+        aiSettingsBtn.addEventListener('click', () => {
+            const s = getAISettings();
+            if (llmApiKeyInput) llmApiKeyInput.value = s.apiKey;
+            if (imageCountInput) imageCountInput.value = String(s.imageCount);
+            if (aiSettingsModal) aiSettingsModal.style.display = 'flex';
+        });
+    }
+    if (aiSettingsCancel) {
+        aiSettingsCancel.addEventListener('click', () => {
+            if (aiSettingsModal) aiSettingsModal.style.display = 'none';
+        });
+    }
+    if (aiSettingsSave) {
+        aiSettingsSave.addEventListener('click', () => {
+            const apiKey = llmApiKeyInput ? llmApiKeyInput.value.trim() : '';
+            const rawCount = imageCountInput ? parseInt(imageCountInput.value, 10) : 4;
+            const imageCount = (isNaN(rawCount) || rawCount < 1) ? 4 : rawCount;
+            saveAISettings(apiKey, imageCount);
+            if (aiSettingsModal) aiSettingsModal.style.display = 'none';
+            showToast('设置已保存');
+        });
+    }
+})();
