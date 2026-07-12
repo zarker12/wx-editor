@@ -2710,7 +2710,6 @@ function formatParagraph(text) {
 
     // ===== 5. 调用 LLM（根据 provider 选择不同 base URL 和 model）=====
     async function callLLM(prompt, settings) {
-        // 确定 base URL 和 model
         const config = LLM_PROVIDERS[settings.provider] || LLM_PROVIDERS.deepseek;
         const baseUrl = settings.provider === 'custom' ? settings.baseUrl : config.baseUrl;
         const model = settings.provider === 'custom' ? settings.model : config.model;
@@ -2740,71 +2739,157 @@ function formatParagraph(text) {
         return data.choices[0].message.content;
     }
 
-    // ===== 6. 写文章（用 LLM）=====
+    // ===== 6. 话题筛选（让 LLM 从热搜中选最适合写文章的话题）=====
+    async function selectBestTopic(topics, settings) {
+        const prompt = `你是公众号编辑。以下是从微博热搜抓取的话题列表：
+
+${topics.map((t, i) => `${i + 1}. ${t}`).join('\n')}
+
+请从中选出最适合写一篇深度公众号文章的话题，要求：
+1. 话题有延展性，能写出深度观点
+2. 有公众讨论价值
+3. 能引发情感共鸣
+
+只输出你选中的那一个话题的原文，不要任何解释、不要编号、不要引号。`;
+        const result = await callLLM(prompt, settings);
+        // 清理：去掉可能的编号、引号
+        let selected = result.trim().replace(/^[\d.、\s]+/, '').replace(/^["""']+|["""']+$/g, '').trim();
+        // 验证选出的话题在列表中
+        const matched = topics.find(t => t.includes(selected) || selected.includes(t));
+        return matched || selected || topics[0];
+    }
+
+    // ===== 7. 写文章（用 LLM，优化后的 prompt）=====
     async function generateArticle(topic, settings) {
-        const prompt = `你是公众号爆款写手。基于以下热点话题，写一篇 1500-2000 字的公众号文章。
+        const prompt = `你是一位资深公众号主笔，擅长用独特的视角、扎实的数据和有温度的故事写出10w+爆款文章。
 
-热点话题：${topic}
+请基于以下话题写一篇公众号文章：
 
-要求：
-1. 标题吸引眼球（用 # 一级标题）
-2. 用 ## 二级标题分 3-4 个章节
-3. 开头有引言（用 > 引用块）
-4. 结尾有互动引导和签名（用"我是XXX"格式）
-5. 输出纯 Markdown 格式
-6. 内容有观点、有数据、有故事，不要套话
-7. 在需要配图的位置插入 ![图片说明](IMAGE_PLACEHOLDER_{n}) 标记，共 ${settings.imageCount} 处
+话题：${topic}
 
-直接输出 Markdown 内容，不要任何解释。`;
+写作要求（严格遵循）：
+1. 文章结构（必须用 Markdown 格式）：
+   - 开头用 # 写一个吸引眼球的标题（15-25字，不要用「」号）
+   - 紧接着一段 80-120 字的引言，用 > 引用块格式，点出话题的核心矛盾或悬念
+   - 用 ## 划分 3-4 个章节，每个章节标题要有信息量（不要用"第一章"这种，要用观点式标题）
+   - 结尾有一个简短的总结段落
+   - 最后加一行签名：--- 换行 我是XX，关注XX，带你XX
+
+2. 内容要求：
+   - 总字数 1500-2000 字
+   - 每个章节 300-500 字，要有具体数据、真实案例或生动细节
+   - 不要空话套话，不要"众所周知""不可否认"等万能句式
+   - 观点要鲜明，有自己的角度，不是复述新闻
+   - 适当使用**加粗**标注关键数据和观点
+   - 可以用 > 引用块标注金句
+
+3. 不要输出任何解释说明，直接输出 Markdown 正文。
+
+现在请开始写：`;
         return await callLLM(prompt, settings);
     }
 
-    // ===== 7. 规划配图 =====
-    async function planImages(article, settings) {
-        const prompt = `基于以下文章内容，为 ${settings.imageCount} 个 IMAGE_PLACEHOLDER 位置生成对应的英文 SDXL 图片生成 prompt。
+    // ===== 8. 规划配图（让 LLM 生成英文图片 prompt）=====
+    async function planImages(article, imageCount, settings) {
+        const prompt = `你是一位图片编辑。请阅读以下文章，为文章规划 ${imageCount} 张配图。
 
-文章：
-${article.substring(0, 2000)}
+文章内容：
+${article.substring(0, 3000)}
 
-要求：
-1. 每行一个 prompt，顺序对应 IMAGE_PLACEHOLDER_1, _2, _3...
-2. prompt 必须是英文
-3. 结构：[类型] + [主体] + [场景] + [色调] + ultra detailed, professional photography, 8k quality, no text
-4. 风格统一（如都是 editorial photography 风格）
-5. 只输出 prompt，每行一个，不要其他内容
+请为每张配图生成一个英文的图片生成 prompt。要求：
+1. 共 ${imageCount} 行，每行一个 prompt
+2. prompt 格式：[摄影/插画风格] + [主体内容] + [场景环境] + [色调氛围] + ultra detailed, professional photography, 8k quality, no text, no watermark
+3. 所有图片风格统一（都用 editorial photography 或都用 editorial illustration）
+4. 每张图对应文章中不同的章节/主题，不要重复
+5. 只输出英文 prompt，每行一个，不要编号、不要中文、不要其他内容
 
-输出格式：
-prompt1
-prompt2
-prompt3
-...`;
+示例：
+editorial photography, modern city skyline at sunset, warm golden light, aerial view, ultra detailed, 8k quality, no text, no watermark
+editorial photography, person working on laptop in cafe, warm ambient lighting, shallow depth of field, ultra detailed, 8k quality, no text, no watermark`;
         const result = await callLLM(prompt, settings);
-        return result.split('\n')
+        const prompts = result.split('\n')
             .map(s => s.trim())
-            .filter(s => s && !s.startsWith('prompt') && s.length > 20);
+            .filter(s => s && !s.startsWith('prompt') && !s.startsWith('示例') && s.length > 30);
+        // 如果 LLM 输出不够，补充默认 prompt
+        const defaults = [
+            'editorial photography, modern cityscape, warm sunset light, aerial view, ultra detailed, 8k quality, no text, no watermark',
+            'editorial photography, technology concept, blue tones, abstract, ultra detailed, 8k quality, no text, no watermark',
+            'editorial photography, lifestyle scene, warm atmosphere, natural light, ultra detailed, 8k quality, no text, no watermark',
+            'editorial photography, abstract concept, minimal composition, soft colors, ultra detailed, 8k quality, no text, no watermark',
+            'editorial photography, people in modern environment, candid moment, warm tones, ultra detailed, 8k quality, no text, no watermark',
+            'editorial photography, nature landscape, golden hour, serene atmosphere, ultra detailed, 8k quality, no text, no watermark'
+        ];
+        while (prompts.length < imageCount) {
+            prompts.push(defaults[prompts.length % defaults.length]);
+        }
+        return prompts.slice(0, imageCount);
     }
 
-    // ===== 8. 生成图片（Pollinations.ai）=====
-    async function generateImage(prompt, seed) {
+    // ===== 9. 生成图片（Pollinations.ai，带超时）=====
+    async function generateImage(prompt, seed, timeoutMs = 60000) {
         const encoded = encodeURIComponent(prompt);
         const url = `https://image.pollinations.ai/prompt/${encoded}?width=1280&height=720&nologo=true&seed=${seed}`;
-        const resp = await fetch(url);
-        if (!resp.ok) throw new Error('图片生成失败');
-        const blob = await resp.blob();
-        // 转 data URI
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.readAsDataURL(blob);
-        });
+        // 用 AbortController 实现超时
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+            const resp = await fetch(url, { signal: controller.signal });
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const blob = await resp.blob();
+            if (blob.size < 1000) throw new Error('图片太小，可能生成失败');
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('FileReader 失败'));
+                reader.readAsDataURL(blob);
+            });
+        } finally {
+            clearTimeout(timer);
+        }
     }
 
-    // ===== 9. 主工作流 =====
+    // ===== 10. 把图片插入文章（在 ## 章节标题后插入）=====
+    function insertImagesIntoArticle(article, imageUrls, imageCaptions) {
+        const lines = article.split('\n');
+        // 找到所有 ## 标题的行号
+        const headingIndices = [];
+        for (let i = 0; i < lines.length; i++) {
+            if (/^##\s/.test(lines[i])) {
+                headingIndices.push(i);
+            }
+        }
+        // 如果没有 ## 标题，在文章开头/中间/结尾插入
+        if (headingIndices.length === 0) {
+            const result = [...lines];
+            imageUrls.forEach((url, i) => {
+                const caption = imageCaptions[i] || `配图 ${i + 1}`;
+                const insertPos = Math.floor((i + 1) * result.length / (imageUrls.length + 1));
+                result.splice(insertPos + i, 0, `![${caption}](${url})`, '');
+            });
+            return result.join('\n');
+        }
+        // 在章节标题后插入图片（跳过第一个章节，让引言先展示）
+        const result = [...lines];
+        let insertOffset = 0;
+        imageUrls.forEach((url, i) => {
+            const caption = imageCaptions[i] || `配图 ${i + 1}`;
+            // 轮流插入到不同章节后面，跳过第一个章节
+            const targetHeadingIdx = headingIndices[(i + 1) % headingIndices.length];
+            if (targetHeadingIdx !== undefined) {
+                // 在标题行后空一行再插入图片
+                const insertPos = targetHeadingIdx + 2 + insertOffset;
+                result.splice(insertPos, 0, `![${caption}](${url})`, '');
+                insertOffset += 2;
+            }
+        });
+        return result.join('\n');
+    }
+
+    // ===== 11. 主工作流 =====
     async function aiWorkflow() {
         const settings = getAISettings();
         if (!settings.apiKey) {
             showToast('请先在 AI 设置中配置 API Key');
-            // 自动打开设置弹窗
             if (aiSettingsModal) aiSettingsModal.style.display = 'flex';
             return;
         }
@@ -2819,63 +2904,82 @@ prompt3
             let topics = [];
             try {
                 topics = await fetchHotTopics();
+                updateAIStatus('已抓取热点', `共 ${topics.length} 个话题`);
             } catch (e) {
                 topics = ['AI 最新进展', '科技行业动态', '生活感悟'];
+                updateAIStatus('热搜抓取失败，使用默认话题', '');
             }
-            const topic = topics[Math.floor(Math.random() * topics.length)];
-            updateAIStatus('已选中热点', `话题：${topic}`);
 
-            // 2. 写文章
-            updateAIStatus('AI 正在构思文章...', `基于：${topic}`);
+            // 2. 话题筛选（让 LLM 选最适合写文章的）
+            updateAIStatus('AI 正在筛选话题...', `从 ${topics.length} 个热点中挑选`);
+            let topic;
+            try {
+                topic = await selectBestTopic(topics, settings);
+                updateAIStatus('话题已选定', `话题：${topic}`);
+            } catch (e) {
+                topic = topics[Math.floor(Math.random() * topics.length)];
+                updateAIStatus('话题筛选失败，随机选取', `话题：${topic}`);
+            }
+
+            // 3. 写文章
+            updateAIStatus('AI 正在构思文章...', `话题：${topic}`);
             const article = await generateArticle(topic, settings);
             updateAIStatus('文章生成完成', `字数：约 ${article.length} 字`);
 
-            // 3. 规划配图
-            updateAIStatus('正在规划配图...', '');
+            // 4. 规划配图
+            const imageCount = settings.imageCount;
+            updateAIStatus('正在规划配图...', `计划 ${imageCount} 张`);
             let imagePrompts = [];
             try {
-                imagePrompts = await planImages(article, settings);
+                imagePrompts = await planImages(article, imageCount, settings);
+                updateAIStatus('配图规划完成', `${imagePrompts.length} 个 prompt`);
             } catch (e) {
-                // 失败用默认 prompt
                 imagePrompts = [
-                    'editorial photography, modern cityscape, warm sunset light, ultra detailed, 8k quality, no text',
-                    'editorial photography, technology concept, blue tones, ultra detailed, 8k quality, no text',
-                    'editorial photography, lifestyle scene, warm atmosphere, ultra detailed, 8k quality, no text',
-                    'editorial photography, abstract concept, minimal composition, ultra detailed, 8k quality, no text'
-                ].slice(0, settings.imageCount);
+                    'editorial photography, modern cityscape, warm sunset light, ultra detailed, 8k quality, no text, no watermark',
+                    'editorial photography, technology concept, blue tones, ultra detailed, 8k quality, no text, no watermark',
+                    'editorial photography, lifestyle scene, warm atmosphere, ultra detailed, 8k quality, no text, no watermark',
+                    'editorial photography, abstract concept, minimal composition, ultra detailed, 8k quality, no text, no watermark'
+                ].slice(0, imageCount);
+                updateAIStatus('配图规划失败，用默认 prompt', '');
             }
 
-            // 4. 生成图片
-            updateAIStatus('正在生成配图...', `共 ${imagePrompts.length} 张`);
+            // 5. 生成图片（带详细进度和错误处理）
             const imageUrls = [];
+            const imageCaptions = [];
+            let successCount = 0;
+            let failCount = 0;
             for (let i = 0; i < imagePrompts.length; i++) {
-                updateAIStatus('正在生成配图...', `第 ${i + 1}/${imagePrompts.length} 张`);
+                updateAIStatus('正在生成配图...', `第 ${i + 1}/${imagePrompts.length} 张（成功 ${successCount}，失败 ${failCount}）`);
                 try {
-                    const dataUri = await generateImage(imagePrompts[i], 1000 + i * 111);
+                    const dataUri = await generateImage(imagePrompts[i], 1000 + i * 111, 60000);
                     imageUrls.push(dataUri);
+                    imageCaptions.push(`配图${i + 1}`);
+                    successCount++;
+                    updateAIStatus('正在生成配图...', `第 ${i + 1}/${imagePrompts.length} 张 ✅（成功 ${successCount}，失败 ${failCount}）`);
                 } catch (e) {
-                    console.error('图片生成失败', e);
+                    failCount++;
+                    console.error(`图片 ${i + 1} 生成失败:`, e.message);
+                    updateAIStatus('正在生成配图...', `第 ${i + 1}/${imagePrompts.length} 张 ❌ ${e.message}（成功 ${successCount}，失败 ${failCount}）`);
                 }
             }
 
-            // 5. 把图片 URL 替换进文章
+            // 6. 把图片插入文章（代码自动插入，不依赖 LLM 占位符）
+            updateAIStatus('正在排版...', `插入 ${successCount} 张配图`);
             let finalArticle = article;
-            imageUrls.forEach((url, i) => {
-                finalArticle = finalArticle.replace(`IMAGE_PLACEHOLDER_${i + 1}`, url);
-            });
-            // 没生成成功的占位符清掉
-            finalArticle = finalArticle.replace(/!\[([^\]]*)\]\(IMAGE_PLACEHOLDER_\d+\)/g, '');
+            if (imageUrls.length > 0) {
+                finalArticle = insertImagesIntoArticle(article, imageUrls, imageCaptions);
+            }
 
-            // 6. 排版 + 预览（复用外部全局函数）
-            updateAIStatus('正在排版...', '');
+            // 7. 排版 + 预览（复用外部全局函数）
             const formatted = smartFormatText(finalArticle);
             const html = markdownToHTML(formatted);
             editor.innerHTML = html;
             updatePreview();
 
-            updateAIStatus('完成！可以切换主题/颜色后复制到公众号', `话题：${topic} | 配图：${imageUrls.length} 张`);
+            const imgInfo = successCount > 0 ? `配图 ${successCount} 张` : '配图全部失败（可手动上传）';
+            updateAIStatus('完成！可切换主题/颜色后复制到公众号', `话题：${topic} | ${imgInfo}`);
             showAISpinner(false);
-            showToast('AI 工作流完成！');
+            showToast(`AI 工作流完成！文章 + ${successCount} 张配图`);
         } catch (e) {
             console.error(e);
             updateAIStatus('出错了：' + e.message, '');
