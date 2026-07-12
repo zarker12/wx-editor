@@ -2778,6 +2778,8 @@ function formatParagraph(text) {
     'use strict';
 
     // ===== LLM 提供商预设配置表 =====
+    // editable: true 表示该 provider 使用 OpenAI 兼容格式，允许用户在 UI 中修改 baseUrl/model
+    //   （例如腾讯云 Maas 下可切换 glm-5.2 / deepseek-v3 / claude 等模型）
     const LLM_PROVIDERS = {
         deepseek: {
             name: 'DeepSeek（深度求索）',
@@ -2793,12 +2795,21 @@ function formatParagraph(text) {
             helpText: '到 open.bigmodel.cn 创建 API Key',
             helpUrl: 'https://open.bigmodel.cn/usercenter/apikeys'
         },
-        openai: {
-            name: 'OpenAI GPT-4o',
-            baseUrl: 'https://api.openai.com/v1/chat/completions',
-            model: 'gpt-4o',
-            helpText: '到 platform.openai.com 创建 API Key',
-            helpUrl: 'https://platform.openai.com/api-keys'
+        tencent: {
+            name: '腾讯云 Maas（GLM-5.2 等）',
+            baseUrl: 'https://tokenhub.tencentmaas.com/v1/chat/completions',
+            model: 'glm-5.2',
+            helpText: '到腾讯云 Maas 控制台获取 Token Hub API Key',
+            helpUrl: 'https://console.cloud.tencent.com/maas',
+            editable: true
+        },
+        doubao: {
+            name: '字节豆包 Doubao（火山方舟）',
+            baseUrl: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
+            model: 'doubao-pro-32k',
+            helpText: '到火山引擎控制台创建 API Key（模型需在方舟里开通）',
+            helpUrl: 'https://console.volcengine.com/ark/region:ark+cn-beijing/openManagement',
+            editable: true
         },
         qwen: {
             name: '通义千问 Qwen',
@@ -2807,6 +2818,30 @@ function formatParagraph(text) {
             helpText: '到 dashscope.aliyun.com 创建 API Key',
             helpUrl: 'https://dashscope.console.aliyun.com/apiKey'
         },
+        yi: {
+            name: '零一万物 Yi',
+            baseUrl: 'https://api.lingyiwanwu.com/v1/chat/completions',
+            model: 'yi-large',
+            helpText: '到 platform.lingyiwanwu.com 创建 API Key',
+            helpUrl: 'https://platform.lingyiwanwu.com/apikeys',
+            editable: true
+        },
+        baichuan: {
+            name: '百川 Baichuan',
+            baseUrl: 'https://api.baichuan-ai.com/v1/chat/completions',
+            model: 'Baichuan2-53B',
+            helpText: '到 platform.baichuan-ai.com 创建 API Key',
+            helpUrl: 'https://platform.baichuan-ai.com/console/apikey',
+            editable: true
+        },
+        minimax: {
+            name: 'MiniMax',
+            baseUrl: 'https://api.minimax.chat/v1/text/chatcompletion_v2',
+            model: 'abab6.5-chat',
+            helpText: '到 platform.minimaxi.com 创建 API Key',
+            helpUrl: 'https://platform.minimaxi.com/',
+            editable: true
+        },
         moonshot: {
             name: 'Moonshot Kimi',
             baseUrl: 'https://api.moonshot.cn/v1/chat/completions',
@@ -2814,12 +2849,20 @@ function formatParagraph(text) {
             helpText: '到 platform.moonshot.cn 创建 API Key',
             helpUrl: 'https://platform.moonshot.cn/console/api-keys'
         },
+        openai: {
+            name: 'OpenAI GPT-4o',
+            baseUrl: 'https://api.openai.com/v1/chat/completions',
+            model: 'gpt-4o',
+            helpText: '到 platform.openai.com 创建 API Key',
+            helpUrl: 'https://platform.openai.com/api-keys'
+        },
         custom: {
             name: '自定义',
             baseUrl: '',
             model: '',
             helpText: '填写兼容 OpenAI 格式的 API 地址和模型名',
-            helpUrl: ''
+            helpUrl: '',
+            editable: true
         }
     };
 
@@ -2857,8 +2900,8 @@ function formatParagraph(text) {
 
     // ===== 2. 设置弹窗交互 =====
     // 切换 provider 时更新帮助文本和自定义字段显隐
-    function updateProviderUI() {
-        const provider = llmProviderSelect.value;
+    function updateProviderUI(forceProvider) {
+        const provider = forceProvider || llmProviderSelect.value;
         const config = LLM_PROVIDERS[provider];
         if (!config) return;
         // 更新帮助文本
@@ -2869,13 +2912,27 @@ function formatParagraph(text) {
                 llmHelpText.textContent = config.helpText;
             }
         }
-        // 自定义 provider 显示额外字段
+        // editable provider（腾讯云/豆包/零一/百川/MiniMax/custom）显示 baseUrl/model 输入框
         if (customProviderFields) {
-            customProviderFields.style.display = provider === 'custom' ? 'block' : 'none';
+            const isEditable = !!(config.editable || provider === 'custom');
+            customProviderFields.style.display = isEditable ? 'block' : 'none';
+            // 用 dataset.provider 跟踪输入框当前值对应的 provider
+            // 切换到新 provider 时才覆盖默认值，避免覆盖用户手动改的值
+            const currentTag = llmBaseUrlInput && llmBaseUrlInput.dataset.provider;
+            if (isEditable && currentTag !== provider) {
+                if (llmBaseUrlInput) {
+                    llmBaseUrlInput.value = config.baseUrl || '';
+                    llmBaseUrlInput.dataset.provider = provider;
+                }
+                if (llmModelInput) {
+                    llmModelInput.value = config.model || '';
+                    llmModelInput.dataset.provider = provider;
+                }
+            }
         }
     }
     if (llmProviderSelect) {
-        llmProviderSelect.addEventListener('change', updateProviderUI);
+        llmProviderSelect.addEventListener('change', () => updateProviderUI());
     }
 
     // ===== 3. 进度面板更新 =====
@@ -2915,8 +2972,10 @@ function formatParagraph(text) {
     // ===== 5. 调用 LLM（根据 provider 选择不同 base URL 和 model）=====
     async function callLLM(prompt, settings) {
         const config = LLM_PROVIDERS[settings.provider] || LLM_PROVIDERS.deepseek;
-        const baseUrl = settings.provider === 'custom' ? settings.baseUrl : config.baseUrl;
-        const model = settings.provider === 'custom' ? settings.model : config.model;
+        // editable provider（腾讯云/豆包/零一/百川/MiniMax/custom）使用用户在 UI 中填的 baseUrl/model
+        // 非 editable 的预设 provider 用 config 默认值
+        const baseUrl = (config.editable && settings.baseUrl) ? settings.baseUrl : config.baseUrl;
+        const model = (config.editable && settings.model) ? settings.model : config.model;
 
         if (!baseUrl || !model) {
             throw new Error('请先在设置中配置 API Base URL 和模型名称');
@@ -3488,10 +3547,25 @@ ${article.substring(0, 3000)}
             const s = getAISettings();
             if (llmProviderSelect) llmProviderSelect.value = s.provider;
             if (llmApiKeyInput) llmApiKeyInput.value = s.apiKey;
+            // 先清空 dataset.provider 标记，让 updateProviderUI 知道是初始化状态
+            if (llmBaseUrlInput) llmBaseUrlInput.dataset.provider = '';
+            if (llmModelInput) llmModelInput.dataset.provider = '';
+            // 把保存的 baseUrl/model 填入输入框（可能是用户手动改过的）
             if (llmBaseUrlInput) llmBaseUrlInput.value = s.baseUrl;
             if (llmModelInput) llmModelInput.value = s.model;
             if (imageCountInput) imageCountInput.value = String(s.imageCount);
+            // 调用 updateProviderUI：如果保存的 baseUrl 与当前 provider 默认值不同，
+            // 说明用户手动改过，应该保留；如果相同，dataset.provider 会被设为当前 provider
             updateProviderUI();
+            // 如果当前 provider 是 editable，且保存的值非空且与默认值相同，
+            // 上面的 updateProviderUI 已经设置了 dataset.provider；
+            // 如果保存的值与默认值不同（用户改过），下面手动设置 dataset.provider，让下次切换才覆盖
+            const cfg = LLM_PROVIDERS[s.provider];
+            if (cfg && (cfg.editable || s.provider === 'custom')) {
+                // 用户改过：保留保存的值，标记当前 provider 已生效
+                if (llmBaseUrlInput) llmBaseUrlInput.dataset.provider = s.provider;
+                if (llmModelInput) llmModelInput.dataset.provider = s.provider;
+            }
             if (aiSettingsModal) aiSettingsModal.style.display = 'flex';
         });
     }
