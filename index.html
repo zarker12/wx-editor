@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>公众号文章排版助手</title>
-    <link rel="stylesheet" href="styles.css?v=4">
+    <link rel="stylesheet" href="styles.css?v=5">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -280,12 +280,19 @@
                         <button class="tool-btn" data-action="italic" title="斜体 (Ctrl+I)">
                             <span class="tool-text-italic">I</span>
                         </button>
-                        <button class="tool-btn" data-action="h2" title="小标题">H</button>
                     </div>
                     <div class="toolbar-divider"></div>
                     <div class="toolbar-group">
-                        <button class="tool-btn" data-action="list" title="列表">☰</button>
-                        <button class="tool-btn" data-action="quote" title="引用">❝</button>
+                        <button class="tool-btn" data-action="h1" title="一级标题">H1</button>
+                        <button class="tool-btn" data-action="h2" title="二级标题">H2</button>
+                        <button class="tool-btn" data-action="h3" title="三级标题">H3</button>
+                        <button class="tool-btn" data-action="p" title="正文段落">¶</button>
+                    </div>
+                    <div class="toolbar-divider"></div>
+                    <div class="toolbar-group">
+                        <button class="tool-btn" data-action="list" title="无序列表">•≡</button>
+                        <button class="tool-btn" data-action="olist" title="有序列表">1≡</button>
+                        <button class="tool-btn" data-action="quote" title="引用块">❝</button>
                         <button class="tool-btn" data-action="divider" title="分割线">—</button>
                     </div>
                     <div class="toolbar-divider"></div>
@@ -536,6 +543,6 @@
     <script src="themes/cyber.js"></script>
     <script src="themes/magazine.js"></script>
     <script src="themes/fresh.js"></script>
-    <script src="script.js?v=15"></script>
+    <script src="script.js?v=16"></script>
 </body>
 </html>

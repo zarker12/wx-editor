@@ -753,6 +753,10 @@ function getIntroCardHTML() {
 
 // ===== 更新预览 =====
 function updatePreview() {
+    // 同步编辑器与主题（字体/字号/间距/颜色/padding/子元素样式），
+    // 让编辑器内所见即所得，与右侧预览 1:1 一致
+    syncEditorToTheme();
+
     const content = normalizeEditorHTML(editor.innerHTML);
     const introHTML = getIntroCardHTML();
     const parsed = renderStyledHTML(content);
@@ -880,6 +884,7 @@ function showToast(message) {
 }
 
 // ===== 设置函数 =====
+// 同步编辑器与预览的主题样式（字体/字号/间距/颜色/padding 等），实现 1:1 视觉一致
 function syncEditorToTheme() {
     const c = getColorConfig();
     const s = getSizeConfig();
@@ -889,6 +894,7 @@ function syncEditorToTheme() {
     const fontWeight = getFontWeight();
     const theme = getStyleTheme();
 
+    // 基础文字样式（与 articleBody 的 bodyStyle 保持一致）
     editor.style.fontFamily = font;
     editor.style.fontWeight = fontWeight;
     editor.style.fontSize = s.fontSize;
@@ -896,13 +902,104 @@ function syncEditorToTheme() {
     editor.style.color = theme.textColor;
     editor.style.backgroundColor = theme.canvasBg;
     if (t.letterSpacing) editor.style.letterSpacing = t.letterSpacing;
+    else editor.style.letterSpacing = 'normal';
 
+    // 从主题 bodyStyle 中解析 padding / text-align，应用到编辑器，使排版与预览完全一致
+    const bodyStyle = theme.bodyStyle(c, s, sp, t, font);
+    const padMatch = bodyStyle.match(/padding:\s*([^;]+);/);
+    if (padMatch) editor.style.padding = padMatch[1].trim();
+    const alignMatch = bodyStyle.match(/text-align:\s*([^;]+);/);
+    editor.style.textAlign = alignMatch ? alignMatch[1].trim() : 'left';
+
+    // 限制编辑器内容宽度与预览手机框一致（phone-frame max-width:340px）
+    // 让文字换行、图片缩放与预览完全 1:1
+    editor.style.maxWidth = '340px';
+    editor.style.margin = '0 auto';
+    editor.style.width = '100%';
+
+    // 同步 CSS 变量，给 styles.css 中部分仍使用变量的规则（如 hover、placeholder）兜底
     editor.style.setProperty('--editor-accent', c.accent);
     editor.style.setProperty('--editor-accent-light', c.accentLight);
     editor.style.setProperty('--editor-accent-dark', c.accentDark);
     editor.style.setProperty('--editor-accent-soft', c.accentSoft);
     editor.style.setProperty('--editor-accent-border', c.accentBorder);
     editor.style.setProperty('--editor-meta', theme.metaColor);
+
+    // 同步编辑器内子元素（h1/h2/p/blockquote 等）样式，使其与预览渲染一致
+    syncEditorContentStyles();
+}
+
+// 将主题的 *Style() 方法转换为 CSS 规则，注入到 <style id="editor-sync-styles"> 中
+// 这样编辑器内的 h1/h2/p/blockquote 等元素就会和预览区 1:1 一致
+function syncEditorContentStyles() {
+    const c = getColorConfig();
+    const s = getSizeConfig();
+    const sp = getSpacingConfig();
+    const t = getTrackingConfig();
+    const font = getFontFamily();
+    const theme = getStyleTheme();
+
+    // 复用主题方法拿到 style 字符串，无需重复实现
+    const h1Style = theme.h1Style(c, s, sp, t);
+    const h2Style = theme.h2Style(c, s, sp, t);
+    // h3 沿用 renderStyledHTML 中的回退逻辑：h2Style 调小字号 + 中等字重
+    const h3Style = theme.h3Style
+        ? theme.h3Style(c, s, sp, t)
+        : h2Style.replace(/font-size:[^;]+;/, `font-size:${parseInt(s.h2Size) - 2}px;`)
+                 .replace(/font-weight:[^;]+;/, 'font-weight:500;');
+    const pStyle = theme.pStyle(c, sp);
+    const blockquoteStyle = theme.blockquoteStyle(c);
+    const ulStyle = theme.ulStyle(c);
+    const olStyle = theme.olStyle(c);
+    const liStyle = theme.liStyle(c);
+    const hrStyle = theme.hrStyle(c);
+    const aStyle = theme.aStyle(c);
+    const strongStyle = theme.strongStyle(c);
+    const emStyle = theme.emStyle(c);
+    const codeStyle = theme.codeStyle(c);
+    const preStyle = theme.preStyle(c);
+    const preCodeStyle = theme.preCodeStyle(c);
+    const metaLineStyle = theme.metaLineStyle ? theme.metaLineStyle(c) : '';
+
+    // 列表项图标需要伪元素呈现（避免修改编辑器 DOM），用 ::before 注入符号
+    // 与主题 liIcon / olIcon 保持视觉一致：无序列表用 ·，有序列表用 1. 2. 3.
+    const liIconHtml = theme.liIcon ? theme.liIcon(c) : '';
+    const liIconChar = (liIconHtml.match(/>([^<]+)</) || [])[1] || '·';
+
+    // 构建编辑器内部元素的 CSS 规则
+    const cssText = `
+#editor h1 { ${h1Style} margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0; }
+#editor h2 { ${h2Style} margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0; }
+#editor h3 { ${h3Style} margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0; }
+#editor p { ${pStyle} }
+#editor p.meta-line { ${metaLineStyle} }
+#editor blockquote { ${blockquoteStyle} }
+#editor ul { ${ulStyle} }
+#editor ol { ${olStyle} }
+#editor li { ${liStyle} }
+#editor ul > li { counter-increment: editor-ul-counter; }
+#editor ul > li::before { content: "${liIconChar}"; position:absolute; left:0; top:0; color:${c.accent}; font-size:12px; }
+#editor ol { counter-reset: editor-ol-counter; list-style:none; }
+#editor ol > li { counter-increment: editor-ol-counter; }
+#editor ol > li::before { content: counter(editor-ol-counter) "."; position:absolute; left:0; top:0; color:${c.accent}; font-weight:500; font-size:12px; }
+#editor hr { ${hrStyle} }
+#editor a { ${aStyle} }
+#editor strong, #editor b { ${strongStyle} }
+#editor em, #editor i { ${emStyle} }
+#editor code { ${codeStyle} font-family:${fontFamilies.mono}; }
+#editor pre { ${preStyle} position:relative; }
+#editor pre code { ${preCodeStyle} background:transparent; padding:0; }
+#editor img { max-width:100%; height:auto; border-radius:8px; margin:16px 0; display:block; }
+`;
+
+    // 注入或替换 <style id="editor-sync-styles">
+    let styleTag = document.getElementById('editor-sync-styles');
+    if (!styleTag) {
+        styleTag = document.createElement('style');
+        styleTag.id = 'editor-sync-styles';
+        document.head.appendChild(styleTag);
+    }
+    styleTag.textContent = cssText;
 }
 
 function setStyle(style) {
@@ -1014,11 +1111,24 @@ function handleToolAction(action) {
         case 'italic':
             execCommand('italic');
             break;
+        case 'h1':
+            formatBlock('h1');
+            break;
         case 'h2':
             formatBlock('h2');
             break;
+        case 'h3':
+            formatBlock('h3');
+            break;
+        case 'p':
+            // 将当前块转为普通段落
+            formatBlock('p');
+            break;
         case 'list':
             execCommand('insertUnorderedList');
+            break;
+        case 'olist':
+            execCommand('insertOrderedList');
             break;
         case 'quote':
             formatBlock('blockquote');
