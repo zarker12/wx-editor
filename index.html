@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>公众号文章排版助手</title>
-    <link rel="stylesheet" href="styles.css?v=3">
+    <link rel="stylesheet" href="styles.css?v=4">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -20,9 +20,17 @@
                 <span class="logo-text">排版助手</span>
             </div>
             <div class="header-actions">
+                <button class="btn btn-ghost" id="userBtn" title="登录/用户中心" style="display:none;">
+                    <span class="btn-icon">👤</span>
+                    <span id="userName">登录</span>
+                </button>
                 <button class="btn btn-ghost" id="aiSettingsBtn" title="配置 AI API Key">
                     <span class="btn-icon">⚙️</span>
                     AI 设置
+                </button>
+                <button class="btn btn-ghost" id="draftBtn" title="保存草稿 / 下载本地">
+                    <span class="btn-icon">💾</span>
+                    草稿
                 </button>
                 <button class="btn btn-ghost" id="clearBtn">清空</button>
                 <button class="btn btn-outline" id="copyHtmlBtn">
@@ -241,6 +249,29 @@
                     </div>
                 </div>
 
+                <!-- 草稿管理弹窗 -->
+                <div id="draftModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+                    <div style="background:#fff;border-radius:12px;padding:24px;max-width:560px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                            <h3 style="margin:0;font-size:17px;color:#111;">草稿管理</h3>
+                            <button id="draftCloseBtn" style="background:none;border:none;font-size:20px;cursor:pointer;color:#9CA3AF;padding:0 4px;">&times;</button>
+                        </div>
+                        <p style="margin:0 0 14px;font-size:12px;color:#6B7280;">草稿保存在浏览器本地（localStorage），无需注册登录。清除浏览器数据会丢失，重要内容请下载本地备份。</p>
+
+                        <!-- 操作按钮 -->
+                        <div style="display:flex;gap:8px;margin-bottom:16px;">
+                            <button id="saveDraftBtn" style="flex:1;padding:10px 14px;background:#10B981;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">💾 保存当前为草稿</button>
+                            <button id="downloadMdBtn" style="flex:1;padding:10px 14px;background:#3B82F6;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">📥 下载为 .md 文件</button>
+                        </div>
+
+                        <!-- 草稿列表 -->
+                        <div>
+                            <div style="font-size:13px;color:#374151;font-weight:600;margin-bottom:8px;">已保存的草稿</div>
+                            <div id="draftList" style="display:flex;flex-direction:column;gap:8px;"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="editor-toolbar">
                     <div class="toolbar-group">
                         <button class="tool-btn" data-action="bold" title="加粗 (Ctrl+B)">
@@ -268,6 +299,10 @@
                         <button class="tool-btn" data-action="undo" title="撤销 (Ctrl+Z)">↶</button>
                         <button class="tool-btn" data-action="redo" title="重做 (Ctrl+Y)">↷</button>
                     </div>
+                    <div class="toolbar-divider"></div>
+                    <button class="tool-btn-action" id="autoIllustrateBtn" title="一键配图：理解文章 → AI 生成配图 → 自动插入">
+                        🖼 一键配图
+                    </button>
                 </div>
                 <div id="editor" class="editor-rich" contenteditable="true" placeholder="在此书写你的文章...
 
@@ -501,6 +536,6 @@
     <script src="themes/cyber.js"></script>
     <script src="themes/magazine.js"></script>
     <script src="themes/fresh.js"></script>
-    <script src="script.js?v=7"></script>
+    <script src="script.js?v=13"></script>
 </body>
 </html>

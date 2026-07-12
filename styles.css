@@ -616,6 +616,31 @@ body {
     color: var(--accent-600);
 }
 
+/* 工具栏行动按钮（带文字，如一键配图） */
+.tool-btn-action {
+    height: 32px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #10B981, #3B82F6);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    margin-left: auto;
+}
+
+.tool-btn-action:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
 .tool-text-bold {
     font-weight: 700;
     font-size: 14px;

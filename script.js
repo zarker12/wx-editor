@@ -443,7 +443,18 @@ function renderStyledHTML(editorHTML) {
             }
             case 'br':
                 return '<br>';
-            case 'div':
+            case 'div': {
+                // END 结束标识：居中 + 主题色 + 主题字体，匹配文章整体风格
+                if (node.getAttribute('data-end-marker') === 'true') {
+                    const endStyle = `text-align:center;letter-spacing:10px;color:${c.accentDark};font-size:14px;padding:32px 0 16px 0;font-family:${font};font-weight:500;margin-top:16px;`;
+                    // 装饰线（使用主题色，与 hrDecor 风格呼应）
+                    const decorLine = theme.hrDecor
+                        ? `<div style="text-align:center;color:${c.accent}60;font-size:18px;letter-spacing:8px;margin-bottom:8px;font-family:${font};">${theme.hrDecor(c)}</div>`
+                        : '';
+                    return `${decorLine}<div style="${endStyle}">- E N D -</div>`;
+                }
+                return children;
+            }
             case 'span':
                 return children;
             default:
@@ -455,6 +466,14 @@ function renderStyledHTML(editorHTML) {
     Array.from(root.childNodes).forEach(node => {
         result += walk(node);
     });
+
+    // END 结束标识：由模板自动追加，用主题色+主题字体渲染，居中显示
+    // 无论 Markdown 如何转换、是否重新排版，都会稳定显示
+    const endDecorLine = theme.hrDecor
+        ? `<div style="text-align:center;color:${c.accent}80;font-size:18px;letter-spacing:12px;margin:40px 0 8px 0;font-family:${font};">${theme.hrDecor(c)}</div>`
+        : `<div style="text-align:center;color:${c.accent}40;font-size:20px;letter-spacing:8px;margin:40px 0 8px 0;">· · ·</div>`;
+    const endStyle = `text-align:center;letter-spacing:10px;color:${c.accentDark};font-size:14px;padding:0 0 24px 0;font-family:${font};font-weight:500;`;
+    result += endDecorLine + `<div style="${endStyle}">- E N D -</div>`;
 
     return result;
 }
@@ -541,6 +560,11 @@ function normalizeEditorHTML(html) {
 
         if (tag === 'div') {
             flushPara();
+            // END 标识 div 必须保留原样，不能转 <p>（否则丢失 data-end-marker 属性）
+            if (node.getAttribute('data-end-marker') === 'true') {
+                result.push(node.outerHTML);
+                return;
+            }
             const divHTML = node.innerHTML.trim();
             if (divHTML && divHTML !== '<br>') {
                 result.push(`<p>${divHTML}</p>`);
@@ -1205,14 +1229,31 @@ function handleFileUpload(e) {
 
 // ===== 智能排版 =====
 function smartFormat() {
-    const text = editor.innerText.trim();
-    if (!text) { showToast('请先输入内容'); return; }
+    // ⚠ 不能用 editor.innerText —— 它会丢弃 <img> 的 src（data URI）
+    // 改为从 innerHTML 提取：保留图片语法 ![alt](src) 和文本
+    const html = editor.innerHTML;
+    if (!html.trim()) { showToast('请先输入内容'); return; }
+
+    // 将 <img alt="x" src="y"> 转为 Markdown 图片语法，保留 data URI
+    let text = html
+        .replace(/<img[^>]*alt="([^"]*)"[^>]*src="([^"]*)"[^>]*>/gi, '![[$1]]($2)')
+        .replace(/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*>/gi, '![[$2]]($1)')
+        .replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, '![]($1)');
+    // 移除其他 HTML 标签，只留文本
+    text = text.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n\n').replace(/<\/div>/gi, '\n');
+    text = text.replace(/<[^>]+>/g, '');
+    // 解码 HTML 实体
+    text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+    // 还原我们用的特殊图片占位符
+    text = text.replace(/!\[\[([^\]]*)\]\]/g, '![$1]');
+
+    if (!text.trim()) { showToast('请先输入内容'); return; }
     if (/^#\s/.test(text) || /```/.test(text)) {
         if (!confirm('内容可能已经是Markdown格式，确定要重新智能排版吗？')) return;
     }
     const formatted = smartFormatText(text);
-    const html = markdownToHTML(formatted);
-    editor.innerHTML = html;
+    const newHtml = markdownToHTML(formatted);
+    editor.innerHTML = newHtml;
     updatePreview();
     showToast('智能排版完成！');
 }
@@ -2168,12 +2209,28 @@ fontButtons.forEach(btn => btn.addEventListener('click', () => setFont(btn.datas
 trackingButtons.forEach(btn => btn.addEventListener('click', () => setTracking(btn.dataset.tracking)));
 
 toolButtons.forEach(btn => {
+    // 跳过独立配图按钮（有自己的处理逻辑）
+    if (btn.id === 'autoIllustrateBtn') return;
     btn.addEventListener('mousedown', (e) => e.preventDefault());
     btn.addEventListener('click', (e) => {
         e.preventDefault();
         handleToolAction(btn.dataset.action);
     });
 });
+
+// 独立配图按钮
+const autoIllustrateBtn = document.getElementById('autoIllustrateBtn');
+if (autoIllustrateBtn) {
+    autoIllustrateBtn.addEventListener('mousedown', (e) => e.preventDefault());
+    autoIllustrateBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (typeof window.autoIllustrate === 'function') {
+            window.autoIllustrate();
+        } else {
+            showToast('配图功能加载中，请稍后重试');
+        }
+    });
+}
 
 copyBtn.addEventListener('click', copyToClipboard);
 copyHtmlBtn.addEventListener('click', copyRawHTML);
@@ -2721,11 +2778,25 @@ function formatParagraph(text) {
             throw new Error('请先在设置中配置 API Base URL 和模型名称');
         }
 
+        // 清洗 API Key：去除首尾空白、全角空格、零宽字符，只保留可打印 ASCII
+        // fetch headers 不允许非 ISO-8859-1 字符，否则报 "String contains non ISO-8859-1 code point"
+        let apiKey = (settings.apiKey || '').trim();
+        apiKey = apiKey.replace(/[\u3000\u200B\u200C\u200D\uFEFF]/g, ''); // 去全角空格/零宽字符
+        if (!/^[\x20-\x7E]*$/.test(apiKey)) {
+            // 含有非 ASCII 字符，尝试保留 ASCII 部分
+            const cleaned = apiKey.replace(/[^\x20-\x7E]/g, '');
+            console.warn('API Key 含非 ASCII 字符，已自动清洗。原始长度:', apiKey.length, '清洗后:', cleaned.length);
+            apiKey = cleaned;
+        }
+        if (!apiKey) {
+            throw new Error('API Key 无效或为空，请在设置中检查（可能误粘贴了中文/全角字符）');
+        }
+
         const resp = await fetch(baseUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${settings.apiKey}`
+                'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
                 model: model,
@@ -2789,13 +2860,26 @@ ${topics.map((t, i) => `${i + 1}. ${t}`).join('\n')}
 - 民族矛盾、种族冲突、地域歧视
 如果话题本身触碰红线，请转换角度，只写生活化、人性化、情感化的侧面，绝不触及敏感维度。
 
+【去AI化·必须遵循】你的文章将通过头条、公众号等平台的AI内容检测，以下特征是AI写作的典型标志，必须逐一规避：
+- 禁止"总分总"三段论结构（开头总述→分点论述→结尾总结），这是AI最典型的结构特征
+- 禁止每段都用"首先/其次/最后/此外/然而/总之"这类AI式过渡词
+- 禁止段落结尾用"这不禁让我们思考…""这提醒我们…""这让我们重新审视…"等AI式反思句
+- 禁止过度使用排比句（连续3个以上相同句式）
+- 禁止空泛的总结性陈述（"XX的意义远不止于此""XX正以前所未有的方式…"）
+- 禁止"在XX的背景下""随着XX的发展""在XX的时代"等AI式开头
+- 禁止结尾升华到宏大叙事（"让我们共同期待…""未来必将…""历史会记住…"）
+- 要有口语化表达、断句节奏变化、偶尔的短句/长句混排
+- 要有个人视角和情感体验（"我注意到…""说实话…""坦白讲…"）
+- 要有具体细节而非抽象概括（不说"很多人"而说"地铁上刷手机的打工人"）
+- 允许有不完美的表达、跳跃的思维、生活化的比喻
+
 写作要求（严格遵循）：
 1. 文章结构（必须用 Markdown 格式）：
    - 开头用 # 写一个吸引眼球的标题（15-25字，不要用「」号）
    - 紧接着一段 60-90 字的引言，用 > 引用块格式，点出话题的核心矛盾或悬念
    - 用 ## 划分 4-5 个章节，每个章节标题要有信息量（不要用"第一章"这种，要用观点式标题）
    - 结尾有一个简短的总结段落
-   - 最后加一行签名：--- 换行 我是XX，关注XX，带你XX
+   - 不要在文章末尾写自我介绍、签名、引导关注等内容，排版模板已有
 
 2. 内容与段落（重要·阅读体验）：
    - 总字数 1500-2000 字
@@ -2850,27 +2934,79 @@ editorial photography, person working on laptop in cafe, warm ambient lighting, 
         return prompts.slice(0, imageCount);
     }
 
-    // ===== 9. 生成图片（Pollinations.ai，带超时）=====
-    async function generateImage(prompt, seed, timeoutMs = 60000) {
+    // ===== 9. 生成图片（Pollinations.ai，预加载 → data URI 方案）=====
+    // 核心策略：Image() 预加载（无 CORS 问题）→ canvas 转 data URI → 内嵌 HTML
+    // - data URI 完全自包含，不依赖网络，预览/复制/粘贴都能显示
+    // - 与 LLM 完全解耦：换任何模型都不影响图片生成
+    // - 复制到公众号时，微信自动转存 data URI 中的图片
+    async function preloadImageToDataUri(url, timeoutMs = 90000) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous'; // 请求 CORS，使 canvas 可读取像素
+            let settled = false;
+            const timer = setTimeout(() => {
+                if (settled) return;
+                settled = true;
+                img.src = '';
+                reject(new Error('图片加载超时'));
+            }, timeoutMs);
+            img.onload = () => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                if (img.naturalWidth < 100 || img.naturalHeight < 100) {
+                    reject(new Error('图片尺寸异常'));
+                    return;
+                }
+                // 尝试通过 canvas 转 data URI（完全自包含，无需二次网络请求）
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    const dataUri = canvas.toDataURL('image/jpeg', 0.85);
+                    resolve(dataUri);
+                } catch (e) {
+                    // canvas 被污染（CORS 不通过），回退到直接 URL
+                    console.warn('canvas 转 data URI 失败（CORS 限制），使用直接 URL:', e.message);
+                    resolve(url);
+                }
+            };
+            img.onerror = () => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                reject(new Error('图片加载失败'));
+            };
+            img.src = url;
+        });
+    }
+
+    async function generateImage(prompt, seed, timeoutMs = 90000) {
         const encoded = encodeURIComponent(prompt);
-        const url = `https://image.pollinations.ai/prompt/${encoded}?width=1280&height=720&nologo=true&seed=${seed}`;
-        // 用 AbortController 实现超时
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
-        try {
-            const resp = await fetch(url, { signal: controller.signal });
-            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            const blob = await resp.blob();
-            if (blob.size < 1000) throw new Error('图片太小，可能生成失败');
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.onerror = () => reject(new Error('FileReader 失败'));
-                reader.readAsDataURL(blob);
-            });
-        } finally {
-            clearTimeout(timer);
+        // 主图源：Pollinations.ai（免费无 key）
+        const primaryUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1280&height=720&nologo=true&seed=${seed}`;
+        // 备用图源 1：Picsum（随机真实照片，无 AI 但稳定可用）
+        const fallbackUrl1 = `https://picsum.photos/seed/${seed}/1280/720`;
+        // 备用图源 2：另一种 Pollinations 参数组合
+        const fallbackUrl2 = `https://image.pollinations.ai/prompt/${encoded}?width=1280&height=720&seed=${seed + 9999}`;
+
+        // 依次尝试：主 → 备1 → 备2
+        const candidates = [
+            { url: primaryUrl, label: 'Pollinations 主源' },
+            { url: fallbackUrl1, label: 'Picsum 备用' },
+            { url: fallbackUrl2, label: 'Pollinations 备用' }
+        ];
+        for (const candidate of candidates) {
+            try {
+                const dataUri = await preloadImageToDataUri(candidate.url, timeoutMs);
+                return dataUri;
+            } catch (e) {
+                console.warn(`${candidate.label} 失败: ${e.message}，尝试下一个...`);
+            }
         }
+        throw new Error('所有图源均失败');
     }
 
     // ===== 10. 把图片插入文章（在 ## 章节标题后插入）=====
@@ -2969,6 +3105,14 @@ editorial photography, person working on laptop in cafe, warm ambient lighting, 
             }
 
             // 5. 生成图片（带详细进度和错误处理）
+            // 失败时插入占位图，保留文章结构，用户可手动替换
+            const PLACEHOLDER_IMG = 'data:image/svg+xml,' + encodeURIComponent(
+                `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">` +
+                `<rect width="1280" height="720" fill="#F3F4F6"/>` +
+                `<text x="640" y="340" text-anchor="middle" font-family="sans-serif" font-size="32" fill="#9CA3AF">📷 图片加载失败</text>` +
+                `<text x="640" y="400" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#9CA3AF">请手动上传替换</text>` +
+                `</svg>`
+            );
             const imageUrls = [];
             const imageCaptions = [];
             let successCount = 0;
@@ -2976,38 +3120,40 @@ editorial photography, person working on laptop in cafe, warm ambient lighting, 
             for (let i = 0; i < imagePrompts.length; i++) {
                 updateAIStatus('正在生成配图...', `第 ${i + 1}/${imagePrompts.length} 张（成功 ${successCount}，失败 ${failCount}）`);
                 try {
-                    const dataUri = await generateImage(imagePrompts[i], 1000 + i * 111, 60000);
-                    imageUrls.push(dataUri);
+                    const imgUrl = await generateImage(imagePrompts[i], 1000 + i * 111, 90000);
+                    imageUrls.push(imgUrl);
                     imageCaptions.push(`配图${i + 1}`);
                     successCount++;
                     updateAIStatus('正在生成配图...', `第 ${i + 1}/${imagePrompts.length} 张 ✅（成功 ${successCount}，失败 ${failCount}）`);
                 } catch (e) {
                     failCount++;
+                    // 关键：失败时插入占位图，保留文章结构和位置，用户可手动替换
+                    imageUrls.push(PLACEHOLDER_IMG);
+                    imageCaptions.push(`配图${i + 1}（加载失败，请替换）`);
                     console.error(`图片 ${i + 1} 生成失败:`, e.message);
-                    updateAIStatus('正在生成配图...', `第 ${i + 1}/${imagePrompts.length} 张 ❌ ${e.message}（成功 ${successCount}，失败 ${failCount}）`);
+                    updateAIStatus('正在生成配图...', `第 ${i + 1}/${imagePrompts.length} 张 ❌ 已用占位图（成功 ${successCount}，失败 ${failCount}）`);
                 }
             }
 
             // 6. 把图片插入文章（代码自动插入，不依赖 LLM 占位符）
-            updateAIStatus('正在排版...', `插入 ${successCount} 张配图`);
+            updateAIStatus('正在排版...', `插入 ${imageUrls.length} 张配图（其中 ${successCount} 张成功）`);
             let finalArticle = article;
             if (imageUrls.length > 0) {
                 finalArticle = insertImagesIntoArticle(article, imageUrls, imageCaptions);
             }
 
-            // 7. 追加结束标识
-            const END_MARKER = '\n\n---\n\n<div style="text-align:center;letter-spacing:8px;color:#9CA3AF;font-size:14px;padding:24px 0 8px;font-family:Georgia,serif;">- E N D -</div>';
-            if (!/[-—]{1,2}\s*E\s*N\s*D\s*[-—]?/i.test(finalArticle)) {
-                finalArticle = finalArticle.trimEnd() + END_MARKER;
-            }
+            // 7. END 结束标识由 renderStyledHTML 模板自动追加（在 updatePreview 中），不写入 Markdown
+            // 这样无论 Markdown 如何转换、是否重新排版，END 都会用主题样式渲染
 
-            // 7. 排版 + 预览（复用外部全局函数）
+            // 8. 排版 + 预览（复用外部全局函数）
             const formatted = smartFormatText(finalArticle);
             const html = markdownToHTML(formatted);
             editor.innerHTML = html;
             updatePreview();
 
-            const imgInfo = successCount > 0 ? `配图 ${successCount} 张` : '配图全部失败（可手动上传）';
+            const imgInfo = successCount > 0
+                ? `配图 ${successCount}/${imageUrls.length} 张成功`
+                : `配图全部使用占位图（可手动替换）`;
             updateAIStatus('完成！可切换主题/颜色后复制到公众号', `话题：${topic} | ${imgInfo}`);
             showAISpinner(false);
             showToast(`AI 工作流完成！文章 + ${successCount} 张配图`);
@@ -3055,4 +3201,576 @@ editorial photography, person working on laptop in cafe, warm ambient lighting, 
             showToast('设置已保存');
         });
     }
+
+    // ===== 12. 独立配图功能（不依赖 AI 工作流，编辑器直接触发）=====
+    // 逻辑：从编辑器读文章 → LLM 理解文章生成图片 prompt → 生成图片 → 插入编辑器
+    async function autoIllustrate() {
+        const settings = getAISettings();
+        if (!settings.apiKey) {
+            showToast('请先在 AI 设置中配置 API Key');
+            if (aiSettingsModal) aiSettingsModal.style.display = 'flex';
+            return;
+        }
+
+        // 从编辑器提取文章文本（保留图片占位，但配图基于文本理解）
+        const editorHtml = editor.innerHTML;
+        if (!editorHtml.trim()) {
+            showToast('编辑器为空，请先输入文章内容');
+            return;
+        }
+        // 提取纯文本用于 LLM 理解
+        let articleText = editorHtml.replace(/<img[^>]*>/gi, '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').trim();
+        if (articleText.length < 100) {
+            showToast('文章内容太少（少于100字），无法规划配图');
+            return;
+        }
+
+        const imageCount = settings.imageCount || 4;
+        showAISpinner(true);
+        updateAIStatus('正在理解文章内容并规划配图...', `目标 ${imageCount} 张配图`);
+
+        try {
+            // 1. LLM 理解文章，生成图片 prompt
+            const imagePrompts = await planImages(articleText, imageCount, settings);
+            if (!imagePrompts || imagePrompts.length === 0) {
+                throw new Error('LLM 未返回有效的图片 prompt');
+            }
+            updateAIStatus('正在生成配图...', `共 ${imagePrompts.length} 张`);
+
+            // 2. 生成图片（data URI）
+            const PLACEHOLDER_IMG = 'data:image/svg+xml,' + encodeURIComponent(
+                `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">` +
+                `<rect width="1280" height="720" fill="#F3F4F6"/>` +
+                `<text x="640" y="340" text-anchor="middle" font-family="sans-serif" font-size="32" fill="#9CA3AF">📷 图片加载失败</text>` +
+                `<text x="640" y="400" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#9CA3AF">请手动上传替换</text>` +
+                `</svg>`
+            );
+            const imageUrls = [];
+            const imageCaptions = [];
+            let successCount = 0;
+            for (let i = 0; i < imagePrompts.length; i++) {
+                updateAIStatus('正在生成配图...', `第 ${i + 1}/${imagePrompts.length} 张（成功 ${successCount}）`);
+                try {
+                    const dataUri = await generateImage(imagePrompts[i], 1000 + i * 111, 90000);
+                    imageUrls.push(dataUri);
+                    imageCaptions.push(`配图${i + 1}`);
+                    successCount++;
+                } catch (e) {
+                    imageUrls.push(PLACEHOLDER_IMG);
+                    imageCaptions.push(`配图${i + 1}（加载失败）`);
+                    console.error(`图片 ${i + 1} 失败:`, e.message);
+                }
+            }
+
+            // 3. 把图片插入编辑器现有内容
+            updateAIStatus('正在插入配图...', `插入 ${successCount} 张`);
+            // 将编辑器 HTML 转为带图片语法的文本
+            let currentText = editorHtml
+                .replace(/<img[^>]*alt="([^"]*)"[^>]*src="([^"]*)"[^>]*>/gi, '![$1]($2)')
+                .replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, '![]($1)')
+                .replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n\n').replace(/<\/div>/gi, '\n')
+                .replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+            // 插入新图片
+            const finalArticle = insertImagesIntoArticle(currentText, imageUrls, imageCaptions);
+            // 重新渲染编辑器
+            const formatted = smartFormatText(finalArticle);
+            const newHtml = markdownToHTML(formatted);
+            editor.innerHTML = newHtml;
+            updatePreview();
+
+            const imgInfo = successCount > 0
+                ? `配图 ${successCount}/${imageUrls.length} 张成功`
+                : `配图全部使用占位图`;
+            updateAIStatus('配图完成！', imgInfo);
+            showAISpinner(false);
+            showToast(`配图完成！${successCount} 张图片已插入`);
+        } catch (e) {
+            showAISpinner(false);
+            updateAIStatus('配图失败', e.message);
+            showToast('配图失败：' + e.message);
+        }
+    }
+
+    // 暴露到全局，供工具栏按钮调用
+    window.autoIllustrate = autoIllustrate;
+})();
+
+// ===== 草稿功能（localStorage，无需用户系统/注册登录）=====
+const DRAFT_KEY = 'wx_editor_drafts';
+const AUTOSAVE_KEY = 'wx_editor_autosave';
+
+function getDrafts() {
+    try {
+        return JSON.parse(localStorage.getItem(DRAFT_KEY) || '[]');
+    } catch { return []; }
+}
+
+function saveDrafts(drafts) {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(drafts));
+}
+
+function generateDraftName() {
+    const text = editor.innerText || '';
+    // 取第一个非空行作为草稿名
+    const firstLine = text.split('\n').map(s => s.trim()).find(s => s) || '未命名';
+    const name = firstLine.substring(0, 20);
+    const now = new Date();
+    const ts = `${now.getMonth() + 1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+    return `${name} - ${ts}`;
+}
+
+function saveCurrentDraft() {
+    const content = editor.innerHTML;
+    if (!content.trim()) {
+        showToast('编辑器为空，无法保存');
+        return;
+    }
+    const drafts = getDrafts();
+    const draft = {
+        id: Date.now(),
+        name: generateDraftName(),
+        content: content,
+        savedAt: new Date().toISOString()
+    };
+    drafts.unshift(draft);
+    // 最多保留 20 个草稿
+    if (drafts.length > 20) drafts.length = 20;
+    saveDrafts(drafts);
+    renderDraftList();
+    showToast('草稿已保存');
+}
+
+function loadDraft(id) {
+    const drafts = getDrafts();
+    const draft = drafts.find(d => d.id === id);
+    if (!draft) return;
+    editor.innerHTML = draft.content;
+    updatePreview();
+    showToast(`已加载草稿：${draft.name}`);
+    // 关闭弹窗
+    const modal = document.getElementById('draftModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function deleteDraft(id) {
+    let drafts = getDrafts();
+    drafts = drafts.filter(d => d.id !== id);
+    saveDrafts(drafts);
+    renderDraftList();
+    showToast('草稿已删除');
+}
+
+function renderDraftList() {
+    const listEl = document.getElementById('draftList');
+    if (!listEl) return;
+    const drafts = getDrafts();
+    if (drafts.length === 0) {
+        listEl.innerHTML = '<div style="padding:20px;text-align:center;color:#9CA3AF;font-size:13px;">暂无草稿，点击上方「保存当前为草稿」</div>';
+        return;
+    }
+    listEl.innerHTML = drafts.map(d => {
+        const date = new Date(d.savedAt);
+        const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+        const preview = (d.content.replace(/<[^>]+>/g, '').trim().substring(0, 60)) || '（空内容）';
+        return `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid #E5E7EB;border-radius:8px;background:#FAFAFA;">
+                <div style="flex:1;min-width:0;cursor:pointer;" onclick="loadDraft(${d.id})">
+                    <div style="font-size:13px;font-weight:600;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.name}</div>
+                    <div style="font-size:11px;color:#9CA3AF;margin-top:2px;">${dateStr} · ${preview}</div>
+                </div>
+                <button onclick="deleteDraft(${d.id})" style="margin-left:8px;padding:4px 10px;background:#FE2C2C;color:#fff;border:none;border-radius:4px;font-size:11px;cursor:pointer;flex-shrink:0;">删除</button>
+            </div>
+        `;
+    }).join('');
+}
+
+// HTML 转 Markdown（简易版，用于下载 .md 文件）
+function htmlToMarkdown(html) {
+    let md = html;
+    md = md.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '\n# $1\n');
+    md = md.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '\n## $1\n');
+    md = md.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '\n### $1\n');
+    md = md.replace(/<h4[^>]*>(.*?)<\/h4>/gi, '\n#### $1\n');
+    md = md.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
+    md = md.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
+    md = md.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*');
+    md = md.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*');
+    md = md.replace(/<img[^>]*alt="([^"]*)"[^>]*src="([^"]*)"[^>]*>/gi, '![$1]($2)');
+    md = md.replace(/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*>/gi, '![$2]($1)');
+    md = md.replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)');
+    md = md.replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n');
+    md = md.replace(/<\/?(ul|ol)>/gi, '\n');
+    md = md.replace(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi, '> $1\n');
+    md = md.replace(/<pre[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi, '```\n$1\n```\n');
+    md = md.replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`');
+    md = md.replace(/<hr[^>]*>/gi, '\n---\n');
+    md = md.replace(/<br\s*\/?>/gi, '\n');
+    md = md.replace(/<p[^>]*>/gi, '\n');
+    md = md.replace(/<\/p>/gi, '\n');
+    md = md.replace(/<div[^>]*data-end-marker[^>]*>.*?<\/div>/gi, ''); // END 由模板自动追加，下载 md 时不保留
+    // 移除剩余 HTML 标签
+    md = md.replace(/<[^>]+>/g, '');
+    // 清理多余空行
+    md = md.replace(/\n{3,}/g, '\n\n');
+    return md.trim();
+}
+
+function downloadAsMarkdown() {
+    const html = editor.innerHTML;
+    if (!html.trim()) {
+        showToast('编辑器为空，无法下载');
+        return;
+    }
+    const md = htmlToMarkdown(html);
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    const filename = `文章_${dateStr}.md`;
+    if (typeof saveAs !== 'undefined') {
+        saveAs(blob, filename);
+    } else {
+        // 兜底：手动触发下载
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+    showToast('已下载 ' + filename);
+}
+
+// 自动保存（防丢失，每 5 秒检查一次）
+let autosaveTimer = null;
+function startAutosave() {
+    if (autosaveTimer) clearInterval(autosaveTimer);
+    autosaveTimer = setInterval(() => {
+        const content = editor.innerHTML;
+        if (content.trim()) {
+            localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({
+                content: content,
+                savedAt: new Date().toISOString()
+            }));
+        }
+    }, 5000);
+}
+
+// 页面加载时检查自动保存
+function checkAutosave() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(AUTOSAVE_KEY) || 'null');
+        if (saved && saved.content) {
+            const date = new Date(saved.savedAt);
+            const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+            // 如果编辑器为空，自动恢复
+            if (!editor.innerHTML.trim()) {
+                editor.innerHTML = saved.content;
+                updatePreview();
+                showToast(`已自动恢复上次内容（${dateStr} 自动保存）`);
+            }
+        }
+    } catch {}
+}
+
+// 事件绑定
+(function initDraftFeature() {
+    const draftBtn = document.getElementById('draftBtn');
+    const draftModal = document.getElementById('draftModal');
+    const draftCloseBtn = document.getElementById('draftCloseBtn');
+    const saveDraftBtn = document.getElementById('saveDraftBtn');
+    const downloadMdBtn = document.getElementById('downloadMdBtn');
+
+    if (draftBtn) {
+        draftBtn.addEventListener('click', () => {
+            renderDraftList();
+            if (draftModal) draftModal.style.display = 'flex';
+        });
+    }
+    if (draftCloseBtn) {
+        draftCloseBtn.addEventListener('click', () => {
+            if (draftModal) draftModal.style.display = 'none';
+        });
+    }
+    if (draftModal) {
+        draftModal.addEventListener('click', (e) => {
+            if (e.target === draftModal) draftModal.style.display = 'none';
+        });
+    }
+    if (saveDraftBtn) {
+        saveDraftBtn.addEventListener('click', saveCurrentDraft);
+    }
+    if (downloadMdBtn) {
+        downloadMdBtn.addEventListener('click', downloadAsMarkdown);
+    }
+
+    // 启动自动保存 + 检查恢复
+    startAutosave();
+    setTimeout(checkAutosave, 500);
+})();
+
+// ===== 用户系统（GitHub OAuth + Gist 数据同步）=====
+// 方案：GitHub OAuth 登录 → 获取 access_token → 数据存用户私有 Gist
+// 纯前端实现，无需后端，完全免费
+const GITHUB_CLIENT_ID = ''; // 请在 GitHub 创建 OAuth App 后填入 Client ID
+const GIST_FILENAME = 'wx-editor-data.json';
+
+function getGitHubToken() {
+    try {
+        const data = JSON.parse(localStorage.getItem('wx_editor_github_token') || 'null');
+        return data;
+    } catch { return null; }
+}
+
+function saveGitHubToken(tokenData) {
+    localStorage.setItem('wx_editor_github_token', JSON.stringify(tokenData));
+}
+
+function clearGitHubToken() {
+    localStorage.removeItem('wx_editor_github_token');
+}
+
+// GitHub OAuth 登录：打开授权页面
+function githubLogin() {
+    if (!GITHUB_CLIENT_ID) {
+        showToast('请先配置 GitHub OAuth Client ID');
+        return;
+    }
+    const redirectUri = window.location.origin + window.location.pathname;
+    const scope = 'gist'; // 只请求 Gist 权限
+    const url = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&response_type=code`;
+    window.location.href = url;
+}
+
+// GitHub OAuth 回调：获取 token
+async function handleGitHubCallback() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    if (!code) return;
+
+    showToast('正在登录...');
+    try {
+        // 用 client_id + code 换 access_token（前端直接请求，无需后端）
+        const redirectUri = window.location.origin + window.location.pathname;
+        const resp = await fetch('https://github.com/login/oauth/access_token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                client_id: GITHUB_CLIENT_ID,
+                code: code,
+                redirect_uri: redirectUri
+            })
+        });
+        const data = await resp.json();
+        if (data.access_token) {
+            // 获取用户信息
+            const userResp = await fetch('https://api.github.com/user', {
+                headers: { 'Authorization': `Bearer ${data.access_token}` }
+            });
+            const user = await userResp.json();
+            saveGitHubToken({
+                accessToken: data.access_token,
+                username: user.login,
+                avatar: user.avatar_url,
+                expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000 // 30天有效期
+            });
+            // 清理 URL 中的 code 参数
+            history.replaceState({}, '', window.location.pathname);
+            await syncFromGist(); // 登录后自动从 Gist 同步数据
+            updateUserUI();
+            showToast(`登录成功！欢迎, ${user.login}`);
+        } else {
+            showToast('登录失败：' + (data.error_description || data.error));
+        }
+    } catch (e) {
+        showToast('登录失败：' + e.message);
+    }
+}
+
+// 获取或创建用户数据 Gist
+async function getUserGist(accessToken) {
+    try {
+        // 查找已存在的 Gist
+        const resp = await fetch('https://api.github.com/gists', {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        const gists = await resp.json();
+        const existing = gists.find(g => g.files[GIST_FILENAME]);
+        if (existing) return existing.id;
+
+        // 创建新 Gist
+        const createResp = await fetch('https://api.github.com/gists', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                description: 'wx-editor 个人数据备份',
+                files: {
+                    [GIST_FILENAME]: { content: JSON.stringify({}) }
+                },
+                public: false // 私有 Gist
+            })
+        });
+        const created = await createResp.json();
+        return created.id;
+    } catch (e) {
+        console.error('获取/创建 Gist 失败:', e);
+        throw e;
+    }
+}
+
+// 从 Gist 同步数据到本地
+async function syncFromGist() {
+    const tokenData = getGitHubToken();
+    if (!tokenData) return;
+
+    try {
+        const gistId = await getUserGist(tokenData.accessToken);
+        const resp = await fetch(`https://api.github.com/gists/${gistId}`, {
+            headers: { 'Authorization': `Bearer ${tokenData.accessToken}` }
+        });
+        const gist = await resp.json();
+        const content = gist.files[GIST_FILENAME].content;
+        const data = JSON.parse(content || '{}');
+
+        // 同步 AI 设置
+        if (data.aiSettings) {
+            try {
+                localStorage.setItem('wx_editor_ai_settings', JSON.stringify(data.aiSettings));
+                // 更新设置弹窗显示
+                if (llmProviderSelect) llmProviderSelect.value = data.aiSettings.provider || 'deepseek';
+                if (llmApiKeyInput) llmApiKeyInput.value = data.aiSettings.apiKey || '';
+                if (imageCountInput) imageCountInput.value = data.aiSettings.imageCount || 4;
+                showToast('AI 设置已从云端同步');
+            } catch {}
+        }
+
+        // 同步草稿
+        if (data.drafts && Array.isArray(data.drafts)) {
+            try {
+                localStorage.setItem(DRAFT_KEY, JSON.stringify(data.drafts));
+                showToast(`草稿已同步（${data.drafts.length} 篇）`);
+            } catch {}
+        }
+    } catch (e) {
+        console.error('从 Gist 同步失败:', e);
+        showToast('云端同步失败：' + e.message);
+    }
+}
+
+// 将本地数据同步到 Gist
+async function syncToGist() {
+    const tokenData = getGitHubToken();
+    if (!tokenData) {
+        showToast('请先登录');
+        return;
+    }
+
+    try {
+        const gistId = await getUserGist(tokenData.accessToken);
+        const data = {
+            aiSettings: JSON.parse(localStorage.getItem('wx_editor_ai_settings') || 'null'),
+            drafts: getDrafts(),
+            updatedAt: new Date().toISOString()
+        };
+
+        await fetch(`https://api.github.com/gists/${gistId}`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${tokenData.accessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                files: {
+                    [GIST_FILENAME]: { content: JSON.stringify(data, null, 2) }
+                }
+            })
+        });
+        showToast('数据已同步到云端');
+    } catch (e) {
+        console.error('同步到 Gist 失败:', e);
+        showToast('同步失败：' + e.message);
+    }
+}
+
+// 登出
+function githubLogout() {
+    clearGitHubToken();
+    updateUserUI();
+    showToast('已退出登录');
+}
+
+// 更新用户 UI
+function updateUserUI() {
+    const userBtn = document.getElementById('userBtn');
+    const userName = document.getElementById('userName');
+    if (!userBtn || !userName) return;
+
+    const tokenData = getGitHubToken();
+    if (tokenData && tokenData.username) {
+        userBtn.style.display = 'flex';
+        userName.textContent = tokenData.username;
+    } else {
+        userBtn.style.display = 'flex';
+        userName.textContent = '登录';
+    }
+}
+
+// 用户菜单弹窗
+function showUserMenu() {
+    const tokenData = getGitHubToken();
+    if (!tokenData) {
+        githubLogin();
+        return;
+    }
+
+    const menu = document.createElement('div');
+    menu.style.cssText = `
+        position:fixed;top:56px;right:16px;background:#fff;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.15);padding:8px;min-width:160px;z-index:9999;border:1px solid #E5E7EB;
+    `;
+    menu.innerHTML = `
+        <div style="padding:8px 12px;border-bottom:1px solid #F3F4F6;">
+            <div style="font-weight:600;color:#111;">${tokenData.username}</div>
+            <div style="font-size:12px;color:#6B7280;">GitHub 账号</div>
+        </div>
+        <button onclick="syncToGist()" style="width:100%;padding:8px 12px;text-align:left;border:none;background:none;color:#374151;font-size:13px;cursor:pointer;">
+            ☁️ 同步到云端
+        </button>
+        <button onclick="syncFromGist()" style="width:100%;padding:8px 12px;text-align:left;border:none;background:none;color:#374151;font-size:13px;cursor:pointer;">
+            ↻ 从云端同步
+        </button>
+        <div style="height:1px;background:#F3F4F6;margin:4px 0;"></div>
+        <button onclick="githubLogout()" style="width:100%;padding:8px 12px;text-align:left;border:none;background:none;color:#EF4444;font-size:13px;cursor:pointer;">
+            🔓 退出登录
+        </button>
+    `;
+    document.body.appendChild(menu);
+
+    function closeMenu(e) {
+        if (!menu.contains(e.target)) {
+            menu.remove();
+            document.removeEventListener('click', closeMenu);
+        }
+    }
+    setTimeout(() => document.addEventListener('click', closeMenu), 0);
+}
+
+// 初始化用户系统
+(function initUserSystem() {
+    const userBtn = document.getElementById('userBtn');
+    if (userBtn) {
+        userBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showUserMenu();
+        });
+    }
+
+    // 处理 OAuth 回调
+    handleGitHubCallback();
+
+    // 更新 UI
+    updateUserUI();
 })();
