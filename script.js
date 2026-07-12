@@ -172,6 +172,9 @@ function markdownToHTML(text) {
     html = html.replace(/^## (.+)$/gim, '<h2>$1</h2>');
     html = html.replace(/^# (.+)$/gim, '<h1>$1</h1>');
 
+    // ⚠ 必须在链接替换之前处理图片语法，否则 [alt](src) 会被链接正则吃掉
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2">');
+
     html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
 
     html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
@@ -2750,11 +2753,22 @@ ${topics.map((t, i) => `${i + 1}. ${t}`).join('\n')}
 2. 有公众讨论价值
 3. 能引发情感共鸣
 
+【红线·绝对不能选】涉及以下任何一项的话题一律跳过，换选其他：
+- 宗教（任何宗教教义、信仰争议、宗教冲突）
+- 政治（政党、政策立场、意识形态争论）
+- 国家领导人（任何国家现任或前任领导人的评价）
+- 民族独立、主权争议、领土争端
+- 民族矛盾、种族冲突
+- 其他敏感地缘政治话题
+
+如果所有话题都触碰红线，输出：DEFAULT_TOPIC
+
 只输出你选中的那一个话题的原文，不要任何解释、不要编号、不要引号。`;
         const result = await callLLM(prompt, settings);
-        // 清理：去掉可能的编号、引号
         let selected = result.trim().replace(/^[\d.、\s]+/, '').replace(/^["""']+|["""']+$/g, '').trim();
-        // 验证选出的话题在列表中
+        if (selected === 'DEFAULT_TOPIC') {
+            return '一个值得思考的生活现象';
+        }
         const matched = topics.find(t => t.includes(selected) || selected.includes(t));
         return matched || selected || topics[0];
     }
@@ -2767,18 +2781,29 @@ ${topics.map((t, i) => `${i + 1}. ${t}`).join('\n')}
 
 话题：${topic}
 
+【红线·绝对禁止】以下内容一律不得出现在文章中，违反则整篇作废重写：
+- 宗教（任何宗教教义、信仰争议、宗教冲突、宗教评价）
+- 政治（政党、政策立场、意识形态争论、政治制度比较）
+- 国家领导人（任何国家现任或前任领导人的名字、评价、轶事）
+- 民族独立、主权争议、领土争端、地缘政治
+- 民族矛盾、种族冲突、地域歧视
+如果话题本身触碰红线，请转换角度，只写生活化、人性化、情感化的侧面，绝不触及敏感维度。
+
 写作要求（严格遵循）：
 1. 文章结构（必须用 Markdown 格式）：
    - 开头用 # 写一个吸引眼球的标题（15-25字，不要用「」号）
-   - 紧接着一段 80-120 字的引言，用 > 引用块格式，点出话题的核心矛盾或悬念
-   - 用 ## 划分 3-4 个章节，每个章节标题要有信息量（不要用"第一章"这种，要用观点式标题）
+   - 紧接着一段 60-90 字的引言，用 > 引用块格式，点出话题的核心矛盾或悬念
+   - 用 ## 划分 4-5 个章节，每个章节标题要有信息量（不要用"第一章"这种，要用观点式标题）
    - 结尾有一个简短的总结段落
    - 最后加一行签名：--- 换行 我是XX，关注XX，带你XX
 
-2. 内容要求：
+2. 内容与段落（重要·阅读体验）：
    - 总字数 1500-2000 字
-   - 每个章节 300-500 字，要有具体数据、真实案例或生动细节
-   - 不要空话套话，不要"众所周知""不可否认"等万能句式
+   - 段落必须松散短小：每段不超过 3-4 句话，理想 2-3 句
+   - 一个观点讲完就换段，不要把多个观点挤在一段里
+   - 每个章节 300-450 字，分 3-5 个自然段
+   - 要有具体数据、真实案例或生动细节
+   - 不要空话套话，不要"众所周知""不可否认""不言而喻"等万能句式
    - 观点要鲜明，有自己的角度，不是复述新闻
    - 适当使用**加粗**标注关键数据和观点
    - 可以用 > 引用块标注金句
@@ -2968,6 +2993,12 @@ editorial photography, person working on laptop in cafe, warm ambient lighting, 
             let finalArticle = article;
             if (imageUrls.length > 0) {
                 finalArticle = insertImagesIntoArticle(article, imageUrls, imageCaptions);
+            }
+
+            // 7. 追加结束标识
+            const END_MARKER = '\n\n---\n\n<div style="text-align:center;letter-spacing:8px;color:#9CA3AF;font-size:14px;padding:24px 0 8px;font-family:Georgia,serif;">- E N D -</div>';
+            if (!/[-—]{1,2}\s*E\s*N\s*D\s*[-—]?/i.test(finalArticle)) {
+                finalArticle = finalArticle.trimEnd() + END_MARKER;
             }
 
             // 7. 排版 + 预览（复用外部全局函数）
