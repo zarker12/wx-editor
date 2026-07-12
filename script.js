@@ -2934,6 +2934,143 @@ editorial photography, person working on laptop in cafe, warm ambient lighting, 
         return prompts.slice(0, imageCount);
     }
 
+    // ===== 8.5 封面配图规划（让 LLM 生成场景/标题/金句三变量）=====
+    async function planCoverImage(article, settings) {
+        const prompt = `你是一位资深图片编辑。请阅读以下文章，为封面图生成三个变量。
+
+文章内容：
+${article.substring(0, 3000)}
+
+请根据文章内容，生成以下四个变量（用 JSON 格式输出）：
+
+1. "scene"：一个适合做封面的人文摄影场景描述（中文，一句话，描述一个具体的生活场景。如"一个推着垃圾车的环卫工人背影，一束晨光照在他的身上"或"深夜便利店收银员"或"凌晨机场等待起飞的人"或"暴雨中的外卖员"）
+2. "title"：文章的标题（中文，不超过三行，每行不超过15字）
+3. "quote"：一句金句（中文，来自文章或总结文章核心，如"真正厉害的人，不是没有情绪，而是每天都在生活里解决情绪。"）
+4. "articleType"：文章类型，"lifestyle"（生活感悟/情感/随笔/记录）或 "tech"（科技/AI/资讯/数码）
+
+只输出 JSON，不要其他内容。格式：
+{"scene":"场景描述","title":"标题","quote":"金句","articleType":"lifestyle"}`;
+        const result = await callLLM(prompt, settings);
+        try {
+            const jsonMatch = result.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[0]);
+                return {
+                    scene: parsed.scene || '一个人在清晨的街道上独行，背影被朝阳拉长',
+                    title: parsed.title || '生活的温度',
+                    quote: parsed.quote || '每一个平凡的日子，都值得被认真对待。',
+                    articleType: parsed.articleType === 'tech' ? 'tech' : 'lifestyle'
+                };
+            }
+        } catch (e) {
+            console.error('封面规划解析失败:', e);
+        }
+        return {
+            scene: '一个人在清晨的街道上独行，背影被朝阳拉长',
+            title: '生活的温度',
+            quote: '每一个平凡的日子，都值得被认真对待。',
+            articleType: 'lifestyle'
+        };
+    }
+
+    // ===== 8.6 生成封面图（Pollinations 背景图 + Canvas 合成文字）=====
+    // 方案：Pollinations 生成纯背景图（无文字，左侧留白）→ Canvas 叠加渐变蒙版+标题+金句+品牌
+    // 这样文字一定清晰美观，不受 AI 生图文字能力限制
+    async function generateArticleCover(plan, seed) {
+        const isTech = plan.articleType === 'tech';
+        const stylePrompt = isTech
+            ? 'minimalist tech style, clean modern composition, blue and grey tones, abstract technology concept, large empty negative space on left side, geometric, futuristic, ultra detailed, 8k quality, no text, no watermark, no people'
+            : 'documentary photography, humanistic photography, golden hour warm light, candid moment, story telling atmosphere, person from behind or side profile not looking at camera, composition biased to the right side, large empty negative space on the left for text overlay, National Geographic style, natural realistic not posed, film grain, ultra detailed, 8k quality, no text, no watermark';
+
+        const bgPrompt = `${stylePrompt}, ${plan.scene}, no text, no watermark, no logo`;
+        const encoded = encodeURIComponent(bgPrompt);
+        const bgUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1280&height=720&nologo=true&seed=${seed}`;
+
+        // 预加载背景图
+        const bgDataUri = await preloadImageToDataUri(bgUrl, 90000);
+
+        // Canvas 合成文字
+        return await compositeCoverImage(bgDataUri, plan.title, plan.quote);
+    }
+
+    // Canvas 合成：背景图 + 渐变蒙版 + 标题 + 金句 + 品牌信息
+    function compositeCoverImage(bgDataUri, title, quote) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 1280;
+                    canvas.height = 720;
+                    const ctx = canvas.getContext('2d');
+
+                    // 1. 绘制背景图
+                    ctx.drawImage(img, 0, 0, 1280, 720);
+
+                    // 2. 左侧渐变蒙版（黑色→透明，占约40%宽度）
+                    const gradient = ctx.createLinearGradient(0, 0, 560, 0);
+                    gradient.addColorStop(0, 'rgba(0, 0, 0, 0.78)');
+                    gradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.45)');
+                    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, 560, 720);
+
+                    const drawText = () => {
+                        const padding = 64;
+
+                        // 3. 标题（米白色 #F4F0E8，大字号，左对齐，行距舒适）
+                        ctx.fillStyle = '#F4F0E8';
+                        ctx.font = '600 40px "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif';
+                        ctx.textAlign = 'left';
+                        ctx.textBaseline = 'top';
+                        const titleLines = (title || '').split('\n').filter(l => l.trim());
+                        const titleStartY = 200;
+                        titleLines.forEach((line, i) => {
+                            ctx.fillText(line, padding, titleStartY + i * 54);
+                        });
+
+                        // 4. 金句（浅灰色，约为标题字号30%→约14px，高留白）
+                        const quoteY = titleStartY + titleLines.length * 54 + 32;
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+                        ctx.font = '300 15px "Noto Sans SC", "PingFang SC", sans-serif';
+                        const quoteLines = (quote || '').split('\n').filter(l => l.trim());
+                        quoteLines.forEach((line, i) => {
+                            ctx.fillText(line, padding, quoteY + i * 24);
+                        });
+
+                        // 5. 左下角品牌信息（非常小字号，半透明）
+                        const brandY = 636;
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.38)';
+                        ctx.font = '400 13px "Noto Sans SC", sans-serif';
+                        ctx.fillText('@北苠', padding, brandY);
+                        ctx.fillText('查看精彩内容 →', padding, brandY + 20);
+
+                        // 6. 导出 data URI
+                        try {
+                            const dataUri = canvas.toDataURL('image/jpeg', 0.9);
+                            resolve(dataUri);
+                        } catch (e) {
+                            console.warn('canvas 合成导出失败（CORS），使用背景图:', e.message);
+                            resolve(bgDataUri);
+                        }
+                    };
+
+                    // 确保字体加载完成
+                    if (document.fonts && document.fonts.ready) {
+                        document.fonts.ready.then(drawText).catch(drawText);
+                    } else {
+                        drawText();
+                    }
+                } catch (e) {
+                    reject(new Error('封面合成失败: ' + e.message));
+                }
+            };
+            img.onerror = () => reject(new Error('封面背景图加载失败'));
+            img.src = bgDataUri;
+        });
+    }
+
     // ===== 9. 生成图片（Pollinations.ai，预加载 → data URI 方案）=====
     // 核心策略：Image() 预加载（无 CORS 问题）→ canvas 转 data URI → 内嵌 HTML
     // - data URI 完全自包含，不依赖网络，预览/复制/粘贴都能显示
@@ -3087,6 +3224,19 @@ editorial photography, person working on laptop in cafe, warm ambient lighting, 
             const article = await generateArticle(topic, settings);
             updateAIStatus('文章生成完成', `字数：约 ${article.length} 字`);
 
+            // 3.5 生成封面图（Pollinations 背景 + Canvas 合成文字）
+            let coverImage = null;
+            try {
+                updateAIStatus('正在规划封面图...', '');
+                const coverPlan = await planCoverImage(article, settings);
+                updateAIStatus('正在生成封面图...', `场景：${coverPlan.scene.substring(0, 20)}...`);
+                coverImage = await generateArticleCover(coverPlan, 88888);
+                updateAIStatus('封面图生成完成', '');
+            } catch (e) {
+                console.error('封面图生成失败:', e.message);
+                updateAIStatus('封面图生成失败，跳过封面', '');
+            }
+
             // 4. 规划配图
             const imageCount = settings.imageCount;
             updateAIStatus('正在规划配图...', `计划 ${imageCount} 张`);
@@ -3135,11 +3285,15 @@ editorial photography, person working on laptop in cafe, warm ambient lighting, 
                 }
             }
 
-            // 6. 把图片插入文章（代码自动插入，不依赖 LLM 占位符）
+            // 6. 把图片插入文章（封面图插最开头，正文配图插章节后）
             updateAIStatus('正在排版...', `插入 ${imageUrls.length} 张配图（其中 ${successCount} 张成功）`);
             let finalArticle = article;
             if (imageUrls.length > 0) {
                 finalArticle = insertImagesIntoArticle(article, imageUrls, imageCaptions);
+            }
+            // 封面图插入文章最开头
+            if (coverImage) {
+                finalArticle = `![封面](${coverImage})\n\n` + finalArticle;
             }
 
             // 7. END 结束标识由 renderStyledHTML 模板自动追加（在 updatePreview 中），不写入 Markdown
@@ -3230,6 +3384,19 @@ editorial photography, person working on laptop in cafe, warm ambient lighting, 
         updateAIStatus('正在理解文章内容并规划配图...', `目标 ${imageCount} 张配图`);
 
         try {
+            // 0. 生成封面图（Pollinations 背景 + Canvas 合成文字）
+            let coverImage = null;
+            try {
+                updateAIStatus('正在规划封面图...', '');
+                const coverPlan = await planCoverImage(articleText, settings);
+                updateAIStatus('正在生成封面图...', `场景：${coverPlan.scene.substring(0, 20)}...`);
+                coverImage = await generateArticleCover(coverPlan, 88888);
+                updateAIStatus('封面图生成完成', '');
+            } catch (e) {
+                console.error('封面图生成失败:', e.message);
+                updateAIStatus('封面图生成失败，跳过封面', '');
+            }
+
             // 1. LLM 理解文章，生成图片 prompt
             const imagePrompts = await planImages(articleText, imageCount, settings);
             if (!imagePrompts || imagePrompts.length === 0) {
@@ -3271,7 +3438,11 @@ editorial photography, person working on laptop in cafe, warm ambient lighting, 
                 .replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n\n').replace(/<\/div>/gi, '\n')
                 .replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
             // 插入新图片
-            const finalArticle = insertImagesIntoArticle(currentText, imageUrls, imageCaptions);
+            let finalArticle = insertImagesIntoArticle(currentText, imageUrls, imageCaptions);
+            // 封面图插入文章最开头
+            if (coverImage) {
+                finalArticle = `![封面](${coverImage})\n\n` + finalArticle;
+            }
             // 重新渲染编辑器
             const formatted = smartFormatText(finalArticle);
             const newHtml = markdownToHTML(formatted);
@@ -3510,7 +3681,7 @@ function checkAutosave() {
 // ===== 用户系统（GitHub OAuth + Gist 数据同步）=====
 // 方案：GitHub OAuth 登录 → 获取 access_token → 数据存用户私有 Gist
 // 纯前端实现，无需后端，完全免费
-const GITHUB_CLIENT_ID = ''; // 请在 GitHub 创建 OAuth App 后填入 Client ID
+const GITHUB_CLIENT_ID = 'Ov23liHSxnd1wuTDpic4'; // GitHub OAuth App Client ID
 const GIST_FILENAME = 'wx-editor-data.json';
 
 function getGitHubToken() {
