@@ -3091,7 +3091,6 @@ function formatParagraph(text) {
     const aiSettingsBtn = document.getElementById('aiSettingsBtn');
     // Tab1 创作相关
     const createTopicInput = document.getElementById('createTopicInput');
-    const fetchHotBtn = document.getElementById('fetchHotBtn');
     const hotTopicsList = document.getElementById('hotTopicsList');
     const createWordCount = document.getElementById('createWordCount');
     const createDirectionSel = document.getElementById('createDirection');
@@ -4556,10 +4555,9 @@ ${directionMap[direction] || directionMap.opinion}
    - 不要在文章末尾写自我介绍、签名、引导关注
 
 2. 内容与段落：
-   - 总字数严格控制在 ${minWords}-${maxWords} 字
-   - 每个章节约 ${sectionWords} 字，分 3-4 个自然段
-   - 每段不超过 3-4 句话，理想 2-3 句
-   - 一个观点讲完就换段
+   - 【重要】总字数必须达到 ${wordCount} 字以上，严格控制在 ${minWords}-${maxWords} 字，不要少于 ${wordCount} 字
+   - 每个章节必须达到 ${sectionWords} 字以上，分 3-4 个自然段
+   - 段落松散自由，每段 2-3 句话即可，一个想法讲完就换段，不必凑字数
    - 要有真实的生活观察、个人体验、情感细节（不要编造具体数据/人物/事件）
    - 不要"众所周知""不可否认"等万能句式
    - 观点要鲜明，有自己的角度
@@ -4573,8 +4571,8 @@ ${directionMap[direction] || directionMap.opinion}
     }
 
     // ===== 高保真演示模式：无 API Key 或调用失败时使用的本地文章生成器 =====
-    // 严格遵循项目红线：无宗教/政治/领导人；无杜撰数据/人物/事件；段落松散（2-3 句）
-    // 字数约 1000-1500 字，每章节 250-300 字
+    // 严格遵循项目红线：无宗教/政治/领导人；无杜撰数据/人物/事件；段落松散自由
+    // 字数 1000-1500 字，每章节 250-350 字，段落 2-3 句，段间空行
     function generateMockArticle(topic, opts) {
         opts = opts || {};
         const style = opts.style || 'deep';
@@ -4584,66 +4582,65 @@ ${directionMap[direction] || directionMap.opinion}
         const shortTopic = topicStr.length > 12 ? topicStr.slice(0, 12) + '…' : topicStr;
 
         const styleTone = {
-            deep: '冷静地讲，这件事比想象中复杂。我们常常以为想清楚了，其实只是把表面那一层揭开了，底下还有褶皱。',
-            casual: '说实话，这事儿聊起来挺有意思。朋友之间偶尔开几句玩笑，倒比一本正经地说道理更接近真相。',
-            story: '让我想起去年遇到的一个朋友，他跟这件事的关系不一般，但他自己从来没正面承认过。',
-            sharp: '别急着站队，先把事实摆清楚。情绪化的判断往往在最关键的地方把人引偏。',
-            warm: '我们都是普通人，能在小事里找到一点光就很好了，不必每件事都追求彻底想明白。'
+            deep: '冷静地讲，这件事比想象中复杂。我们常常以为想清楚了，其实只是把表面那一层揭开了，底下还有褶皱，只是没人愿意多看一眼。',
+            casual: '说实话，这事儿聊起来挺有意思。朋友之间偶尔开几句玩笑，倒比一本正经地说道理更接近真相，也更让人愿意听进去。',
+            story: '让我想起去年遇到的一个朋友，他跟这件事的关系不一般，但他自己从来没正面承认过，只是偶尔话里话外露一点。',
+            sharp: '别急着站队，先把事实摆清楚。情绪化的判断往往在最关键的地方把人引偏，等回过神来已经走远了。',
+            warm: '我们都是普通人，能在小事里找到一点光就很好了，不必每件事都追求彻底想明白，那样太累了。'
         }[style] || '冷静地讲，这件事比想象中复杂。我们常常以为想清楚了，其实只是把表面那一层揭开了，底下还有褶皱。';
 
-        // 内容方向引导句
         const directionHook = {
-            opinion: `关于${shortTopic}，我想说一个不太一样的观点，可能跟主流的看法不太一样，但值得停下来想一想。`,
-            experience: `聊${shortTopic}这个话题，我能分享的是一点一点试出来的经验，不一定都对，至少是亲测过的。`,
-            knowledge: `要弄明白${shortTopic}，得先把它拆成几个小问题来看，比想象中容易理解。`,
-            emotion: `说到${shortTopic}，先别急着下定义，先想想这件事在我们心里到底意味着什么。`
+            opinion: `关于${shortTopic}，我想说一个不太一样的观点，可能跟主流的看法不太一样，但值得停下来想一想，不急着下结论。`,
+            experience: `聊${shortTopic}这个话题，我能分享的是一点一点试出来的经验，不一定都对，至少是亲测过的，比纸上谈兵靠谱一些。`,
+            knowledge: `要弄明白${shortTopic}，得先把它拆成几个小问题来看，一个一个说清楚，比想象中容易理解，也不容易绕进去。`,
+            emotion: `说到${shortTopic}，先别急着下定义，先想想这件事在我们心里到底意味着什么，很多时候答案就藏在那个模糊的地方。`
         }[direction] || `关于${shortTopic}，我想说一个不太一样的观点，可能跟主流的看法不太一样，但值得停下来想一想。`;
 
         const sectionTemplates = [
             {
                 title: '表面看起来很简单',
                 paras: [
-                    `${topicStr}，听起来像是日常生活里再普通不过的一件事，第一次听到的时候大多数人会下意识点头，觉得懂了。`,
+                    `${topicStr}，听起来像是日常生活里再普通不过的一件事，第一次听到的时候大多数人会下意识点头，觉得懂了，不需要多想。`,
                     `可一旦认真琢磨，会发现它背后藏着的褶皱比想象中多，那些被一句"就是这样"盖过去的地方，才是值得停下来多看一眼的地方。`,
                     `${styleTone}`,
                     `${directionHook}`,
-                    `普通人不一定非要把这些想清楚，但偶尔停下来想一下，会让生活多出一些不一样的质感。`
+                    `普通人不一定非要把这些想清楚，但偶尔停下来想一下，会让生活多出一些不一样的质感，至少不会一直在惯性里滑下去。`
                 ]
             },
             {
                 title: '藏在细节里的另一面',
                 paras: [
-                    `身边有不少朋友提过类似感受，只是大家平时不太愿意展开聊，怕显得想太多，或者怕别人觉得自己矫情。`,
-                    `把它放在更长的时间维度看，会发现一些有意思的轨迹，那些曾经被忽略的小事，回头看竟然成了关键节点。`,
-                    `不是非黑即白那种简单，而是渐变过渡的灰，每一层灰里都藏着不同的取舍和妥协。`,
-                    `我们看到的所谓"结果"，其实是一长串选择叠加之后的产物，不是某一次决定决定的。`
+                    `身边有不少朋友提过类似感受，只是大家平时不太愿意展开聊，怕显得想太多，或者怕别人觉得自己矫情，干脆一笑带过。`,
+                    `把它放在更长的时间维度看，会发现一些有意思的轨迹，那些曾经被忽略的小事，回头看竟然成了关键节点，只是当时没意识到。`,
+                    `不是非黑即白那种简单，而是渐变过渡的灰，每一层灰里都藏着不同的取舍和妥协，外人看不出来。`,
+                    `我们看到的所谓"结果"，其实是一长串选择叠加之后的产物，不是某一次决定决定的，这一点容易被忽略。`
                 ]
             },
             {
                 title: '为什么这件事值得多想一层',
                 paras: [
-                    `我们常常习惯用最顺手的方式去理解问题，省事是省事了，代价也不小，因为顺手的方式往往也是偷懒的方式。`,
-                    `多问一句"真的是这样吗"，往往能看到被忽略的角落，那里藏着另一套解释和另一种可能。`,
-                    `这并不是要给自己找麻烦，而是给判断留一点余地，余地多了，焦虑反而会少一点。`,
-                    `想得多一点不等于想得复杂，有时候只是把想得不够的地方补上而已。`
+                    `我们常常习惯用最顺手的方式去理解问题，省事是省事了，代价也不小，因为顺手的方式往往也是偷懒的方式，看不到全貌。`,
+                    `多问一句"真的是这样吗"，往往能看到被忽略的角落，那里藏着另一套解释和另一种可能，比第一印象有意思得多。`,
+                    `这并不是要给自己找麻烦，而是给判断留一点余地，余地多了，焦虑反而会少一点，人也松弛一些。`,
+                    `想得多一点不等于想得复杂，有时候只是把想得不够的地方补上而已，补完之后反而简单了。`
                 ]
             },
             {
                 title: '可以怎么走下一步',
                 paras: [
-                    `如果愿意稍微调整一下视角，事情未必会立刻变好，但至少不会被惯性推着走，被动地接受别人给的答案。`,
-                    `小步试错比一次押宝要稳得多，每一次小的调整都能带来新的反馈，反馈会告诉你下一步往哪里走。`,
-                    `把节奏放慢一点，反而看得更清楚，因为有些东西只有时间能给你答案，急也急不来。`,
-                    `走得不快没关系，关键是方向别偏，别走着走着把自己走丢了。`
+                    `如果愿意稍微调整一下视角，事情未必会立刻变好，但至少不会被惯性推着走，被动地接受别人给的答案和节奏。`,
+                    `小步试错比一次押宝要稳得多，每一次小的调整都能带来新的反馈，反馈会告诉你下一步往哪里走，不用一次想清楚。`,
+                    `把节奏放慢一点，反而看得更清楚，因为有些东西只有时间能给你答案，急也急不来，越急越容易看偏。`,
+                    `走得不快没关系，关键是方向别偏，别走着走着把自己走丢了，回头一看不知道自己在哪。`
                 ]
             },
             {
                 title: '剩下的留给时间',
                 paras: [
-                    `有些答案不是当下能给的，需要让生活再走一段，让更多的经历填进来，答案会自己浮上来。`,
-                    `此刻能做的，是把该想清楚的想清楚，该放下的放下，剩下的就交给时间和慢慢长大的自己。`,
+                    `有些答案不是当下能给的，需要让生活再走一段，让更多的经历填进来，答案会自己浮上来，不用硬挤。`,
+                    `此刻能做的，是把该想清楚的想清楚，该放下的放下，剩下的就交给时间和慢慢长大的自己，不急。`,
                     `${shortTopic}这件事，最后大概会以我们没有预料到的方式回到我们身边，那时候再看今天的纠结，可能会笑出来。`,
-                    `人也好，事也好，都有它们自己的节奏，急不得，慢一点未必是坏事。`
+                    `人也好，事也好，都有它们自己的节奏，急不得，慢一点未必是坏事，快也未必是好事。`
                 ]
             }
         ];
@@ -4728,9 +4725,64 @@ ${directionMap[direction] || directionMap.opinion}
     }
 
     // ===== Tab1 选题中心（参考 daily-news-podcast skill 设计）=====
-    // 多源分级 + 四大板块分类 + 红线过滤
+    // 多源分级 + 四大板块分类 + 红线过滤 + 时间校准
     // 来源优先级：1.微博热搜 2.抖音热点 3.36氪科技 4.推荐选题
     // 四大板块：互联网 #2563eb / 职场 #7c3aed / 科技 #16a34a / 社会爆款 #dc2626
+
+    // ===== 日历组件 + 时间校准 =====
+    function renderCalendar() {
+        const calGrid = document.getElementById('calGrid');
+        const calMonthYear = document.getElementById('calMonthYear');
+        const calWeekday = document.getElementById('calWeekday');
+        const calTimeStatus = document.getElementById('calTimeStatus');
+        if (!calGrid) return;
+
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        const today = now.getDate();
+        const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+        const weekdaysFull = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+        const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+
+        if (calMonthYear) calMonthYear.textContent = `${year}年 ${months[month]}`;
+        if (calWeekday) calWeekday.textContent = `${weekdaysFull[now.getDay()]} · ${today}日`;
+
+        // 计算当月第一天是星期几，当月有多少天
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        // 渲染星期表头
+        let html = '';
+        weekdays.forEach(w => {
+            html += `<span style="font-size:10px;color:#9CA3AF;padding:2px 0;font-weight:600;">${w}</span>`;
+        });
+        // 空白填充
+        for (let i = 0; i < firstDay; i++) {
+            html += `<span></span>`;
+        }
+        // 日期
+        for (let d = 1; d <= daysInMonth; d++) {
+            const isToday = d === today;
+            if (isToday) {
+                html += `<span style="font-size:11px;padding:4px 0;border-radius:4px;background:#10B981;color:#fff;font-weight:600;">${d}</span>`;
+            } else {
+                html += `<span style="font-size:11px;padding:4px 0;color:#374151;">${d}</span>`;
+            }
+        }
+        calGrid.innerHTML = html;
+
+        // 时间校准状态
+        const hour = now.getHours();
+        const min = now.getMinutes();
+        const timeStr = `${hour < 10 ? '0' + hour : hour}:${min < 10 ? '0' + min : min}`;
+        if (calTimeStatus) {
+            calTimeStatus.innerHTML = `<span style="color:#10B981;">●</span> 系统时间 ${timeStr} · 热榜时效正常`;
+        }
+    }
+    renderCalendar();
+    // 每分钟更新一次时间
+    setInterval(renderCalendar, 60000);
 
     const TOPIC_CATEGORIES = {
         internet: { name: '互联网', color: '#2563eb' },
@@ -4749,46 +4801,46 @@ ${directionMap[direction] || directionMap.opinion}
 
     // 抖音风社会热点（CORS 限制下无法直抓，预置高质量选题）
     const DOUYIN_TOPICS = [
-        { title: '打工人下班后的真实状态', cat: 'workplace' },
-        { title: '独居年轻人怎么过周末', cat: 'society' },
-        { title: '当代年轻人的消费降级', cat: 'society' },
-        { title: '996 之外的另一种可能', cat: 'workplace' },
-        { title: '为什么大家越来越不想发朋友圈了', cat: 'society' },
-        { title: '返乡青年在小城市的生活', cat: 'society' },
-        { title: '30 岁还没结婚的人在想什么', cat: 'society' },
-        { title: '同事之间的边界感', cat: 'workplace' },
-        { title: '下班后还要回工作消息吗', cat: 'workplace' },
-        { title: '为什么年轻人开始反向消费', cat: 'society' }
+        { title: '打工人下班后的真实状态', cat: 'workplace', desc: '当代职场人下班后的疲惫与放松，引发共鸣' },
+        { title: '独居年轻人怎么过周末', cat: 'society', desc: '独居生活百态，从社交回避到自我相处' },
+        { title: '当代年轻人的消费降级', cat: 'society', desc: '从冲动消费到理性回归，消费观念转变' },
+        { title: '996 之外的另一种可能', cat: 'workplace', desc: '工作与生活平衡的新探索' },
+        { title: '为什么大家越来越不想发朋友圈了', cat: 'society', desc: '社交疲劳背后的心理变化' },
+        { title: '返乡青年在小城市的生活', cat: 'society', desc: '逃离大城市后的真实感受' },
+        { title: '30 岁还没结婚的人在想什么', cat: 'society', desc: '婚恋焦虑与社会期待的真实对话' },
+        { title: '同事之间的边界感', cat: 'workplace', desc: '职场人际关系的新共识' },
+        { title: '下班后还要回工作消息吗', cat: 'workplace', desc: '工作与私人时间的界限之争' },
+        { title: '为什么年轻人开始反向消费', cat: 'society', desc: '不追求品牌，更注重性价比和体验' }
     ];
 
     // 36 氪风科技商业（CORS 限制下无法直抓，预置高质量选题）
     const KR36_TOPICS = [
-        { title: 'AI 大模型对普通人工作的影响', cat: 'tech' },
-        { title: '国产 AI 产品的最新进展', cat: 'tech' },
-        { title: '大厂裁员潮背后的逻辑', cat: 'workplace' },
-        { title: '短视频平台的算法怎么影响我们', cat: 'internet' },
-        { title: 'AI 工具如何改变内容创作', cat: 'tech' },
-        { title: '互联网平台的治理新趋势', cat: 'internet' },
-        { title: '远程办公会成为常态吗', cat: 'workplace' },
-        { title: 'AI 副业到底能不能赚到钱', cat: 'tech' },
-        { title: '国产手机品牌的下一步', cat: 'tech' },
-        { title: '内容平台如何应对 AI 生成内容', cat: 'internet' }
+        { title: 'AI 大模型对普通人工作的影响', cat: 'tech', desc: 'AI 正在改变哪些岗位，普通人如何应对' },
+        { title: '国产 AI 产品的最新进展', cat: 'tech', desc: '国产大模型产品的实用化探索' },
+        { title: '大厂裁员潮背后的逻辑', cat: 'workplace', desc: '行业调整期的人才流动趋势' },
+        { title: '短视频平台的算法怎么影响我们', cat: 'internet', desc: '推荐算法对内容消费的深层影响' },
+        { title: 'AI 工具如何改变内容创作', cat: 'tech', desc: '从写作到配图，AI 工具重塑创作流程' },
+        { title: '互联网平台的治理新趋势', cat: 'internet', desc: '平台监管与内容生态的平衡' },
+        { title: '远程办公会成为常态吗', cat: 'workplace', desc: '混合办公模式的未来走向' },
+        { title: 'AI 副业到底能不能赚到钱', cat: 'tech', desc: 'AI 副业的真实收益与陷阱' },
+        { title: '国产手机品牌的下一步', cat: 'tech', desc: '国产手机在高端市场的突破' },
+        { title: '内容平台如何应对 AI 生成内容', cat: 'internet', desc: 'AIGC 时代的内容治理新挑战' }
     ];
 
     // 推荐选题（深度思考向，不依赖外部 API）
     const RECOMMEND_TOPICS = [
-        { title: '普通人如何过好这一生', cat: 'society' },
-        { title: '为什么越长大越不容易开心', cat: 'society' },
-        { title: '独处是一种被低估的能力', cat: 'society' },
-        { title: '那些 30 岁才明白的事', cat: 'workplace' },
-        { title: '工作之外，人生还能装下什么', cat: 'workplace' },
-        { title: '为什么我们总是想得太多做得太少', cat: 'society' },
-        { title: '慢下来，生活会还你一份从容', cat: 'society' },
-        { title: '关于「足够好」这件事', cat: 'society' },
-        { title: '把生活过成自己想要的样子', cat: 'society' },
-        { title: '为什么独处比社交更让人放松', cat: 'society' },
-        { title: '30 岁之后，朋友越来越少是好事', cat: 'workplace' },
-        { title: '我们都在用忙碌逃避真正的自己', cat: 'society' }
+        { title: '普通人如何过好这一生', cat: 'society', desc: '在没有标准答案的生活里找到自己的节奏' },
+        { title: '为什么越长大越不容易开心', cat: 'society', desc: '成年后快乐阈值变化的思考' },
+        { title: '独处是一种被低估的能力', cat: 'society', desc: '独处与孤独的区别，以及独处的价值' },
+        { title: '那些 30 岁才明白的事', cat: 'workplace', desc: '年龄节点带来的人生感悟' },
+        { title: '工作之外，人生还能装下什么', cat: 'workplace', desc: '职业身份之外的自我探索' },
+        { title: '为什么我们总是想得太多做得太少', cat: 'society', desc: '行动力不足的心理根源' },
+        { title: '慢下来，生活会还你一份从容', cat: 'society', desc: '快节奏时代的反潮流思考' },
+        { title: '关于「足够好」这件事', cat: 'society', desc: '完美主义之外的另一种活法' },
+        { title: '把生活过成自己想要的样子', cat: 'society', desc: '主动选择而非被动接受' },
+        { title: '为什么独处比社交更让人放松', cat: 'society', desc: '内向者的能量恢复机制' },
+        { title: '30 岁之后，朋友越来越少是好事', cat: 'workplace', desc: '社交圈精简背后的人生做减法' },
+        { title: '我们都在用忙碌逃避真正的自己', cat: 'society', desc: '忙碌作为一种心理防御机制' }
     ];
 
     // 选题中心状态
@@ -4808,17 +4860,19 @@ ${directionMap[direction] || directionMap.opinion}
 
     // 抓取微博热搜（使用 vvhan API，带重试和 fallback）
     async function fetchWeiboTopics() {
+        const now = new Date();
+        const timeStr = `${now.getHours() < 10 ? '0' + now.getHours() : now.getHours()}:${now.getMinutes() < 10 ? '0' + now.getMinutes() : now.getMinutes()}`;
         const fallback = [
-            { title: '当代年轻人的精神状态', cat: 'society' },
-            { title: '打工人的一天', cat: 'workplace' },
-            { title: 'AI 改变了哪些工作', cat: 'tech' },
-            { title: '大厂年终奖真相', cat: 'workplace' },
-            { title: '互联网行业的下一个风口', cat: 'internet' },
-            { title: '为什么年轻人不爱看新闻了', cat: 'society' },
-            { title: '独居生活的真实感受', cat: 'society' },
-            { title: 'AI 工具让人变懒了吗', cat: 'tech' },
-            { title: '内容创作者的生存现状', cat: 'internet' },
-            { title: '慢就业的年轻人', cat: 'workplace' }
+            { title: '当代年轻人的精神状态', cat: 'society', desc: '年轻人面对压力的真实反应', time: timeStr },
+            { title: '打工人的一天', cat: 'workplace', desc: '职场人日常生活的真实记录', time: timeStr },
+            { title: 'AI 改变了哪些工作', cat: 'tech', desc: 'AI 技术对传统岗位的冲击', time: timeStr },
+            { title: '大厂年终奖真相', cat: 'workplace', desc: '互联网行业薪酬福利现状', time: timeStr },
+            { title: '互联网行业的下一个风口', cat: 'internet', desc: '行业趋势预测与新机会', time: timeStr },
+            { title: '为什么年轻人不爱看新闻了', cat: 'society', desc: '信息消费习惯的变化', time: timeStr },
+            { title: '独居生活的真实感受', cat: 'society', desc: '一个人住的生活体验', time: timeStr },
+            { title: 'AI 工具让人变懒了吗', cat: 'tech', desc: 'AI 工具对人类能力的影响', time: timeStr },
+            { title: '内容创作者的生存现状', cat: 'internet', desc: '自媒体行业的内卷与出路', time: timeStr },
+            { title: '慢就业的年轻人', cat: 'workplace', desc: '不急于就业的年轻人心态', time: timeStr }
         ];
         for (let attempt = 0; attempt < 3; attempt++) {
             try {
@@ -4831,7 +4885,9 @@ ${directionMap[direction] || directionMap.opinion}
                 const items = (data.data || []).slice(0, 30).map(item => ({
                     title: item.title || item.name || '',
                     cat: guessCategory(item.title || item.name || ''),
-                    source: 'weibo'
+                    source: 'weibo',
+                    desc: (item.title || '').slice(0, 20) + '...',
+                    time: timeStr
                 })).filter(it => it.title);
                 if (items.length > 0) return filterByRedline(items);
             } catch (e) {
@@ -4870,14 +4926,25 @@ ${directionMap[direction] || directionMap.opinion}
             recommend: '推荐选题'
         }[topicCenterState.currentSource] || '';
 
-        hotTopicsList.innerHTML = `<div style="font-size:12px;color:#6B7280;margin-bottom:8px;font-weight:600;">${sourceLabel}（共 ${items.length} 条，点击选择）：</div>` +
+        // 时间标签：实时抓取的显示"实时"，预置的显示"今日精选"
+        const timeLabel = topicCenterState.currentSource === 'weibo' ? '实时' : '今日精选';
+
+        hotTopicsList.innerHTML = `<div style="font-size:12px;color:#6B7280;margin-bottom:8px;font-weight:600;">${sourceLabel} · ${timeLabel}（共 ${items.length} 条，点击选择）：</div>` +
             items.map((it, i) => {
                 const catInfo = TOPIC_CATEGORIES[it.cat] || TOPIC_CATEGORIES.society;
                 const safeTitle = (it.title || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-                return `<div style="display:flex;align-items:center;padding:8px 12px;margin-bottom:4px;border:1px solid #E5E7EB;background:#fff;border-radius:6px;cursor:pointer;transition:all 0.15s;" data-topic="${safeTitle}" class="topic-item">
-                    <span style="color:#9CA3AF;font-size:12px;margin-right:10px;min-width:24px;">${i + 1}.</span>
-                    <span style="flex:1;font-size:13px;color:#374151;">${safeTitle}</span>
-                    <span style="font-size:10px;padding:2px 8px;border-radius:3px;background:${catInfo.color}1a;color:${catInfo.color};margin-left:8px;font-weight:600;">${catInfo.name}</span>
+                const safeDesc = (it.desc || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+                const itemTime = it.time || timeLabel;
+                return `<div style="padding:10px 12px;margin-bottom:6px;border:1px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;transition:all 0.15s;" data-topic="${safeTitle}" class="topic-item">
+                    <div style="display:flex;align-items:center;margin-bottom:4px;">
+                        <span style="color:#9CA3AF;font-size:11px;margin-right:8px;min-width:20px;">${i + 1}.</span>
+                        <span style="flex:1;font-size:13px;color:#1F2937;font-weight:500;">${safeTitle}</span>
+                        <span style="font-size:10px;padding:1px 6px;border-radius:3px;background:${catInfo.color}1a;color:${catInfo.color};margin-left:8px;font-weight:600;white-space:nowrap;">${catInfo.name}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;padding-left:28px;">
+                        <span style="font-size:11px;color:#9CA3AF;margin-right:8px;">${itemTime}</span>
+                        ${safeDesc ? `<span style="font-size:11px;color:#6B7280;line-height:1.4;">${safeDesc}</span>` : ''}
+                    </div>
                 </div>`;
             }).join('');
         hotTopicsList.style.display = 'block';
@@ -4930,15 +4997,15 @@ ${directionMap[direction] || directionMap.opinion}
             if (source === 'weibo') {
                 items = await fetchWeiboTopics();
             } else if (source === 'douyin') {
-                items = DOUYIN_TOPICS.map(t => ({ ...t, source: 'douyin' }));
+                items = DOUYIN_TOPICS.map(t => ({ ...t, source: 'douyin', time: '今日精选' }));
             } else if (source === '36kr') {
-                items = KR36_TOPICS.map(t => ({ ...t, source: '36kr' }));
+                items = KR36_TOPICS.map(t => ({ ...t, source: '36kr', time: '今日精选' }));
             } else {
-                items = RECOMMEND_TOPICS.map(t => ({ ...t, source: 'recommend' }));
+                items = RECOMMEND_TOPICS.map(t => ({ ...t, source: 'recommend', time: '今日精选' }));
             }
         } catch (e) {
             console.error('加载选题失败:', e);
-            items = RECOMMEND_TOPICS.map(t => ({ ...t, source: 'recommend' }));
+            items = RECOMMEND_TOPICS.map(t => ({ ...t, source: 'recommend', time: '今日精选' }));
         }
 
         topicCenterState.currentList = filterByRedline(items);
@@ -5609,19 +5676,16 @@ ${directionMap[direction] || directionMap.opinion}
     // 逻辑：从编辑器读文章 → LLM 理解文章生成图片 prompt → 生成图片 → 插入编辑器
     async function autoIllustrate() {
         const settings = getAISettings();
-        if (!settings.apiKey) {
-            showToast('请先在 AI 设置中配置 API Key');
-            if (aiSettingsModal) aiSettingsModal.style.display = 'flex';
-            return;
-        }
+        const imgSettings = getImageApiSettings();
+        const isDemo = !settings || !settings.apiKey;
+        const usingCustomImageApi = imgSettings.provider !== 'pollinations' && imgSettings.apiKey;
 
-        // 从编辑器提取文章文本（保留图片占位，但配图基于文本理解）
+        // 从编辑器提取文章文本
         const editorHtml = editor.innerHTML;
         if (!editorHtml.trim()) {
             showToast('编辑器为空，请先输入文章内容');
             return;
         }
-        // 提取纯文本用于 LLM 理解
         let articleText = editorHtml.replace(/<img[^>]*>/gi, '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').trim();
         if (articleText.length < 100) {
             showToast('文章内容太少（少于100字），无法规划配图');
@@ -5630,15 +5694,21 @@ ${directionMap[direction] || directionMap.opinion}
 
         const imageCount = settings.imageCount || 4;
         showAISpinner(true);
-        updateAIStatus('正在理解文章内容并规划配图...', `目标 ${imageCount} 张配图`);
+        const imgApiName = usingCustomImageApi ? (IMAGE_PROVIDERS[imgSettings.provider] || {}).name : 'Pollinations 免费方案';
+        updateAIStatus(isDemo ? '演示模式：使用本地 prompt 规划...' : '正在理解文章内容并规划配图...', `目标 ${imageCount} 张 · 图片 API：${imgApiName}`);
 
         try {
-            // 0. 生成封面图（Pollinations 背景 + Canvas 合成文字）
+            // 0. 生成封面图
             let coverImage = null;
             try {
-                updateAIStatus('正在规划封面图...', '');
-                const coverPlan = await planCoverImage(articleText, settings);
-                updateAIStatus('正在生成封面图...', `场景：${coverPlan.scene.substring(0, 20)}...`);
+                updateAIStatus('正在规划封面图...', isDemo ? '演示模式' : '');
+                let coverPlan;
+                if (isDemo) {
+                    coverPlan = mockPlanCover(articleText);
+                } else {
+                    coverPlan = await planCoverImage(articleText, settings);
+                }
+                updateAIStatus('正在生成封面图...', `场景：${(coverPlan.scene || '').substring(0, 20)}... · ${imgApiName}`);
                 coverImage = await generateArticleCover(coverPlan, 88888);
                 updateAIStatus('封面图生成完成', '');
             } catch (e) {
@@ -5646,15 +5716,20 @@ ${directionMap[direction] || directionMap.opinion}
                 updateAIStatus('封面图生成失败，跳过封面', '');
             }
 
-            // 1. LLM 理解文章，生成图片 prompt
-            const imagePrompts = await planImages(articleText, imageCount, settings);
-            if (!imagePrompts || imagePrompts.length === 0) {
-                throw new Error('LLM 未返回有效的图片 prompt');
+            // 1. LLM 理解文章，生成图片 prompt（演示模式下用本地 mock 规划）
+            let imagePrompts;
+            if (isDemo) {
+                updateAIStatus('演示模式：本地规划配图 prompt...', '');
+                imagePrompts = mockPlanImages(articleText, imageCount);
+            } else {
+                imagePrompts = await planImages(articleText, imageCount, settings);
             }
-            updateAIStatus('正在生成配图...', `共 ${imagePrompts.length} 张（并行生成中）`);
+            if (!imagePrompts || imagePrompts.length === 0) {
+                throw new Error('未返回有效的图片 prompt');
+            }
+            updateAIStatus('正在生成配图...', `共 ${imagePrompts.length} 张 · ${imgApiName}（并行）`);
 
-            // 2. 生成图片（data URI）— 并行生成，速度提升 3-4 倍
-            // 用 Promise.allSettled 保证单张失败不影响其他
+            // 2. 生成图片（data URI）— 并行生成
             const PLACEHOLDER_IMG = 'data:image/svg+xml,' + encodeURIComponent(
                 `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">` +
                 `<rect width="1280" height="720" fill="#F3F4F6"/>` +
@@ -5665,59 +5740,108 @@ ${directionMap[direction] || directionMap.opinion}
 
             const imageTasks = imagePrompts.map((prompt, i) =>
                 generateImage(prompt, 1000 + i * 111, 90000)
-                    .then(dataUri => ({ ok: true, dataUri, caption: `配图${i + 1}`, index: i }))
+                    .then(dataUri => ({ ok: true, dataUri, caption: `配图${i + 1}`, index: i, prompt }))
                     .catch(e => {
                         console.error(`图片 ${i + 1} 失败:`, e.message);
-                        return { ok: false, dataUri: PLACEHOLDER_IMG, caption: `配图${i + 1}（加载失败）`, index: i };
+                        return { ok: false, dataUri: PLACEHOLDER_IMG, caption: `配图${i + 1}（加载失败）`, index: i, prompt };
                     })
             );
 
-            // 进度更新（基于已完成数量）
             let completed = 0;
             imageTasks.forEach(t => t.finally(() => {
                 completed++;
-                updateAIStatus('正在生成配图...', `已完成 ${completed}/${imagePrompts.length} 张（并行生成）`);
+                updateAIStatus('正在生成配图...', `已完成 ${completed}/${imagePrompts.length} 张 · ${imgApiName}`);
             }));
 
             const results = await Promise.all(imageTasks);
-            // 按原始顺序排列（imageTasks 按 index 顺序 map 创建，结果本来就是有序的；
-            // 这里再排一次作为防御性代码，确保顺序正确）
             results.sort((a, b) => a.index - b.index);
             const imageUrls = results.map(r => r.dataUri);
             const imageCaptions = results.map(r => r.caption);
             const successCount = results.filter(r => r.ok).length;
 
-            // 3. 把图片插入编辑器现有内容
+            // 3. 把图片插入编辑器
             updateAIStatus('正在插入配图...', `插入 ${successCount} 张`);
-            // 将编辑器 HTML 转为带图片语法的文本
             let currentText = editorHtml
                 .replace(/<img[^>]*alt="([^"]*)"[^>]*src="([^"]*)"[^>]*>/gi, '![$1]($2)')
                 .replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, '![]($1)')
                 .replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n\n').replace(/<\/div>/gi, '\n')
                 .replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
-            // 插入新图片
             let finalArticle = insertImagesIntoArticle(currentText, imageUrls, imageCaptions);
-            // 封面图插入文章最开头
             if (coverImage) {
                 finalArticle = `![封面](${coverImage})\n\n` + finalArticle;
             }
-            // 重新渲染编辑器
             const formatted = smartFormatText(finalArticle);
             const newHtml = markdownToHTML(formatted);
             editor.innerHTML = newHtml;
             updatePreview();
 
             const imgInfo = successCount > 0
-                ? `配图 ${successCount}/${imageUrls.length} 张成功`
+                ? `配图 ${successCount}/${imageUrls.length} 张成功 · ${imgApiName}`
                 : `配图全部使用占位图`;
-            updateAIStatus('配图完成！', imgInfo);
+            updateAIStatus('配图完成！', imgInfo + (isDemo ? '（演示模式 prompt 规划）' : ''));
             showAISpinner(false);
-            showToast(`配图完成！${successCount} 张图片已插入`);
+            showToast(`配图完成！${successCount} 张图片已插入${isDemo ? '（演示模式）' : ''}`);
         } catch (e) {
             showAISpinner(false);
             updateAIStatus('配图失败', e.message);
             showToast('配图失败：' + e.message);
         }
+    }
+
+    // 演示模式：本地 mock 图片 prompt 规划（无 LLM API Key 时使用）
+    function mockPlanImages(article, imageCount) {
+        // 从文章提取关键词，生成与内容相关的英文 prompt
+        const lower = article.toLowerCase();
+        const hasNight = /深夜|凌晨|晚上|夜晚|加班/.test(article);
+        const hasOffice = /办公|公司|职场|上班|同事/.test(article);
+        const hasCity = /城市|都市|街|路|地铁/.test(article);
+        const hasNature = /自然|公园|树|花|绿|山|海/.test(article);
+        const hasTech = /ai|科技|手机|电脑|算法|数据/.test(lower);
+        const hasPeople = /人|朋友|家|我们/.test(article);
+
+        const scenePool = [];
+        if (hasNight) scenePool.push('editorial photography, person working late at night in dimly lit office, monitor glow on face, quiet and contemplative mood, ultra detailed, 8k quality, no text, no watermark');
+        if (hasOffice) scenePool.push('editorial photography, modern office workspace with coffee cup and laptop, soft morning light through window, clean and minimal, ultra detailed, 8k quality, no text, no watermark');
+        if (hasCity) scenePool.push('editorial photography, busy city street at golden hour, people walking with purpose, warm light, shallow depth of field, ultra detailed, 8k quality, no text, no watermark');
+        if (hasNature) scenePool.push('editorial photography, peaceful park scene with sunlight through leaves, bench under tree, serene atmosphere, ultra detailed, 8k quality, no text, no watermark');
+        if (hasTech) scenePool.push('editorial photography, modern technology concept, hands interacting with device, blue ambient light, futuristic but warm, ultra detailed, 8k quality, no text, no watermark');
+        if (hasPeople) scenePool.push('editorial photography, candid moment of person in everyday life, natural expression, warm tones, documentary style, ultra detailed, 8k quality, no text, no watermark');
+
+        // 默认通用场景
+        const defaults = [
+            'editorial photography, minimalist still life with warm natural light, soft shadows, contemplative mood, ultra detailed, 8k quality, no text, no watermark',
+            'editorial photography, urban landscape at blue hour, calm and reflective, leading lines composition, ultra detailed, 8k quality, no text, no watermark',
+            'editorial photography, close-up of hands holding coffee cup, steam rising, warm cafe light, cozy atmosphere, ultra detailed, 8k quality, no text, no watermark',
+            'editorial photography, window with rain drops, city view blurred behind, moody and introspective, cool tones, ultra detailed, 8k quality, no text, no watermark',
+            'editorial photography, bookshelf with warm reading lamp, cozy corner, intellectual mood, ultra detailed, 8k quality, no text, no watermark',
+            'editorial photography, empty subway platform with warm light, sense of waiting and passage of time, ultra detailed, 8k quality, no text, no watermark'
+        ];
+
+        const prompts = [];
+        for (let i = 0; i < imageCount; i++) {
+            if (i < scenePool.length) {
+                prompts.push(scenePool[i]);
+            } else {
+                prompts.push(defaults[i % defaults.length]);
+            }
+        }
+        return prompts;
+    }
+
+    // 演示模式：本地 mock 封面规划
+    function mockPlanCover(article) {
+        const titleMatch = article.match(/^#\s+(.+)/m);
+        const title = titleMatch ? titleMatch[1].slice(0, 30) : '关于生活的一点思考';
+        const hasNight = /深夜|凌晨|夜晚/.test(article);
+        const scene = hasNight
+            ? '深夜城市天台，一个人独自站着望向远方，城市灯火在身后'
+            : '清晨阳光透过窗帘，书桌上放着一杯热茶和一本打开的书';
+        return {
+            scene,
+            title,
+            quote: '生活没有标准答案，多想一层就多一层余地。',
+            articleType: /ai|科技|手机|电脑/i.test(article) ? 'tech' : 'lifestyle'
+        };
     }
 
     // 暴露到全局，供工具栏按钮调用
