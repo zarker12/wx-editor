@@ -3138,16 +3138,22 @@ function formatParagraph(text) {
         },
         tencent: {
             name: '腾讯云 TokenHub（混元文生图）',
-            // 腾讯云 TokenHub 图片 API 是异步两阶段：submit 提交 + query 轮询
-            // 注意：不是 OpenAI 兼容的 /v1/images/generations 格式
             baseUrl: 'https://tokenhub.tencentmaas.com/v1/api/image/submit',
             queryUrl: 'https://tokenhub.tencentmaas.com/v1/api/image/query',
             model: 'hy-image-v3.0',
             helpText: '到腾讯云 TokenHub 控制台创建 API Key（与文章 LLM 共用）',
             helpUrl: 'https://console.cloud.tencent.com/maas',
             needsApiKey: true,
-            // 腾讯云异步 API：先 submit 拿 id，再 query 轮询结果
             responseFormat: 'async_tencent'
+        },
+        volcengine: {
+            name: '火山引擎 Seedream（豆包文生图）',
+            baseUrl: 'https://ark.cn-beijing.volces.com/api/v3/images/generations',
+            model: 'doubao-seedream-4-5-251128',
+            helpText: '到火山方舟控制台创建 API Key，支持 doubao-seedream-4.5/4.0/3.0 等模型',
+            helpUrl: 'https://console.volcengine.com/ark',
+            needsApiKey: true,
+            responseFormat: 'url'
         },
         custom_image: {
             name: '自定义',
@@ -4098,11 +4104,16 @@ ${article.substring(0, 3000)}
         const startTime = Date.now();
         const settings = { provider, apiKey, baseUrl, model };
         try {
-            // 调用 generateImageViaApi 生成一张测试图
             const dataUri = await generateImageViaApi('a red apple on white background, simple test image, ultra detailed', settings, config, 60000);
             const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-            if (dataUri && dataUri.startsWith('data:image')) {
-                imageTestResult.innerHTML = `<span style="color:#10B981;font-weight:600;">✅ 图片 API 连接成功！(${elapsed}s)</span><br><img src="${dataUri}" style="max-width:120px;max-height:80px;margin-top:6px;border-radius:4px;border:1px solid #E5E7EB;" alt="测试图">`;
+            if (dataUri && (dataUri.startsWith('data:image') || dataUri.startsWith('http'))) {
+                // 成功：data URI 或可访问的 URL（CORS 失败时回退到 URL）
+                imageTestResult.innerHTML = `<span style="color:#10B981;font-weight:600;">✅ 图片 API 连接成功！(${elapsed}s)</span><br>`;
+                if (dataUri.startsWith('data:image')) {
+                    imageTestResult.innerHTML += `<img src="${dataUri}" style="max-width:120px;max-height:80px;margin-top:6px;border-radius:4px;border:1px solid #E5E7EB;" alt="测试图">`;
+                } else {
+                    imageTestResult.innerHTML += `<span style="color:#6B7280;">图片 URL: ${dataUri.substring(0, 80)}...</span>`;
+                }
             } else {
                 imageTestResult.innerHTML = `<span style="color:#DC2626;">❌ 返回异常 (${elapsed}s): ${String(dataUri).substring(0, 100)}</span>`;
             }
