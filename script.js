@@ -3092,6 +3092,11 @@ function formatParagraph(text) {
     const llmTestResult = document.getElementById('llmTestResult');
     const imageTestBtn = document.getElementById('imageTestBtn');
     const imageTestResult = document.getElementById('imageTestResult');
+    // 模型刷新按钮
+    const refreshLLMModelsBtn = document.getElementById('refreshLLMModelsBtn');
+    const llmModelList = document.getElementById('llmModelList');
+    const refreshImageModelsBtn = document.getElementById('refreshImageModelsBtn');
+    const imageModelList = document.getElementById('imageModelList');
 
     // ===== 图片生成 API 预设配置表 =====
     // 与文章 LLM 不同：图片生成 API 调用格式各厂商差异较大，需按 provider 分别处理
@@ -3846,22 +3851,27 @@ ${article.substring(0, 3000)}
 
                 // 成功状态：completed / success / SUCCEEDED
                 if (status === 'completed' || status === 'success' || status === 'SUCCEEDED') {
-                    // 尝试从多个位置提取图片 URL
+                    // 尝试从多个位置提取图片 URL（兼容不同 API 返回格式）
                     let url = '';
-                    if (queryData.output && queryData.output.image_url) {
-                        url = queryData.output.image_url;
-                    } else if (queryData.output && queryData.output.url) {
-                        url = queryData.output.url;
-                    } else if (queryData.data && queryData.data.image_url) {
-                        url = queryData.data.image_url;
-                    } else if (queryData.data && queryData.data.url) {
-                        url = queryData.data.url;
-                    } else if (queryData.image_url) {
-                        url = queryData.image_url;
-                    } else if (queryData.url) {
-                        url = queryData.url;
-                    } else if (queryData.data && queryData.data.images && queryData.data.images[0]) {
-                        url = queryData.data.images[0];
+                    // 腾讯云格式: data[0].url
+                    if (Array.isArray(queryData.data) && queryData.data[0]) {
+                        url = queryData.data[0].url || queryData.data[0].image_url || '';
+                    }
+                    // 通用格式: output.image_url / output.url
+                    if (!url && queryData.output) {
+                        url = queryData.output.image_url || queryData.output.url || '';
+                    }
+                    // 其他格式: data.image_url / data.url
+                    if (!url && queryData.data && typeof queryData.data === 'object' && !Array.isArray(queryData.data)) {
+                        url = queryData.data.image_url || queryData.data.url || '';
+                    }
+                    // 顶层格式
+                    if (!url) {
+                        url = queryData.image_url || queryData.url || '';
+                    }
+                    // images 数组格式
+                    if (!url && queryData.data && Array.isArray(queryData.data.images)) {
+                        url = queryData.data.images[0] || '';
                     }
                     if (!url) {
                         throw new Error('任务成功但未找到图片 URL: ' + JSON.stringify(queryData).substring(0, 300));
@@ -3879,6 +3889,87 @@ ${article.substring(0, 3000)}
         } finally {
             clearTimeout(timer);
         }
+    }
+
+    // ===== 刷新模型列表（调用 OpenAI 兼容的 GET /v1/models）=====
+    // 支持腾讯云 TokenHub、OpenAI、智谱等支持 /v1/models 的 API
+    async function fetchModels(baseUrl, apiKey, modelType) {
+        if (!baseUrl || !apiKey) return [];
+        const cleanKey = apiKey.replace(/[\u3000\u200B\u200C\u200D\uFEFF]/g, '').replace(/[^\x20-\x7E]/g, '').trim();
+        if (!cleanKey) return [];
+
+        // 构建模型列表 URL（兼容各种 baseUrl 格式）
+        let modelsUrl = baseUrl.replace(/\/chat\/completions$/, '/models');
+        modelsUrl = modelsUrl.replace(/\/images\/generations$/, '/models');
+        modelsUrl = modelsUrl.replace(/\/api\/image\/submit$/, '/models');
+        if (!modelsUrl.endsWith('/models')) {
+            modelsUrl = modelsUrl.replace(/\/$/, '') + '/models';
+        }
+
+        try {
+            const resp = await fetch(modelsUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${cleanKey}`
+                },
+                signal: AbortSignal.timeout(15000)
+            });
+            if (!resp.ok) return [];
+            const data = await resp.json();
+            if (!data.data || !Array.isArray(data.data)) return [];
+
+            // 根据模型名称过滤分类
+            const models = data.data.map(m => ({
+                id: m.id || m.model || '',
+                name: m.name || m.id || ''
+            })).filter(m => m.id);
+
+            // 按类型过滤：llm 只显示文本模型，image 只显示图片模型
+            if (modelType === 'llm') {
+                return models.filter(m => 
+                    m.id.startsWith('hy') && !m.id.includes('image') && !m.id.includes('Image') ||
+                    m.id.startsWith('glm') ||
+                    m.id.startsWith('gpt') ||
+                    m.id.startsWith('deepseek') ||
+                    m.id.startsWith('qwen') ||
+                    m.id.startsWith('doubao') ||
+                    m.id.startsWith('yi') ||
+                    m.id.startsWith('baichuan') ||
+                    m.id.startsWith('moonshot') ||
+                    m.id.startsWith('minimax')
+                );
+            } else if (modelType === 'image') {
+                return models.filter(m => 
+                    m.id.includes('image') || 
+                    m.id.includes('Image') ||
+                    m.id.includes('vision') ||
+                    m.id.includes('Vision') ||
+                    m.id.includes('cogview') ||
+                    m.id.includes('wanx') ||
+                    m.id.includes('dalle')
+                );
+            }
+            return models;
+        } catch (e) {
+            console.warn('获取模型列表失败:', e.message);
+            return [];
+        }
+    }
+
+    // ===== 渲染模型列表到 UI =====
+    function renderModelList(modelList, container, inputElement) {
+        if (!container || !inputElement) return;
+        if (!modelList || modelList.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+        container.innerHTML = modelList.map(m => 
+            `<button type="button" style="display:block;width:100%;padding:6px 10px;text-align:left;border:none;background:none;font-size:12px;color:#374151;cursor:pointer;border-radius:4px;transition:background 0.15s;" onclick="document.getElementById('${inputElement.id}').value='${m.id}';this.parentElement.style.display='none'">
+                ${m.name || m.id}
+                <span style="float:right;font-size:11px;color:#9CA3AF;">${m.id}</span>
+            </button>`
+        ).join('');
+        container.style.display = 'block';
     }
 
     // ===== 测试 LLM 连接（用当前 UI 中填写的配置，不依赖已保存的设置）=====
@@ -4324,6 +4415,61 @@ ${article.substring(0, 3000)}
     }
     if (imageTestBtn) {
         imageTestBtn.addEventListener('click', testImageConnection);
+    }
+    // 刷新模型列表按钮事件
+    if (refreshLLMModelsBtn) {
+        refreshLLMModelsBtn.addEventListener('click', async () => {
+            const btn = refreshLLMModelsBtn;
+            const origText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ 加载中...';
+            try {
+                const provider = llmProviderSelect ? llmProviderSelect.value : '';
+                const config = LLM_PROVIDERS[provider];
+                let baseUrl = llmBaseUrlInput ? llmBaseUrlInput.value.trim() : '';
+                let apiKey = llmApiKeyInput ? llmApiKeyInput.value.trim() : '';
+                if (!baseUrl && config) baseUrl = config.baseUrl || '';
+                const models = await fetchModels(baseUrl, apiKey, 'llm');
+                renderModelList(models, llmModelList, llmModelInput);
+                if (models.length === 0) {
+                    llmTestResult.innerHTML = '<span style="color:#F59E0B;">⚠️ 未获取到模型列表（API可能不支持 /v1/models）</span>';
+                }
+            } catch (e) {
+                console.error('刷新模型列表失败:', e);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = origText;
+            }
+        });
+    }
+    if (refreshImageModelsBtn) {
+        refreshImageModelsBtn.addEventListener('click', async () => {
+            const btn = refreshImageModelsBtn;
+            const origText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ 加载中...';
+            try {
+                const provider = imageProviderSelect ? imageProviderSelect.value : '';
+                const config = IMAGE_PROVIDERS[provider];
+                let baseUrl = imageBaseUrlInput ? imageBaseUrlInput.value.trim() : '';
+                let apiKey = imageApiKeyInput ? imageApiKeyInput.value.trim() : '';
+                if (!baseUrl && config) baseUrl = config.baseUrl || '';
+                // 腾讯云图片API需要转换为TokenHub基础URL
+                if (provider === 'tencent' && baseUrl.includes('/api/image/submit')) {
+                    baseUrl = 'https://tokenhub.tencentmaas.com/v1';
+                }
+                const models = await fetchModels(baseUrl, apiKey, 'image');
+                renderModelList(models, imageModelList, imageModelInput);
+                if (models.length === 0) {
+                    imageTestResult.innerHTML = '<span style="color:#F59E0B;">⚠️ 未获取到图片模型列表（API可能不支持 /v1/models）</span>';
+                }
+            } catch (e) {
+                console.error('刷新图片模型列表失败:', e);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = origText;
+            }
+        });
     }
     if (aiSettingsSave) {
         aiSettingsSave.addEventListener('click', () => {
