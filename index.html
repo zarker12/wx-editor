@@ -77,9 +77,10 @@
                             <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:14px;">
                                 <div style="flex:1;">
                                     <label style="display:block;font-size:12px;color:#6B7280;margin-bottom:6px;font-weight:600;">话题</label>
-                                    <input type="text" id="createTopicInput" placeholder="输入你想写的话题，或点「抓热搜」选择" style="width:100%;padding:10px 12px;border:1px solid #D1D5DB;border-radius:8px;font-size:14px;box-sizing:border-box;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#D1D5DB'">
+                                    <input type="text" id="createTopicInput" placeholder="输入你想写的话题，或点「抓热搜」「推荐选题」选择" style="width:100%;padding:10px 12px;border:1px solid #D1D5DB;border-radius:8px;font-size:14px;box-sizing:border-box;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#D1D5DB'">
                                 </div>
-                                <button id="fetchHotBtn" type="button" style="padding:10px 16px;background:#fff;color:#10B981;border:1px solid #10B981;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;white-space:nowrap;height:42px;">🔥 抓热搜</button>
+                                <button id="fetchHotBtn" type="button" style="padding:10px 14px;background:#fff;color:#10B981;border:1px solid #10B981;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;white-space:nowrap;height:42px;">🔥 抓热搜</button>
+                                <button id="suggestTopicBtn" type="button" style="padding:10px 14px;background:#fff;color:#3B82F6;border:1px solid #3B82F6;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;white-space:nowrap;height:42px;">💡 推荐选题</button>
                             </div>
 
                             <!-- 热搜候选区 -->
@@ -96,11 +97,22 @@
                                     </select>
                                 </div>
                                 <div style="flex:1;min-width:140px;">
+                                    <label style="display:block;font-size:12px;color:#6B7280;margin-bottom:6px;font-weight:600;">内容方向</label>
+                                    <select id="createDirection" style="width:100%;padding:8px 10px;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;box-sizing:border-box;">
+                                        <option value="opinion" selected>观点评论</option>
+                                        <option value="experience">经验分享</option>
+                                        <option value="knowledge">知识科普</option>
+                                        <option value="emotion">情感共鸣</option>
+                                    </select>
+                                </div>
+                                <div style="flex:1;min-width:140px;">
                                     <label style="display:block;font-size:12px;color:#6B7280;margin-bottom:6px;font-weight:600;">风格</label>
                                     <select id="createStyle" style="width:100%;padding:8px 10px;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;box-sizing:border-box;">
                                         <option value="deep" selected>深度思考</option>
                                         <option value="casual">轻松随性</option>
                                         <option value="story">故事叙事</option>
+                                        <option value="sharp">观点犀利</option>
+                                        <option value="warm">温暖治愈</option>
                                     </select>
                                 </div>
                                 <div style="flex:1;min-width:140px;">
@@ -804,6 +816,6 @@
     <script src="themes/cyber.js"></script>
     <script src="themes/magazine.js"></script>
     <script src="themes/fresh.js"></script>
-    <script src="script.js?v=31"></script>
+    <script src="script.js?v=32"></script>
 </body>
 </html>

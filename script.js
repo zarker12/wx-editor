@@ -2582,7 +2582,9 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
             if (legacyPreview) legacyPreview.style.display = 'none';
             // 加载 workflowState 的文章信息
             if (window.workflowState && window.workflowState.article) {
-                updateArticleIllustrationPanel();
+                if (typeof window.updateArticleIllustrationPanel === 'function') {
+                    window.updateArticleIllustrationPanel();
+                }
             }
         } else {
             if (aiPanel) aiPanel.style.display = 'none';
@@ -3092,6 +3094,7 @@ function formatParagraph(text) {
     const fetchHotBtn = document.getElementById('fetchHotBtn');
     const hotTopicsList = document.getElementById('hotTopicsList');
     const createWordCount = document.getElementById('createWordCount');
+    const createDirectionSel = document.getElementById('createDirection');
     const createStyleSel = document.getElementById('createStyle');
     const createSectionsSel = document.getElementById('createSections');
     const createGenerateBtn = document.getElementById('createGenerateBtn');
@@ -4445,6 +4448,7 @@ ${article.substring(0, 3000)}
         article: '',      // Tab1 产出的 Markdown 文章
         topic: '',        // 当前话题
         wordCount: 1200,  // 字数设置
+        direction: 'opinion', // 内容方向
         style: 'deep',    // 风格
         sections: 4        // 章节数
     };
@@ -4454,6 +4458,29 @@ ${article.substring(0, 3000)}
         opts = opts || {};
         const wordCount = opts.wordCount || 1200;
         const style = opts.style || 'deep';
+        const direction = opts.direction || 'opinion';
+        const sections = opts.sections || 4;
+
+        // 无 API Key 或调用失败时，回退到高保真 mock 文章（演示模式）
+        if (!settings || !settings.apiKey) {
+            return generateMockArticle(topic, { wordCount, style, direction, sections });
+        }
+
+        try {
+            return await _generateArticleWithLLM(topic, settings, opts);
+        } catch (e) {
+            console.warn('[generateArticleWithParams] LLM 调用失败，回退到演示模式：', e.message);
+            showToast('LLM 调用失败，已切换演示模式：' + e.message);
+            return generateMockArticle(topic, { wordCount, style, direction, sections });
+        }
+    }
+
+    // 真实 LLM 调用（原 generateArticleWithParams 主体）
+    async function _generateArticleWithLLM(topic, settings, opts) {
+        opts = opts || {};
+        const wordCount = opts.wordCount || 1200;
+        const style = opts.style || 'deep';
+        const direction = opts.direction || 'opinion';
         const sections = opts.sections || 4;
 
         // 字数区间
@@ -4466,7 +4493,17 @@ ${article.substring(0, 3000)}
         const styleMap = {
             deep: '深度思考型，观点犀利，有逻辑推演',
             casual: '轻松随性型，口语化，像朋友聊天',
-            story: '故事叙事型，用具体场景和人物展开'
+            story: '故事叙事型，用具体场景和人物展开',
+            sharp: '观点犀利型，立场鲜明，敢下判断，但避免情绪化攻击',
+            warm: '温暖治愈型，关注普通人的微小感受，不煽情但有人情味'
+        };
+
+        // 内容方向描述
+        const directionMap = {
+            opinion: '观点评论型：表达独立思考后的判断，敢于给出立场，避免中庸骑墙',
+            experience: '经验分享型：以第一人称讲实操经验，给出可执行的建议',
+            knowledge: '知识科普型：用通俗的语言讲清楚一个概念或原理，避免术语堆砌',
+            emotion: '情感共鸣型：关注普通人的内心感受，写到读者心里去'
         };
 
         const prompt = `你是一位资深公众号主笔，擅长用独特的视角和有温度的故事写出10w+爆款文章。
@@ -4504,6 +4541,7 @@ ${article.substring(0, 3000)}
 
 【风格要求】
 ${styleMap[style] || styleMap.deep}
+${directionMap[direction] || directionMap.opinion}
 - 加入口语化表达（说实话、坦白讲、老实说）
 - 加入个人视角和情感体验
 - 用具体细节替代抽象概括
@@ -4534,6 +4572,92 @@ ${styleMap[style] || styleMap.deep}
         return await callLLM(prompt, settings);
     }
 
+    // ===== 高保真演示模式：无 API Key 或调用失败时使用的本地文章生成器 =====
+    // 严格遵循项目红线：无宗教/政治/领导人；无杜撰数据/人物/事件；段落松散（2-3 句）
+    // 字数约 1000-1500 字，每章节 250-300 字
+    function generateMockArticle(topic, opts) {
+        opts = opts || {};
+        const style = opts.style || 'deep';
+        const direction = opts.direction || 'opinion';
+        const sections = Math.min(Math.max(opts.sections || 4, 3), 5);
+        const topicStr = (topic || '生活的另一种可能').trim();
+        const shortTopic = topicStr.length > 12 ? topicStr.slice(0, 12) + '…' : topicStr;
+
+        const styleTone = {
+            deep: '冷静地讲，这件事比想象中复杂。我们常常以为想清楚了，其实只是把表面那一层揭开了，底下还有褶皱。',
+            casual: '说实话，这事儿聊起来挺有意思。朋友之间偶尔开几句玩笑，倒比一本正经地说道理更接近真相。',
+            story: '让我想起去年遇到的一个朋友，他跟这件事的关系不一般，但他自己从来没正面承认过。',
+            sharp: '别急着站队，先把事实摆清楚。情绪化的判断往往在最关键的地方把人引偏。',
+            warm: '我们都是普通人，能在小事里找到一点光就很好了，不必每件事都追求彻底想明白。'
+        }[style] || '冷静地讲，这件事比想象中复杂。我们常常以为想清楚了，其实只是把表面那一层揭开了，底下还有褶皱。';
+
+        // 内容方向引导句
+        const directionHook = {
+            opinion: `关于${shortTopic}，我想说一个不太一样的观点，可能跟主流的看法不太一样，但值得停下来想一想。`,
+            experience: `聊${shortTopic}这个话题，我能分享的是一点一点试出来的经验，不一定都对，至少是亲测过的。`,
+            knowledge: `要弄明白${shortTopic}，得先把它拆成几个小问题来看，比想象中容易理解。`,
+            emotion: `说到${shortTopic}，先别急着下定义，先想想这件事在我们心里到底意味着什么。`
+        }[direction] || `关于${shortTopic}，我想说一个不太一样的观点，可能跟主流的看法不太一样，但值得停下来想一想。`;
+
+        const sectionTemplates = [
+            {
+                title: '表面看起来很简单',
+                paras: [
+                    `${topicStr}，听起来像是日常生活里再普通不过的一件事，第一次听到的时候大多数人会下意识点头，觉得懂了。`,
+                    `可一旦认真琢磨，会发现它背后藏着的褶皱比想象中多，那些被一句"就是这样"盖过去的地方，才是值得停下来多看一眼的地方。`,
+                    `${styleTone}`,
+                    `${directionHook}`,
+                    `普通人不一定非要把这些想清楚，但偶尔停下来想一下，会让生活多出一些不一样的质感。`
+                ]
+            },
+            {
+                title: '藏在细节里的另一面',
+                paras: [
+                    `身边有不少朋友提过类似感受，只是大家平时不太愿意展开聊，怕显得想太多，或者怕别人觉得自己矫情。`,
+                    `把它放在更长的时间维度看，会发现一些有意思的轨迹，那些曾经被忽略的小事，回头看竟然成了关键节点。`,
+                    `不是非黑即白那种简单，而是渐变过渡的灰，每一层灰里都藏着不同的取舍和妥协。`,
+                    `我们看到的所谓"结果"，其实是一长串选择叠加之后的产物，不是某一次决定决定的。`
+                ]
+            },
+            {
+                title: '为什么这件事值得多想一层',
+                paras: [
+                    `我们常常习惯用最顺手的方式去理解问题，省事是省事了，代价也不小，因为顺手的方式往往也是偷懒的方式。`,
+                    `多问一句"真的是这样吗"，往往能看到被忽略的角落，那里藏着另一套解释和另一种可能。`,
+                    `这并不是要给自己找麻烦，而是给判断留一点余地，余地多了，焦虑反而会少一点。`,
+                    `想得多一点不等于想得复杂，有时候只是把想得不够的地方补上而已。`
+                ]
+            },
+            {
+                title: '可以怎么走下一步',
+                paras: [
+                    `如果愿意稍微调整一下视角，事情未必会立刻变好，但至少不会被惯性推着走，被动地接受别人给的答案。`,
+                    `小步试错比一次押宝要稳得多，每一次小的调整都能带来新的反馈，反馈会告诉你下一步往哪里走。`,
+                    `把节奏放慢一点，反而看得更清楚，因为有些东西只有时间能给你答案，急也急不来。`,
+                    `走得不快没关系，关键是方向别偏，别走着走着把自己走丢了。`
+                ]
+            },
+            {
+                title: '剩下的留给时间',
+                paras: [
+                    `有些答案不是当下能给的，需要让生活再走一段，让更多的经历填进来，答案会自己浮上来。`,
+                    `此刻能做的，是把该想清楚的想清楚，该放下的放下，剩下的就交给时间和慢慢长大的自己。`,
+                    `${shortTopic}这件事，最后大概会以我们没有预料到的方式回到我们身边，那时候再看今天的纠结，可能会笑出来。`,
+                    `人也好，事也好，都有它们自己的节奏，急不得，慢一点未必是坏事。`
+                ]
+            }
+        ];
+
+        const picks = sectionTemplates.slice(0, sections);
+        const body = picks.map(s => {
+            const paras = s.paras.join('\n\n');
+            return `## ${s.title}\n\n${paras}`;
+        }).join('\n\n');
+
+        const article = `# 关于「${shortTopic}」，想跟你聊点不一样的\n\n> 我们以为看懂了一件事，往往只是看懂了自己想看的那一面。\n\n${body}\n\n## 写在最后\n\n生活里大多数事情都没有标准答案，${shortTopic}也是。\n\n能多想一层，就多一层余地，能把节奏放慢一点，就更稳一点。\n\n不是每件事都要立刻有结论，有些事慢慢长出来，反而更结实。\n\n- E N D -`;
+        return article;
+    }
+
     // 更新创作状态显示
     function setCreateStatus(text, show) {
         if (createStatus) createStatus.style.display = show ? 'block' : 'none';
@@ -4543,11 +4667,7 @@ ${styleMap[style] || styleMap.deep}
     // 生成文章主函数（Tab1）
     async function createGenerateArticle(isRegenerate) {
         const settings = getAISettings();
-        if (!settings.apiKey) {
-            showToast('请先在 AI 设置中配置 API Key');
-            if (aiSettingsModal) aiSettingsModal.style.display = 'flex';
-            return;
-        }
+        const isDemo = !settings || !settings.apiKey;
         const topic = (createTopicInput && createTopicInput.value.trim()) || window.workflowState.topic;
         if (!topic) {
             showToast('请先输入话题或选择热搜');
@@ -4556,6 +4676,7 @@ ${styleMap[style] || styleMap.deep}
         // 记录参数
         window.workflowState.topic = topic;
         window.workflowState.wordCount = createWordCount ? parseInt(createWordCount.value, 10) : 1200;
+        window.workflowState.direction = createDirectionSel ? createDirectionSel.value : 'opinion';
         window.workflowState.style = createStyleSel ? createStyleSel.value : 'deep';
         window.workflowState.sections = createSectionsSel ? parseInt(createSectionsSel.value, 10) : 4;
 
@@ -4564,11 +4685,12 @@ ${styleMap[style] || styleMap.deep}
         const origText = btn ? btn.textContent : '';
         if (btn) { btn.disabled = true; btn.textContent = '⏳ 生成中...'; }
         if (createGenerateBtn) { createGenerateBtn.disabled = true; createGenerateBtn.textContent = '⏳ 生成中...'; }
-        setCreateStatus('AI 正在生成文章（含去 AI 化处理）...', true);
+        setCreateStatus(isDemo ? '演示模式：未配置 API Key，使用内置示例文章生成...' : 'AI 正在生成文章（含去 AI 化处理）...', true);
 
         try {
             const article = await generateArticleWithParams(topic, settings, {
                 wordCount: window.workflowState.wordCount,
+                direction: window.workflowState.direction,
                 style: window.workflowState.style,
                 sections: window.workflowState.sections
             });
@@ -4582,8 +4704,10 @@ ${styleMap[style] || styleMap.deep}
             if (createRegenerateBtn) { createRegenerateBtn.disabled = false; createRegenerateBtn.style.cursor = 'pointer'; createRegenerateBtn.style.color = '#10B981'; createRegenerateBtn.style.borderColor = '#10B981'; }
             // 存入 workflowState
             window.workflowState.article = article;
-            setCreateStatus(`文章已生成，约 ${article.length} 字。可编辑后进入「排版助手」。`, true);
-            showToast('文章生成完成！');
+            setCreateStatus(isDemo
+                ? `演示模式文章已生成，约 ${article.length} 字。可编辑后进入「排版助手」。配置 API Key 后可生成真实 AI 文章。`
+                : `文章已生成，约 ${article.length} 字。可编辑后进入「排版助手」。`, true);
+            showToast(isDemo ? '演示模式文章已生成（配置 API Key 后可用真实 AI）' : '文章生成完成！');
         } catch (e) {
             console.error(e);
             setCreateStatus('生成失败：' + e.message, true);
@@ -4641,6 +4765,43 @@ ${styleMap[style] || styleMap.deep}
                 fetchHotBtn.disabled = false;
                 fetchHotBtn.textContent = origText;
             }
+        });
+    }
+
+    // 推荐选题按钮（不依赖外部 API，本地预置高质量选题）
+    const SUGGESTED_TOPICS = [
+        '普通人如何过好这一生',
+        '为什么越长大越不容易开心',
+        '独处是一种被低估的能力',
+        '那些 30 岁才明白的事',
+        '工作之外，人生还能装下什么',
+        '为什么我们总是想得太多做得太少',
+        '慢下来，生活会还你一份从容',
+        '关于「足够好」这件事',
+        '把生活过成自己想要的样子',
+        '为什么独处比社交更让人放松',
+        '30 岁之后，朋友越来越少是好事',
+        '我们都在用忙碌逃避真正的自己'
+    ];
+    const suggestTopicBtn = document.getElementById('suggestTopicBtn');
+    if (suggestTopicBtn) {
+        suggestTopicBtn.addEventListener('click', () => {
+            if (!hotTopicsList) return;
+            hotTopicsList.innerHTML = '<div style="font-size:12px;color:#3B82F6;margin-bottom:8px;font-weight:600;">💡 推荐选题（点击选择）：</div>' +
+                SUGGESTED_TOPICS.map((t, i) =>
+                    `<button type="button" data-topic="${t.replace(/"/g, '&quot;')}" style="display:block;width:100%;text-align:left;padding:8px 12px;margin-bottom:4px;border:1px solid #E5E7EB;background:#fff;border-radius:6px;font-size:13px;color:#374151;cursor:pointer;transition:all 0.15s;">${i + 1}. ${t}</button>`
+                ).join('');
+            hotTopicsList.style.display = 'block';
+            hotTopicsList.querySelectorAll('button[data-topic]').forEach(b => {
+                b.addEventListener('mouseenter', () => { b.style.background = '#EFF6FF'; b.style.borderColor = '#3B82F6'; });
+                b.addEventListener('mouseleave', () => { b.style.background = '#fff'; b.style.borderColor = '#E5E7EB'; });
+                b.addEventListener('click', () => {
+                    if (createTopicInput) createTopicInput.value = b.dataset.topic;
+                    hotTopicsList.style.display = 'none';
+                    setCreateStatus(`已选择推荐选题：${b.dataset.topic}`, true);
+                });
+            });
+            setCreateStatus(`已加载 ${SUGGESTED_TOPICS.length} 个推荐选题，点击下方选择`, true);
         });
     }
 
@@ -4786,6 +4947,9 @@ ${styleMap[style] || styleMap.deep}
             aiCoverPreview.innerHTML = tab3State.coverPrompt ? '⏳ 封面生成中...' : '尚未生成';
         }
     }
+
+    // 把 Tab3 文章配图的核心函数暴露到 window，供 IIFE 外的 mode-btn 切换调用
+    window.updateArticleIllustrationPanel = updateArticleIllustrationPanel;
 
     // 从排版助手导入文章
     if (aiFetchFromEditorBtn) {
