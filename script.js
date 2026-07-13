@@ -4727,83 +4727,266 @@ ${directionMap[direction] || directionMap.opinion}
         createWordNum.textContent = `${cleanText.length} 字`;
     }
 
-    // 抓热搜按钮
-    if (fetchHotBtn) {
-        fetchHotBtn.addEventListener('click', async () => {
-            const origText = fetchHotBtn.textContent;
-            fetchHotBtn.disabled = true;
-            fetchHotBtn.textContent = '⏳ 抓取中...';
-            setCreateStatus('正在抓取热搜...', true);
-            try {
-                const topics = await fetchHotTopics();
-                if (!topics || topics.length === 0) {
-                    setCreateStatus('未抓取到热搜，请手动输入话题', true);
-                    return;
-                }
-                // 渲染热搜列表
-                if (hotTopicsList) {
-                    hotTopicsList.innerHTML = '<div style="font-size:12px;color:#6B7280;margin-bottom:8px;font-weight:600;">点击选择话题：</div>' +
-                        topics.map((t, i) =>
-                            `<button type="button" data-topic="${t.replace(/"/g, '&quot;')}" style="display:block;width:100%;text-align:left;padding:8px 12px;margin-bottom:4px;border:1px solid #E5E7EB;background:#fff;border-radius:6px;font-size:13px;color:#374151;cursor:pointer;transition:all 0.15s;">${i + 1}. ${t}</button>`
-                        ).join('');
-                    hotTopicsList.style.display = 'block';
-                    // 绑定点击
-                    hotTopicsList.querySelectorAll('button[data-topic]').forEach(b => {
-                        b.addEventListener('mouseenter', () => { b.style.background = '#F0FDF4'; b.style.borderColor = '#10B981'; });
-                        b.addEventListener('mouseleave', () => { b.style.background = '#fff'; b.style.borderColor = '#E5E7EB'; });
-                        b.addEventListener('click', () => {
-                            if (createTopicInput) createTopicInput.value = b.dataset.topic;
-                            hotTopicsList.style.display = 'none';
-                            setCreateStatus(`已选择话题：${b.dataset.topic}`, true);
-                        });
-                    });
-                }
-                setCreateStatus(`抓取到 ${topics.length} 个热搜，点击下方列表选择`, true);
-            } catch (e) {
-                setCreateStatus('热搜抓取失败：' + e.message + '，请手动输入话题', true);
-            } finally {
-                fetchHotBtn.disabled = false;
-                fetchHotBtn.textContent = origText;
-            }
+    // ===== Tab1 选题中心（参考 daily-news-podcast skill 设计）=====
+    // 多源分级 + 四大板块分类 + 红线过滤
+    // 来源优先级：1.微博热搜 2.抖音热点 3.36氪科技 4.推荐选题
+    // 四大板块：互联网 #2563eb / 职场 #7c3aed / 科技 #16a34a / 社会爆款 #dc2626
+
+    const TOPIC_CATEGORIES = {
+        internet: { name: '互联网', color: '#2563eb' },
+        workplace: { name: '职场', color: '#7c3aed' },
+        tech: { name: '科技', color: '#16a34a' },
+        society: { name: '社会爆款', color: '#dc2626' }
+    };
+
+    // 红线关键词：选题标题含这些词的过滤掉
+    const TOPIC_REDLINE_KEYWORDS = [
+        '台独', '两岸', '一国两制', '西藏', '新疆', '香港独立', '主权',
+        '总统', '主席', '总理', '国家领导人', '总书记',
+        '法轮功', '六四', '天安门', '文革',
+        '宗教冲突', '教义', '种族冲突'
+    ];
+
+    // 抖音风社会热点（CORS 限制下无法直抓，预置高质量选题）
+    const DOUYIN_TOPICS = [
+        { title: '打工人下班后的真实状态', cat: 'workplace' },
+        { title: '独居年轻人怎么过周末', cat: 'society' },
+        { title: '当代年轻人的消费降级', cat: 'society' },
+        { title: '996 之外的另一种可能', cat: 'workplace' },
+        { title: '为什么大家越来越不想发朋友圈了', cat: 'society' },
+        { title: '返乡青年在小城市的生活', cat: 'society' },
+        { title: '30 岁还没结婚的人在想什么', cat: 'society' },
+        { title: '同事之间的边界感', cat: 'workplace' },
+        { title: '下班后还要回工作消息吗', cat: 'workplace' },
+        { title: '为什么年轻人开始反向消费', cat: 'society' }
+    ];
+
+    // 36 氪风科技商业（CORS 限制下无法直抓，预置高质量选题）
+    const KR36_TOPICS = [
+        { title: 'AI 大模型对普通人工作的影响', cat: 'tech' },
+        { title: '国产 AI 产品的最新进展', cat: 'tech' },
+        { title: '大厂裁员潮背后的逻辑', cat: 'workplace' },
+        { title: '短视频平台的算法怎么影响我们', cat: 'internet' },
+        { title: 'AI 工具如何改变内容创作', cat: 'tech' },
+        { title: '互联网平台的治理新趋势', cat: 'internet' },
+        { title: '远程办公会成为常态吗', cat: 'workplace' },
+        { title: 'AI 副业到底能不能赚到钱', cat: 'tech' },
+        { title: '国产手机品牌的下一步', cat: 'tech' },
+        { title: '内容平台如何应对 AI 生成内容', cat: 'internet' }
+    ];
+
+    // 推荐选题（深度思考向，不依赖外部 API）
+    const RECOMMEND_TOPICS = [
+        { title: '普通人如何过好这一生', cat: 'society' },
+        { title: '为什么越长大越不容易开心', cat: 'society' },
+        { title: '独处是一种被低估的能力', cat: 'society' },
+        { title: '那些 30 岁才明白的事', cat: 'workplace' },
+        { title: '工作之外，人生还能装下什么', cat: 'workplace' },
+        { title: '为什么我们总是想得太多做得太少', cat: 'society' },
+        { title: '慢下来，生活会还你一份从容', cat: 'society' },
+        { title: '关于「足够好」这件事', cat: 'society' },
+        { title: '把生活过成自己想要的样子', cat: 'society' },
+        { title: '为什么独处比社交更让人放松', cat: 'society' },
+        { title: '30 岁之后，朋友越来越少是好事', cat: 'workplace' },
+        { title: '我们都在用忙碌逃避真正的自己', cat: 'society' }
+    ];
+
+    // 选题中心状态
+    const topicCenterState = {
+        currentSource: 'recommend',      // weibo / douyin / 36kr / recommend
+        currentCategory: 'all',          // all / internet / workplace / tech / society
+        currentList: []                  // [{title, cat, source}]
+    };
+
+    // 红线过滤
+    function filterByRedline(items) {
+        return items.filter(item => {
+            const t = item.title || item;
+            return !TOPIC_REDLINE_KEYWORDS.some(kw => t.includes(kw));
         });
     }
 
-    // 推荐选题按钮（不依赖外部 API，本地预置高质量选题）
-    const SUGGESTED_TOPICS = [
-        '普通人如何过好这一生',
-        '为什么越长大越不容易开心',
-        '独处是一种被低估的能力',
-        '那些 30 岁才明白的事',
-        '工作之外，人生还能装下什么',
-        '为什么我们总是想得太多做得太少',
-        '慢下来，生活会还你一份从容',
-        '关于「足够好」这件事',
-        '把生活过成自己想要的样子',
-        '为什么独处比社交更让人放松',
-        '30 岁之后，朋友越来越少是好事',
-        '我们都在用忙碌逃避真正的自己'
-    ];
-    const suggestTopicBtn = document.getElementById('suggestTopicBtn');
-    if (suggestTopicBtn) {
-        suggestTopicBtn.addEventListener('click', () => {
-            if (!hotTopicsList) return;
-            hotTopicsList.innerHTML = '<div style="font-size:12px;color:#3B82F6;margin-bottom:8px;font-weight:600;">💡 推荐选题（点击选择）：</div>' +
-                SUGGESTED_TOPICS.map((t, i) =>
-                    `<button type="button" data-topic="${t.replace(/"/g, '&quot;')}" style="display:block;width:100%;text-align:left;padding:8px 12px;margin-bottom:4px;border:1px solid #E5E7EB;background:#fff;border-radius:6px;font-size:13px;color:#374151;cursor:pointer;transition:all 0.15s;">${i + 1}. ${t}</button>`
-                ).join('');
-            hotTopicsList.style.display = 'block';
-            hotTopicsList.querySelectorAll('button[data-topic]').forEach(b => {
-                b.addEventListener('mouseenter', () => { b.style.background = '#EFF6FF'; b.style.borderColor = '#3B82F6'; });
-                b.addEventListener('mouseleave', () => { b.style.background = '#fff'; b.style.borderColor = '#E5E7EB'; });
-                b.addEventListener('click', () => {
-                    if (createTopicInput) createTopicInput.value = b.dataset.topic;
-                    hotTopicsList.style.display = 'none';
-                    setCreateStatus(`已选择推荐选题：${b.dataset.topic}`, true);
-                });
+    // 抓取微博热搜（使用 vvhan API，带重试和 fallback）
+    async function fetchWeiboTopics() {
+        const fallback = [
+            { title: '当代年轻人的精神状态', cat: 'society' },
+            { title: '打工人的一天', cat: 'workplace' },
+            { title: 'AI 改变了哪些工作', cat: 'tech' },
+            { title: '大厂年终奖真相', cat: 'workplace' },
+            { title: '互联网行业的下一个风口', cat: 'internet' },
+            { title: '为什么年轻人不爱看新闻了', cat: 'society' },
+            { title: '独居生活的真实感受', cat: 'society' },
+            { title: 'AI 工具让人变懒了吗', cat: 'tech' },
+            { title: '内容创作者的生存现状', cat: 'internet' },
+            { title: '慢就业的年轻人', cat: 'workplace' }
+        ];
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), 8000);
+                const resp = await fetch('https://api.vvhan.com/api/hotlist/wbHot', { signal: controller.signal });
+                clearTimeout(timer);
+                if (!resp.ok) continue;
+                const data = await resp.json();
+                const items = (data.data || []).slice(0, 30).map(item => ({
+                    title: item.title || item.name || '',
+                    cat: guessCategory(item.title || item.name || ''),
+                    source: 'weibo'
+                })).filter(it => it.title);
+                if (items.length > 0) return filterByRedline(items);
+            } catch (e) {
+                if (attempt < 2) await new Promise(r => setTimeout(r, 500));
+            }
+        }
+        return fallback;
+    }
+
+    // 简易分类：根据标题关键词猜测板块
+    function guessCategory(title) {
+        const t = title.toLowerCase();
+        if (/(ai|人工智能|大模型|gpt|claude|芯片|算法|科技|产品发布|手机|电脑)/.test(t)) return 'tech';
+        if (/(裁员|招聘|工作|上班|职场|996|加班|副业|就业|同事|boss)/.test(t)) return 'workplace';
+        if (/(抖音|微博|平台|流量|算法推荐|内容生态|公众号|小红书|b站)/.test(t)) return 'internet';
+        return 'society';
+    }
+
+    // 统一渲染选题列表
+    function renderTopicList() {
+        if (!hotTopicsList) return;
+        let items = topicCenterState.currentList || [];
+        // 按分类过滤
+        if (topicCenterState.currentCategory !== 'all') {
+            items = items.filter(it => it.cat === topicCenterState.currentCategory);
+        }
+        if (items.length === 0) {
+            hotTopicsList.innerHTML = '<div style="padding:20px;text-align:center;color:#9CA3AF;font-size:13px;">该分类下暂无选题</div>';
+            return;
+        }
+
+        const sourceLabel = {
+            weibo: '微博热搜',
+            douyin: '抖音热点',
+            '36kr': '36氪科技',
+            recommend: '推荐选题'
+        }[topicCenterState.currentSource] || '';
+
+        hotTopicsList.innerHTML = `<div style="font-size:12px;color:#6B7280;margin-bottom:8px;font-weight:600;">${sourceLabel}（共 ${items.length} 条，点击选择）：</div>` +
+            items.map((it, i) => {
+                const catInfo = TOPIC_CATEGORIES[it.cat] || TOPIC_CATEGORIES.society;
+                const safeTitle = (it.title || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+                return `<div style="display:flex;align-items:center;padding:8px 12px;margin-bottom:4px;border:1px solid #E5E7EB;background:#fff;border-radius:6px;cursor:pointer;transition:all 0.15s;" data-topic="${safeTitle}" class="topic-item">
+                    <span style="color:#9CA3AF;font-size:12px;margin-right:10px;min-width:24px;">${i + 1}.</span>
+                    <span style="flex:1;font-size:13px;color:#374151;">${safeTitle}</span>
+                    <span style="font-size:10px;padding:2px 8px;border-radius:3px;background:${catInfo.color}1a;color:${catInfo.color};margin-left:8px;font-weight:600;">${catInfo.name}</span>
+                </div>`;
+            }).join('');
+        hotTopicsList.style.display = 'block';
+
+        // 绑定事件
+        hotTopicsList.querySelectorAll('.topic-item').forEach(el => {
+            el.addEventListener('mouseenter', () => { el.style.background = '#F0FDF4'; el.style.borderColor = '#10B981'; });
+            el.addEventListener('mouseleave', () => { el.style.background = '#fff'; el.style.borderColor = '#E5E7EB'; });
+            el.addEventListener('click', () => {
+                if (createTopicInput) createTopicInput.value = el.dataset.topic;
+                setCreateStatus(`已选择话题：${el.dataset.topic}`, true);
             });
-            setCreateStatus(`已加载 ${SUGGESTED_TOPICS.length} 个推荐选题，点击下方选择`, true);
         });
     }
+
+    // 切换来源（核心函数）
+    async function switchTopicSource(source) {
+        if (!source) return;
+        topicCenterState.currentSource = source;
+
+        // UI 按钮状态
+        document.querySelectorAll('.topic-source-btn').forEach(b => {
+            const isActive = b.dataset.source === source;
+            // 保留各自的颜色，激活时反色
+            const colors = {
+                weibo: '#E11D48',
+                douyin: '#111',
+                '36kr': '#1E40AF',
+                recommend: '#3B82F6'
+            };
+            const c = colors[source] || '#3B82F6';
+            if (isActive) {
+                b.style.background = c;
+                b.style.color = '#fff';
+                b.style.borderColor = c;
+                b.classList.add('active');
+            } else {
+                b.style.background = '#fff';
+                b.style.color = c;
+                b.style.borderColor = c;
+                b.classList.remove('active');
+            }
+        });
+
+        // 加载列表
+        setCreateStatus(`正在加载${({weibo:'微博热搜',douyin:'抖音热点','36kr':'36氪科技',recommend:'推荐选题'})[source]}...`, true);
+
+        let items = [];
+        try {
+            if (source === 'weibo') {
+                items = await fetchWeiboTopics();
+            } else if (source === 'douyin') {
+                items = DOUYIN_TOPICS.map(t => ({ ...t, source: 'douyin' }));
+            } else if (source === '36kr') {
+                items = KR36_TOPICS.map(t => ({ ...t, source: '36kr' }));
+            } else {
+                items = RECOMMEND_TOPICS.map(t => ({ ...t, source: 'recommend' }));
+            }
+        } catch (e) {
+            console.error('加载选题失败:', e);
+            items = RECOMMEND_TOPICS.map(t => ({ ...t, source: 'recommend' }));
+        }
+
+        topicCenterState.currentList = filterByRedline(items);
+        renderTopicList();
+        setCreateStatus(`已加载 ${topicCenterState.currentList.length} 条选题，可按分类筛选`, true);
+    }
+
+    // 绑定来源按钮
+    document.querySelectorAll('.topic-source-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            switchTopicSource(btn.dataset.source);
+        });
+    });
+
+    // 绑定分类筛选按钮
+    document.querySelectorAll('.topic-cat-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const cat = btn.dataset.cat;
+            topicCenterState.currentCategory = cat;
+            // UI 状态
+            document.querySelectorAll('.topic-cat-btn').forEach(b => {
+                const isActive = b.dataset.cat === cat;
+                if (isActive) {
+                    b.style.background = '#10B981';
+                    b.style.color = '#fff';
+                    b.style.border = 'none';
+                    b.classList.add('active');
+                } else {
+                    b.style.background = '#fff';
+                    b.style.color = '#374151';
+                    b.style.border = '1px solid #D1D5DB';
+                    b.classList.remove('active');
+                }
+            });
+            renderTopicList();
+        });
+    });
+
+    // 刷新按钮：重新加载当前源
+    const refreshTopicsBtn = document.getElementById('refreshTopicsBtn');
+    if (refreshTopicsBtn) {
+        refreshTopicsBtn.addEventListener('click', () => {
+            switchTopicSource(topicCenterState.currentSource);
+        });
+    }
+
+    // 初始化：默认加载推荐选题
+    setTimeout(() => switchTopicSource('recommend'), 100);
 
     // 生成按钮
     if (createGenerateBtn) {

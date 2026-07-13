@@ -77,14 +77,30 @@
                             <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:14px;">
                                 <div style="flex:1;">
                                     <label style="display:block;font-size:12px;color:#6B7280;margin-bottom:6px;font-weight:600;">话题</label>
-                                    <input type="text" id="createTopicInput" placeholder="输入你想写的话题，或点「抓热搜」「推荐选题」选择" style="width:100%;padding:10px 12px;border:1px solid #D1D5DB;border-radius:8px;font-size:14px;box-sizing:border-box;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#D1D5DB'">
+                                    <input type="text" id="createTopicInput" placeholder="输入你想写的话题，或点下方任一来源选择" style="width:100%;padding:10px 12px;border:1px solid #D1D5DB;border-radius:8px;font-size:14px;box-sizing:border-box;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#D1D5DB'">
                                 </div>
-                                <button id="fetchHotBtn" type="button" style="padding:10px 14px;background:#fff;color:#10B981;border:1px solid #10B981;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;white-space:nowrap;height:42px;">🔥 抓热搜</button>
-                                <button id="suggestTopicBtn" type="button" style="padding:10px 14px;background:#fff;color:#3B82F6;border:1px solid #3B82F6;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;white-space:nowrap;height:42px;">💡 推荐选题</button>
                             </div>
 
-                            <!-- 热搜候选区 -->
-                            <div id="hotTopicsList" style="display:none;margin-top:8px;"></div>
+                            <!-- 选题来源（多源分级） -->
+                            <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+                                <button data-source="weibo" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#E11D48;border:1px solid #E11D48;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">🔥 微博热搜</button>
+                                <button data-source="douyin" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#111;border:1px solid #111;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">🎵 抖音热点</button>
+                                <button data-source="36kr" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#1E40AF;border:1px solid #1E40AF;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">📊 36氪科技</button>
+                                <button data-source="recommend" class="topic-source-btn active" type="button" style="padding:7px 14px;background:#3B82F6;color:#fff;border:1px solid #3B82F6;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">💡 推荐选题</button>
+                                <button id="refreshTopicsBtn" type="button" style="padding:7px 12px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:6px;font-size:12px;cursor:pointer;margin-left:auto;">🔄 刷新</button>
+                            </div>
+
+                            <!-- 分类筛选 -->
+                            <div id="topicCategoryBar" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+                                <button data-cat="all" class="topic-cat-btn active" type="button" style="padding:5px 12px;background:#10B981;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;">全部</button>
+                                <button data-cat="internet" class="topic-cat-btn" type="button" style="padding:5px 12px;background:#fff;color:#2563eb;border:1px solid #2563eb;border-radius:5px;font-size:11px;cursor:pointer;">互联网</button>
+                                <button data-cat="workplace" class="topic-cat-btn" type="button" style="padding:5px 12px;background:#fff;color:#7c3aed;border:1px solid #7c3aed;border-radius:5px;font-size:11px;cursor:pointer;">职场</button>
+                                <button data-cat="tech" class="topic-cat-btn" type="button" style="padding:5px 12px;background:#fff;color:#16a34a;border:1px solid #16a34a;border-radius:5px;font-size:11px;cursor:pointer;">科技</button>
+                                <button data-cat="society" class="topic-cat-btn" type="button" style="padding:5px 12px;background:#fff;color:#dc2626;border:1px solid #dc2626;border-radius:5px;font-size:11px;cursor:pointer;">社会爆款</button>
+                            </div>
+
+                            <!-- 选题列表 -->
+                            <div id="hotTopicsList" style="display:block;margin-top:8px;max-height:340px;overflow-y:auto;"></div>
 
                             <!-- 参数 -->
                             <div style="display:flex;gap:16px;margin-top:14px;flex-wrap:wrap;">
