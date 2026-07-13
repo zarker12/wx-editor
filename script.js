@@ -3292,11 +3292,25 @@ function formatParagraph(text) {
             }
             throw new Error(`LLM 返回格式异常（无 choices）: ${errInfo.substring(0, 200)}`);
         }
-        const msg = data.choices[0].message;
-        if (!msg || typeof msg.content !== 'string') {
-            throw new Error('LLM 返回内容为空');
+        const msg = data.choices[0].message || {};
+        // 兼容多种返回格式：
+        // 1. content 是字符串（标准 OpenAI 格式，含空字符串）
+        // 2. content 是 null（部分模型在 tool_calls 或特定场景下）→ 尝试 reasoning_content
+        // 3. content 是数组（OpenAI vision 格式 [{type:"text", text:"..."}]）→ 拼接文本
+        let content = msg.content;
+        if (content === null || content === undefined) {
+            // 尝试 reasoning_content（部分模型用此字段）
+            content = msg.reasoning_content || '';
         }
-        return msg.content;
+        if (Array.isArray(content)) {
+            // vision 格式：拼接所有 text 段
+            content = content.filter(c => c && c.type === 'text').map(c => c.text).join('');
+        }
+        if (typeof content !== 'string') {
+            // 最后兜底：转字符串
+            content = String(content || '');
+        }
+        return content;
     }
 
     // ===== 6. 话题筛选（让 LLM 从热搜中选最适合写文章的话题）=====
