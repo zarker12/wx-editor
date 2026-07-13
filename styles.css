@@ -968,9 +968,12 @@ body {
 .preview-container {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 28px 20px;
     display: flex;
     justify-content: center;
+    /* 移动端避免被侧边栏挤压 */
+    -webkit-overflow-scrolling: touch;
 }
 
 .phone-frame {
@@ -979,10 +982,14 @@ body {
     background: var(--bg-surface);
     border-radius: 20px;
     box-shadow: var(--shadow-lg);
-    overflow: hidden;
+    /* 改为可见溢出：让内容自适应高度，外层 preview-container 统一滚动
+       避免 phone-frame 与 wechat-content 双滚动条问题 */
+    overflow: visible;
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
+    /* 高度自适应内容，不再硬性约束 */
+    height: auto;
 }
 
 .phone-header-bar {
@@ -992,6 +999,7 @@ body {
     align-items: center;
     justify-content: center;
     border-bottom: 1px solid var(--border-light);
+    border-radius: 20px 20px 0 0;
 }
 
 .phone-header-bar::after {
@@ -1003,8 +1011,9 @@ body {
 }
 
 .wechat-content {
+    /* 不再内部滚动，由外层 preview-container 统一管理 */
     flex: 1;
-    overflow-y: auto;
+    overflow: visible;
     background: var(--bg-surface);
 }
 
@@ -1012,6 +1021,7 @@ body {
     height: 28px;
     background: var(--bg-surface);
     border-top: 1px solid var(--border-light);
+    border-radius: 0 0 20px 20px;
 }
 
 /* ===== Article Body Base ===== */
@@ -1021,6 +1031,9 @@ body {
     font-size: 16px;
     padding: 24px 22px 32px;
     word-break: break-word;
+    /* 防止超宽内容（图片、代码块、长 URL）撑破容器导致截断或溢出 */
+    overflow-wrap: anywhere;
+    min-width: 0;
 }
 
 .article-body p {
@@ -1037,6 +1050,8 @@ body {
 
 .article-body a {
     text-decoration: none;
+    /* 长 URL 自动断行 */
+    word-break: break-all;
 }
 
 .article-body ul,
@@ -1126,6 +1141,8 @@ body {
 @media (max-width: 1200px) {
     .main-content {
         flex-direction: column;
+        overflow-y: auto;
+        overflow-x: hidden;
     }
 
     .sidebar {
@@ -1136,6 +1153,7 @@ body {
         display: flex;
         flex-wrap: wrap;
         gap: 20px;
+        flex-shrink: 0;
     }
 
     .section {
@@ -1153,13 +1171,62 @@ body {
         flex-wrap: wrap;
     }
 
+    /* 移动端：预览区不再被限制 max-height，改用 50vh 让两栏各占一半高度
+       整页滚动由 main-content 统一管理 */
     .preview-section {
-        flex: 0 0 100%;
-        max-height: 400px;
+        flex: 1 1 50vh;
+        min-height: 50vh;
+        max-height: none;
+        border-left: none;
+        border-top: 1px solid var(--border-light);
     }
 
     .phone-frame {
-        max-width: 320px;
+        max-width: 360px;
+    }
+}
+
+/* 超小屏（手机） */
+@media (max-width: 640px) {
+    .header {
+        padding: 10px 16px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .header-actions {
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        padding: 7px 12px;
+        font-size: 12px;
+    }
+
+    .btn .btn-icon + * {
+        display: none;
+    }
+
+    /* 超小屏只显示图标，节省空间 */
+    .btn-icon {
+        font-size: 16px;
+    }
+
+    .phone-frame {
+        max-width: 100%;
+        border-radius: 12px;
+    }
+
+    .article-body {
+        padding: 20px 16px 24px;
+        font-size: 15px;
+    }
+
+    /* 超小屏预览区高度更大 */
+    .preview-section {
+        flex: 1 1 60vh;
+        min-height: 60vh;
     }
 }
 

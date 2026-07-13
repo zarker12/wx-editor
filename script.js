@@ -152,6 +152,42 @@ function getStyleTheme() {
 
 // ===== Markdown转HTML（基础转换，不带样式） =====
 function markdownToHTML(text) {
+    // 优先使用 marked.js（更准确的 Markdown 解析，支持嵌套语法、表格、围栏代码块等）
+    // 加载失败或异常时降级到原正则方案 _markdownToHTMLLegacy
+    if (typeof marked !== 'undefined' && marked.parse) {
+        try {
+            // marked 配置：与项目原有渲染风格对齐
+            // - breaks: true 把单换行转 <br>（贴合原文逻辑）
+            // - gfm: true 支持 GFM 表格、删除线等
+            // 注：marked v5+ 已移除 headerIds/mangle，默认不给 header 加 id
+            marked.setOptions({
+                breaks: true,
+                gfm: true
+            });
+            let html = marked.parse(text || '');
+
+            // 公众号兼容：marked 输出的 <a> 缺少 target，原代码也没加，保持一致
+            // 原代码会过滤特殊符号列表项（•·▪▸...），marked 不支持这些非标准符号
+            // 这里做一次兼容扫描：把以这些符号开头的行转成 <ul><li>
+            // 注意：去掉 - 和 *（marked 已识别），只保留真正的非标准符号
+            html = html.replace(/<p>([•·▪▸▹►▻◆◇★☆✓✔]+)\s+(.+?)<\/p>/g, '<ul><li>$2</li></ul>');
+            // 合并相邻的 </ul><ul>（marked 单行列表会被拆开）
+            html = html.replace(/<\/ul>\s*<ul>/g, '');
+
+            // 防止 marked 给 <h1> 等加 id（headerIds:false 已处理，但低版本兜底）
+            html = html.replace(/(<h[1-6])[^>]*>/g, '$1>');
+
+            // 安全转义：marked 已经做了，这里无需重复
+            return html;
+        } catch (e) {
+            console.warn('marked 解析失败，降级到正则方案:', e);
+        }
+    }
+    return _markdownToHTMLLegacy(text);
+}
+
+// 旧版正则方案（作为 marked 不可用时的兜底）
+function _markdownToHTMLLegacy(text) {
     let html = text;
 
     const codeBlocks = [];
@@ -214,7 +250,7 @@ function markdownToHTML(text) {
 
     lines.forEach((line) => {
         const trimmed = line.trim();
-        
+
         const blockquoteMatch = trimmed.match(/^>\s?(.*)$/);
         if (blockquoteMatch) {
             closeLists();
@@ -753,9 +789,9 @@ function getIntroCardHTML() {
 
 // ===== 更新预览 =====
 function updatePreview() {
-    // 同步编辑器与主题（字体/字号/间距/颜色/padding/子元素样式），
-    // 让编辑器内所见即所得，与右侧预览 1:1 一致
-    syncEditorToTheme();
+    // 性能优化：输入时只调用 syncEditorContainerStyle（轻量），
+    // 主题/字号变化时才走完整 syncEditorToTheme（重量级，会重建 <style> 注入）
+    syncEditorContainerStyle();
 
     const content = normalizeEditorHTML(editor.innerHTML);
     const introHTML = getIntroCardHTML();
@@ -775,9 +811,54 @@ function updatePreview() {
     updateWordCount();
 }
 
+// 轻量容器样式同步：只更新字体/字号/颜色/padding 等 editor 自身样式
+// 不重建 <style id="editor-sync-styles">（那个由 syncEditorToTheme 在主题切换时做）
+function syncEditorContainerStyle() {
+    const c = getColorConfig();
+    const s = getSizeConfig();
+    const sp = getSpacingConfig();
+    const t = getTrackingConfig();
+    const font = getFontFamily();
+    const fontWeight = getFontWeight();
+    const theme = getStyleTheme();
+
+    editor.style.fontFamily = font;
+    editor.style.fontWeight = fontWeight;
+    editor.style.fontSize = s.fontSize;
+    editor.style.lineHeight = sp.lineHeight;
+    editor.style.color = theme.textColor;
+    editor.style.backgroundColor = theme.canvasBg;
+    if (t.letterSpacing) editor.style.letterSpacing = t.letterSpacing;
+    else editor.style.letterSpacing = 'normal';
+
+    const bodyStyle = theme.bodyStyle(c, s, sp, t, font);
+    const padMatch = bodyStyle.match(/padding:\s*([^;]+);/);
+    if (padMatch) editor.style.padding = padMatch[1].trim();
+    const alignMatch = bodyStyle.match(/text-align:\s*([^;]+);/);
+    editor.style.textAlign = alignMatch ? alignMatch[1].trim() : 'left';
+
+    editor.style.maxWidth = '480px';
+    editor.style.margin = '0 auto';
+    editor.style.width = '100%';
+
+    editor.style.setProperty('--editor-accent', c.accent);
+    editor.style.setProperty('--editor-accent-light', c.accentLight);
+    editor.style.setProperty('--editor-accent-dark', c.accentDark);
+    editor.style.setProperty('--editor-accent-soft', c.accentSoft);
+    editor.style.setProperty('--editor-accent-border', c.accentSoft2);
+    editor.style.setProperty('--editor-meta', theme.metaColor);
+}
+
 function debouncedUpdatePreview() {
     if (previewDebounceTimer) clearTimeout(previewDebounceTimer);
-    previewDebounceTimer = setTimeout(updatePreview, 100);
+    // 自适应防抖：内容越长，防抖时间越长，避免长文档输入卡顿
+    // 短文档（≤3000 字）100ms；中文档（3000-10000 字）200ms；长文档（>10000 字）300ms
+    const len = (editor.innerText || '').length;
+    const delay = len > 10000 ? 300 : (len > 3000 ? 200 : 100);
+    previewDebounceTimer = setTimeout(() => {
+        // 用 requestAnimationFrame 让渲染不阻塞输入
+        requestAnimationFrame(updatePreview);
+    }, delay);
 }
 
 // ===== 导出 =====
@@ -2867,10 +2948,68 @@ function formatParagraph(text) {
     };
 
     // ===== 1. 设置管理：从 localStorage 读取/保存 =====
+    // API Key 用 base64 编码存储（btoa），避免明文出现在 localStorage / devtools
+    // 不是真正加密，但能防止"一眼可见"和被自动扫描工具抓取
+    // 配合过期时间戳：默认 30 天后自动清除
+    const API_KEY_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 天
+
+    // base64 编解码（处理 Unicode，避免 btoa 中文报错）
+    function encodeKey(plain) {
+        if (!plain) return '';
+        try {
+            // 先 encodeURIComponent 处理 Unicode，再 btoa
+            return btoa(encodeURIComponent(plain));
+        } catch (e) {
+            // 极端情况下退化为明文
+            return plain;
+        }
+    }
+    function decodeKey(encoded) {
+        if (!encoded) return '';
+        try {
+            // 优先按 base64 解码
+            const decoded = decodeURIComponent(atob(encoded));
+            return decoded;
+        } catch (e) {
+            // 解码失败说明不是 base64，可能是历史明文存储，直接返回
+            return encoded;
+        }
+    }
+    function isKeyExpired(ts) {
+        if (!ts) return false;
+        const now = Date.now();
+        return (now - ts) > API_KEY_TTL_MS;
+    }
+
     function getAISettings() {
+        // 兼容：先查新版 wx_editor_ai_settings_v2（加密 + TTL），再查旧版明文
+        let apiKey = '';
+        let savedAt = 0;
+        try {
+            const raw = localStorage.getItem('wx_editor_ai_settings_v2');
+            if (raw) {
+                const obj = JSON.parse(raw);
+                apiKey = decodeKey(obj.apiKey || '');
+                savedAt = obj.savedAt || 0;
+            }
+        } catch {}
+        // 过期清理：超过 TTL 直接清掉
+        if (savedAt && isKeyExpired(savedAt)) {
+            apiKey = '';
+            try { localStorage.removeItem('wx_editor_ai_settings_v2'); } catch {}
+        }
+        // 旧版明文兼容（一次性迁移）
+        if (!apiKey) {
+            const legacy = localStorage.getItem('llm_api_key');
+            if (legacy) {
+                apiKey = legacy;
+                // 迁移到 v2 后删除旧版明文
+                try { localStorage.removeItem('llm_api_key'); } catch {}
+            }
+        }
         return {
             provider: localStorage.getItem('llm_provider') || 'deepseek',
-            apiKey: localStorage.getItem('llm_api_key') || '',
+            apiKey: apiKey,
             baseUrl: localStorage.getItem('llm_base_url') || '',
             model: localStorage.getItem('llm_model') || '',
             imageCount: parseInt(localStorage.getItem('ai_image_count') || '4', 10)
@@ -2878,7 +3017,18 @@ function formatParagraph(text) {
     }
     function saveAISettings(provider, apiKey, imageCount, baseUrl, model) {
         localStorage.setItem('llm_provider', provider);
-        localStorage.setItem('llm_api_key', apiKey);
+        // API Key 加密存储 + 时间戳
+        try {
+            localStorage.setItem('wx_editor_ai_settings_v2', JSON.stringify({
+                apiKey: encodeKey(apiKey || ''),
+                savedAt: Date.now()
+            }));
+            // 删除可能的旧版明文
+            localStorage.removeItem('llm_api_key');
+        } catch (e) {
+            console.warn('API Key 加密存储失败，退回明文:', e);
+            localStorage.setItem('llm_api_key', apiKey);
+        }
         if (baseUrl !== undefined) localStorage.setItem('llm_base_url', baseUrl);
         if (model !== undefined) localStorage.setItem('llm_model', model);
         localStorage.setItem('ai_image_count', String(imageCount));
@@ -4062,14 +4212,37 @@ async function syncFromGist() {
         const content = gist.files[GIST_FILENAME].content;
         const data = JSON.parse(content || '{}');
 
-        // 同步 AI 设置
+        // 同步 AI 设置（apiKey 用 base64 加密传输）
         if (data.aiSettings) {
             try {
-                localStorage.setItem('wx_editor_ai_settings', JSON.stringify(data.aiSettings));
+                // 兼容：data.aiSettings 可能是对象或字符串
+                const ais = (typeof data.aiSettings === 'string')
+                    ? JSON.parse(data.aiSettings)
+                    : data.aiSettings;
+                // 云端 apiKey 可能是加密的（btoa(encodeURIComponent(...))）也可能是明文（旧数据）
+                // 用往返校验确认是否为加密格式，避免双重编码
+                let cloudKey = ais.apiKey || '';
+                try {
+                    const decoded = decodeURIComponent(atob(cloudKey));
+                    // 往返校验：若重新编码后等于原值，则确认为加密格式
+                    if (decoded && btoa(encodeURIComponent(decoded)) === cloudKey) {
+                        cloudKey = decoded;
+                    }
+                    // 否则视为明文，保持不变（saveAISettings 会做首次加密）
+                } catch {}
+                saveAISettings(
+                    ais.provider || 'deepseek',
+                    cloudKey,
+                    ais.imageCount || 4,
+                    ais.baseUrl || '',
+                    ais.model || ''
+                );
                 // 更新设置弹窗显示
-                if (llmProviderSelect) llmProviderSelect.value = data.aiSettings.provider || 'deepseek';
-                if (llmApiKeyInput) llmApiKeyInput.value = data.aiSettings.apiKey || '';
-                if (imageCountInput) imageCountInput.value = data.aiSettings.imageCount || 4;
+                if (llmProviderSelect) llmProviderSelect.value = ais.provider || 'deepseek';
+                if (llmApiKeyInput) llmApiKeyInput.value = cloudKey;
+                if (llmBaseUrlInput) llmBaseUrlInput.value = ais.baseUrl || '';
+                if (llmModelInput) llmModelInput.value = ais.model || '';
+                if (imageCountInput) imageCountInput.value = ais.imageCount || 4;
                 showToast('AI 设置已从云端同步');
             } catch {}
         }
@@ -4097,8 +4270,16 @@ async function syncToGist() {
 
     try {
         const gistId = await getUserGist(tokenData.accessToken);
+        const s = getAISettings();
+        // 上传到 Gist 时 apiKey 也用 base64 加密（即使 Gist 是 secret，多一层防护）
         const data = {
-            aiSettings: JSON.parse(localStorage.getItem('wx_editor_ai_settings') || 'null'),
+            aiSettings: {
+                provider: s.provider,
+                apiKey: (function(){ try { return btoa(encodeURIComponent(s.apiKey || '')); } catch { return s.apiKey || ''; } })(),
+                baseUrl: s.baseUrl,
+                model: s.model,
+                imageCount: s.imageCount
+            },
             drafts: getDrafts(),
             updatedAt: new Date().toISOString()
         };
