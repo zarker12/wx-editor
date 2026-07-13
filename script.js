@@ -3133,14 +3133,16 @@ function formatParagraph(text) {
         },
         tencent: {
             name: '腾讯云 TokenHub（混元文生图）',
-            // 腾讯云 TokenHub 是 OpenAI 兼容 API，与文章 LLM 共用同一个 API Key
-            // 仅 endpoint 路径不同：/v1/images/generations
-            baseUrl: 'https://tokenhub.tencentmaas.com/v1/images/generations',
-            model: 'hunyuan-image',
+            // 腾讯云 TokenHub 图片 API 是异步两阶段：submit 提交 + query 轮询
+            // 注意：不是 OpenAI 兼容的 /v1/images/generations 格式
+            baseUrl: 'https://tokenhub.tencentmaas.com/v1/api/image/submit',
+            queryUrl: 'https://tokenhub.tencentmaas.com/v1/api/image/query',
+            model: 'hy-image-v3.0',
             helpText: '到腾讯云 TokenHub 控制台创建 API Key（与文章 LLM 共用）',
             helpUrl: 'https://console.cloud.tencent.com/maas',
             needsApiKey: true,
-            responseFormat: 'url'
+            // 腾讯云异步 API：先 submit 拿 id，再 query 轮询结果
+            responseFormat: 'async_tencent'
         },
         custom_image: {
             name: '自定义',
@@ -3678,6 +3680,10 @@ ${article.substring(0, 3000)}
             if (config.responseFormat === 'async') {
                 // 通义万相：异步 API，先 POST 拿 task_id，再轮询
                 imageUrl = await generateImageDashScope(prompt, cleanKey, baseUrl, model, timeoutMs);
+            } else if (config.responseFormat === 'async_tencent') {
+                // 腾讯云 TokenHub：异步两阶段（submit + query 轮询）
+                const queryUrl = config.queryUrl || baseUrl.replace('/submit', '/query');
+                imageUrl = await generateImageTencent(prompt, cleanKey, baseUrl, queryUrl, model, timeoutMs);
             } else {
                 // 智谱 CogView / DALL-E / 自定义：同步 API，POST 直接返回 URL 或 base64
                 const responseFormat = (settings.provider === 'dalle') ? 'url' : config.responseFormat;
@@ -3782,6 +3788,94 @@ ${article.substring(0, 3000)}
                 // PENDING / RUNNING 继续轮询
             }
             throw new Error('通义万相任务超时');
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+
+    // 腾讯云 TokenHub 异步图片生成：POST submit 拿 id → POST query 轮询结果 → 获取图片 URL
+    async function generateImageTencent(prompt, apiKey, submitUrl, queryUrl, model, timeoutMs) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+            // 1. 提交任务
+            const submitRes = await fetch(submitUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: model,
+                    prompt: prompt
+                }),
+                signal: controller.signal
+            });
+
+            if (!submitRes.ok) {
+                const errText = await submitRes.text().catch(() => '');
+                throw new Error(`提交任务失败 ${submitRes.status}: ${errText.substring(0, 200)}`);
+            }
+
+            const submitData = await submitRes.json();
+            const taskId = submitData.id || (submitData.data && submitData.data.id);
+            if (!taskId) {
+                throw new Error('未获取到任务 id: ' + JSON.stringify(submitData).substring(0, 200));
+            }
+
+            // 2. 轮询查询（每 2 秒查一次，最多 timeoutMs）
+            const startTime = Date.now();
+            while (Date.now() - startTime < timeoutMs) {
+                await new Promise(r => setTimeout(r, 2000));
+                const queryRes = await fetch(queryUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: model,
+                        id: taskId
+                    }),
+                    signal: controller.signal
+                });
+                if (!queryRes.ok) continue;
+                const queryData = await queryRes.json();
+                const status = queryData.status || (queryData.data && queryData.data.status);
+
+                // 成功状态：completed / success / SUCCEEDED
+                if (status === 'completed' || status === 'success' || status === 'SUCCEEDED') {
+                    // 尝试从多个位置提取图片 URL
+                    let url = '';
+                    if (queryData.output && queryData.output.image_url) {
+                        url = queryData.output.image_url;
+                    } else if (queryData.output && queryData.output.url) {
+                        url = queryData.output.url;
+                    } else if (queryData.data && queryData.data.image_url) {
+                        url = queryData.data.image_url;
+                    } else if (queryData.data && queryData.data.url) {
+                        url = queryData.data.url;
+                    } else if (queryData.image_url) {
+                        url = queryData.image_url;
+                    } else if (queryData.url) {
+                        url = queryData.url;
+                    } else if (queryData.data && queryData.data.images && queryData.data.images[0]) {
+                        url = queryData.data.images[0];
+                    }
+                    if (!url) {
+                        throw new Error('任务成功但未找到图片 URL: ' + JSON.stringify(queryData).substring(0, 300));
+                    }
+                    return url;
+                }
+                // 失败状态：failed / error / FAILED
+                if (status === 'failed' || status === 'error' || status === 'FAILED') {
+                    const msg = queryData.message || (queryData.data && queryData.data.message) || '未知错误';
+                    throw new Error('图片生成任务失败: ' + msg);
+                }
+                // 其他状态（processing / pending / running / PENDING / RUNNING）继续轮询
+            }
+            throw new Error('腾讯云文生图任务超时');
         } finally {
             clearTimeout(timer);
         }
