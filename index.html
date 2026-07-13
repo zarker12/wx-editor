@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>公众号文章排版助手</title>
-    <link rel="stylesheet" href="styles.css?v=7">
+    <link rel="stylesheet" href="styles.css?v=8">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -66,25 +66,55 @@
                 <div class="section">
                     <h4>排版主题</h4>
                     <div class="style-list">
-                        <button class="style-btn active" data-style="minimal">
+                        <button class="style-btn active" data-style="minimal" data-tooltip="极简白：干净清爽，渐变标题">
+                            <div class="style-thumb" data-theme="minimal">
+                                <span class="thumb-h1"></span>
+                                <span class="thumb-line thumb-line-1"></span>
+                                <span class="thumb-line thumb-line-2"></span>
+                                <span class="thumb-line thumb-line-3 short"></span>
+                            </div>
                             <span class="style-indicator"></span>
-                            极简白
+                            <span class="style-name">极简白</span>
                         </button>
-                        <button class="style-btn" data-style="luxury">
+                        <button class="style-btn" data-style="luxury" data-tooltip="黑金奢：奢华质感，金色点缀">
+                            <div class="style-thumb" data-theme="luxury">
+                                <span class="thumb-h1"></span>
+                                <span class="thumb-line thumb-line-1"></span>
+                                <span class="thumb-line thumb-line-2"></span>
+                                <span class="thumb-line thumb-line-3 short"></span>
+                            </div>
                             <span class="style-indicator"></span>
-                            黑金奢
+                            <span class="style-name">黑金奢</span>
                         </button>
-                        <button class="style-btn" data-style="cyber">
+                        <button class="style-btn" data-style="cyber" data-tooltip="科技感：赛博朋克，代码风格">
+                            <div class="style-thumb" data-theme="cyber">
+                                <span class="thumb-h1"></span>
+                                <span class="thumb-line thumb-line-1"></span>
+                                <span class="thumb-code"></span>
+                                <span class="thumb-line thumb-line-2 short"></span>
+                            </div>
                             <span class="style-indicator"></span>
-                            科技感
+                            <span class="style-name">科技感</span>
                         </button>
-                        <button class="style-btn" data-style="magazine">
+                        <button class="style-btn" data-style="magazine" data-tooltip="杂志风：精致排版，视觉冲击">
+                            <div class="style-thumb" data-theme="magazine">
+                                <span class="thumb-h1"></span>
+                                <span class="thumb-h2"></span>
+                                <span class="thumb-line thumb-line-1"></span>
+                                <span class="thumb-line thumb-line-2 short"></span>
+                            </div>
                             <span class="style-indicator"></span>
-                            杂志风
+                            <span class="style-name">杂志风</span>
                         </button>
-                        <button class="style-btn" data-style="fresh">
+                        <button class="style-btn" data-style="fresh" data-tooltip="清新绿：自然舒适，适合阅读">
+                            <div class="style-thumb" data-theme="fresh">
+                                <span class="thumb-h2"></span>
+                                <span class="thumb-line thumb-line-1"></span>
+                                <span class="thumb-quote"></span>
+                                <span class="thumb-line thumb-line-2 short"></span>
+                            </div>
                             <span class="style-indicator"></span>
-                            清新绿
+                            <span class="style-name">清新绿</span>
                         </button>
                     </div>
                 </div>
@@ -279,41 +309,54 @@
                 </div>
 
                 <div class="editor-toolbar">
-                    <div class="toolbar-group">
-                        <button class="tool-btn" data-action="bold" title="加粗 (Ctrl+B)">
+                    <div class="toolbar-group" data-group="block">
+                        <div class="toolbar-group-label">段落</div>
+                        <button class="tool-btn" data-action="h1" data-tooltip="一级标题 · Ctrl+Alt+1">H1</button>
+                        <button class="tool-btn" data-action="h2" data-tooltip="二级标题 · Ctrl+Alt+2">H2</button>
+                        <button class="tool-btn" data-action="h3" data-tooltip="三级标题 · Ctrl+Alt+3">H3</button>
+                        <button class="tool-btn" data-action="p" data-tooltip="正文段落">¶</button>
+                    </div>
+                    <div class="toolbar-divider"></div>
+                    <div class="toolbar-group" data-group="inline">
+                        <div class="toolbar-group-label">字符</div>
+                        <button class="tool-btn" data-action="bold" data-tooltip="加粗 · Ctrl+B">
                             <span class="tool-text-bold">B</span>
                         </button>
-                        <button class="tool-btn" data-action="italic" title="斜体 (Ctrl+I)">
+                        <button class="tool-btn" data-action="italic" data-tooltip="斜体 · Ctrl+I">
                             <span class="tool-text-italic">I</span>
+                        </button>
+                        <button class="tool-btn" data-action="underline" data-tooltip="下划线 · Ctrl+U">
+                            <span class="tool-text-underline">U</span>
+                        </button>
+                        <button class="tool-btn" data-action="strikethrough" data-tooltip="删除线">
+                            <span class="tool-text-strike">S</span>
+                        </button>
+                        <button class="tool-btn" data-action="code" data-tooltip="行内代码">
+                            &lt;/&gt;
                         </button>
                     </div>
                     <div class="toolbar-divider"></div>
-                    <div class="toolbar-group">
-                        <button class="tool-btn" data-action="h1" title="一级标题">H1</button>
-                        <button class="tool-btn" data-action="h2" title="二级标题">H2</button>
-                        <button class="tool-btn" data-action="h3" title="三级标题">H3</button>
-                        <button class="tool-btn" data-action="p" title="正文段落">¶</button>
+                    <div class="toolbar-group" data-group="list">
+                        <div class="toolbar-group-label">列表</div>
+                        <button class="tool-btn" data-action="list" data-tooltip="无序列表">•≡</button>
+                        <button class="tool-btn" data-action="olist" data-tooltip="有序列表">1≡</button>
+                        <button class="tool-btn" data-action="quote" data-tooltip="引用块">❝</button>
+                        <button class="tool-btn" data-action="divider" data-tooltip="分割线">—</button>
                     </div>
                     <div class="toolbar-divider"></div>
-                    <div class="toolbar-group">
-                        <button class="tool-btn" data-action="list" title="无序列表">•≡</button>
-                        <button class="tool-btn" data-action="olist" title="有序列表">1≡</button>
-                        <button class="tool-btn" data-action="quote" title="引用块">❝</button>
-                        <button class="tool-btn" data-action="divider" title="分割线">—</button>
+                    <div class="toolbar-group" data-group="insert">
+                        <div class="toolbar-group-label">插入</div>
+                        <button class="tool-btn" data-action="link" data-tooltip="插入链接">🔗</button>
+                        <button class="tool-btn" data-action="image" data-tooltip="插入图片">🖼</button>
                     </div>
                     <div class="toolbar-divider"></div>
-                    <div class="toolbar-group">
-                        <button class="tool-btn" data-action="link" title="链接">🔗</button>
-                        <button class="tool-btn" data-action="image" title="图片">🖼</button>
-                        <button class="tool-btn" data-action="code" title="代码">&lt;/&gt;</button>
+                    <div class="toolbar-group" data-group="history">
+                        <div class="toolbar-group-label">历史</div>
+                        <button class="tool-btn" data-action="undo" data-tooltip="撤销 · Ctrl+Z">↶</button>
+                        <button class="tool-btn" data-action="redo" data-tooltip="重做 · Ctrl+Y">↷</button>
                     </div>
-                    <div class="toolbar-divider"></div>
-                    <div class="toolbar-group">
-                        <button class="tool-btn" data-action="undo" title="撤销 (Ctrl+Z)">↶</button>
-                        <button class="tool-btn" data-action="redo" title="重做 (Ctrl+Y)">↷</button>
-                    </div>
-                    <div class="toolbar-divider"></div>
-                    <button class="tool-btn-action" id="autoIllustrateBtn" title="一键配图：理解文章 → AI 生成配图 → 自动插入">
+                    <div class="toolbar-spacer"></div>
+                    <button class="tool-btn-action" id="autoIllustrateBtn" data-tooltip="一键配图：AI 理解文章 → 生成配图 → 自动插入">
                         🖼 一键配图
                     </button>
                 </div>
@@ -549,6 +592,6 @@
     <script src="themes/cyber.js"></script>
     <script src="themes/magazine.js"></script>
     <script src="themes/fresh.js"></script>
-    <script src="script.js?v=19"></script>
+    <script src="script.js?v=20"></script>
 </body>
 </html>

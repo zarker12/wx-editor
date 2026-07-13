@@ -333,6 +333,166 @@ body {
     transform: rotate(45deg);
 }
 
+/* ===== 主题缩略图 ===== */
+.style-thumb {
+    width: 60px;
+    height: 44px;
+    border-radius: 4px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    padding: 6px 7px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex-shrink: 0;
+    overflow: hidden;
+    position: relative;
+}
+
+.style-thumb * {
+    display: block;
+    border-radius: 1px;
+}
+
+.thumb-h1 {
+    height: 6px;
+    background: var(--accent-500);
+    border-radius: 2px;
+}
+
+.thumb-h2 {
+    height: 4px;
+    background: var(--accent-400);
+    width: 70%;
+    border-radius: 1px;
+}
+
+.thumb-line {
+    height: 3px;
+    background: var(--text-tertiary);
+    opacity: 0.5;
+    border-radius: 1px;
+}
+
+.thumb-line.short {
+    width: 55%;
+}
+
+.thumb-code {
+    height: 10px;
+    background: var(--bg-page);
+    border-radius: 2px;
+    position: relative;
+}
+
+.thumb-code::before {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 2px;
+    width: 8px;
+    height: 2px;
+    background: var(--accent-500);
+    border-radius: 1px;
+}
+
+.thumb-code::after {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 6px;
+    width: 14px;
+    height: 2px;
+    background: var(--text-tertiary);
+    border-radius: 1px;
+}
+
+.thumb-quote {
+    height: 8px;
+    background: var(--bg-page);
+    border-radius: 1px;
+    border-left: 2px solid var(--accent-500);
+    margin-left: 0;
+    padding-left: 4px;
+    box-sizing: border-box;
+}
+
+.style-name {
+    flex: 1;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+/* 各主题特色化 */
+.style-thumb[data-theme="minimal"] .thumb-h1 {
+    margin: 1px auto 2px;
+    width: 80%;
+    background: linear-gradient(135deg, var(--accent-500), var(--accent-400));
+}
+.style-thumb[data-theme="minimal"] .thumb-line {
+    height: 2.5px;
+}
+
+.style-thumb[data-theme="luxury"] {
+    background: #1a1a1a;
+    border-color: #333;
+}
+.style-thumb[data-theme="luxury"] .thumb-h1 {
+    background: linear-gradient(135deg, #D4AF37, #F4E5B2);
+    width: 60%;
+    margin: 0 auto;
+}
+.style-thumb[data-theme="luxury"] .thumb-line {
+    background: #8B7355;
+    opacity: 0.6;
+}
+
+.style-thumb[data-theme="cyber"] {
+    background: #0a0a1a;
+    border-color: #1a1a3a;
+}
+.style-thumb[data-theme="cyber"] .thumb-h1 {
+    background: linear-gradient(90deg, #00FFFF, #00BFFF);
+    width: 90%;
+    font-family: monospace;
+}
+.style-thumb[data-theme="cyber"] .thumb-line {
+    background: #4169E1;
+    opacity: 0.5;
+}
+.style-thumb[data-theme="cyber"] .thumb-code {
+    background: #12122a;
+}
+
+.style-thumb[data-theme="magazine"] .thumb-h1 {
+    height: 9px;
+    background: var(--text-primary);
+    width: 100%;
+    font-weight: 700;
+}
+.style-thumb[data-theme="magazine"] .thumb-h2 {
+    height: 4px;
+    background: var(--accent-500);
+    width: 50%;
+    border-bottom: 1px solid var(--accent-500);
+}
+.style-thumb[data-theme="magazine"] .thumb-line {
+    height: 2.5px;
+}
+
+.style-thumb[data-theme="fresh"] {
+    background: linear-gradient(180deg, var(--bg-surface), var(--accent-soft2));
+}
+.style-thumb[data-theme="fresh"] .thumb-h2 {
+    color: var(--accent-600);
+    background: var(--accent-600);
+    width: 65%;
+}
+.style-thumb[data-theme="fresh"] .thumb-quote {
+    background: var(--accent-soft);
+    border-left-color: var(--accent-500);
+}
+
 .color-dot {
     width: 18px;
     height: 18px;
@@ -581,7 +741,20 @@ body {
 
 .toolbar-group {
     display: flex;
+    align-items: center;
     gap: 2px;
+    position: relative;
+}
+
+.toolbar-group-label {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    margin-right: 6px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    text-transform: none;
+    user-select: none;
+    white-space: nowrap;
 }
 
 .toolbar-divider {
@@ -589,6 +762,74 @@ body {
     height: 18px;
     background: var(--border-light);
     margin: 0 6px;
+}
+
+.toolbar-spacer {
+    flex: 1;
+}
+
+/* ===== Tooltip ===== */
+/* 纯 CSS tooltip，用 data-tooltip 属性，hover 时显示 */
+[class*="tool-btn"][data-tooltip] {
+    position: relative;
+}
+
+[class*="tool-btn"][data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(2px);
+    background: #1F2937;
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    line-height: 1.4;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.18s ease;
+    z-index: 1000;
+    font-weight: 400;
+    letter-spacing: 0;
+    max-width: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+[class*="tool-btn"][data-tooltip]::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 3px);
+    left: 50%;
+    transform: translateX(-50%) translateY(2px);
+    border: 5px solid transparent;
+    border-top-color: #1F2937;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.18s ease;
+    z-index: 1000;
+}
+
+[class*="tool-btn"][data-tooltip]:hover::after,
+[class*="tool-btn"][data-tooltip]:hover::before {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* 底部 tooltip（上方空间不足时用，目前默认上方） */
+.tool-btn[data-tooltip-pos="bottom"]::after {
+    bottom: auto;
+    top: calc(100% + 8px);
+}
+.tool-btn[data-tooltip-pos="bottom"]::before {
+    bottom: auto;
+    top: calc(100% + 3px);
+    border-top-color: transparent;
+    border-bottom-color: #1F2937;
 }
 
 .tool-btn {
@@ -632,7 +873,6 @@ body {
     cursor: pointer;
     transition: all 0.15s ease;
     white-space: nowrap;
-    margin-left: auto;
 }
 
 .tool-btn-action:hover {
@@ -649,6 +889,18 @@ body {
 .tool-text-italic {
     font-style: italic;
     font-size: 14px;
+}
+
+.tool-text-underline {
+    text-decoration: underline;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.tool-text-strike {
+    text-decoration: line-through;
+    font-size: 14px;
+    font-weight: 600;
 }
 
 #editor {
