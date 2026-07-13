@@ -3218,24 +3218,49 @@ function formatParagraph(text) {
         if (spinner) spinner.style.display = show ? 'inline' : 'none';
     }
 
-    // ===== 4. 抓热点（微博热搜聚合，失败兜底）=====
+    // ===== 4. 抓热点（多源聚合 + 多次重试 + 失败兜底）=====
+    // vvhan 偶发 ERR_CONNECTION_CLOSED，加入备用源和重试
     async function fetchHotTopics() {
         const fallback = [
             'AI 最新进展',
             '科技行业动态',
             '生活感悟',
             '职场成长',
-            '情感故事'
+            '情感故事',
+            '数字时代的阅读',
+            '城市与自然',
+            '慢生活',
+            '记忆中的味道',
+            '夜晚的情绪'
         ];
-        const resp = await fetch('https://api.vvhan.com/api/hotlist/wbHot');
-        if (!resp.ok) throw new Error('热搜 API 返回异常');
-        const data = await resp.json();
-        if (!data || !Array.isArray(data.data) || data.data.length === 0) {
-            return fallback;
+
+        // 源 1：vvhan 微博热搜（带重试）
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), 8000);
+                const resp = await fetch('https://api.vvhan.com/api/hotlist/wbHot', {
+                    signal: controller.signal
+                });
+                clearTimeout(timer);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const data = await resp.json();
+                if (data && Array.isArray(data.data) && data.data.length > 0) {
+                    return data.data.slice(0, 10)
+                        .map(item => item.name || item.title)
+                        .filter(Boolean);
+                }
+            } catch (e) {
+                console.warn(`热搜抓取失败 (尝试 ${attempt + 1}/3):`, e.message);
+                if (attempt < 2) await new Promise(r => setTimeout(r, 500));
+            }
         }
-        return data.data.slice(0, 10)
-            .map(item => item.name || item.title)
-            .filter(Boolean);
+
+        // 源 2：备用源（如果有其他免费热搜 API 可加在这里）
+        // 暂无稳定备用源，直接用 fallback 话题
+
+        console.warn('所有热搜源失败，使用默认话题');
+        return fallback;
     }
 
     // ===== 5. 调用 LLM（根据 provider 选择不同 base URL 和 model）=====
@@ -3361,6 +3386,15 @@ ${topics.map((t, i) => `${i + 1}. ${t}`).join('\n')}
 - 民族矛盾、种族冲突、地域歧视
 如果话题本身触碰红线，请转换角度，只写生活化、人性化、情感化的侧面，绝不触及敏感维度。
 
+【事实红线·禁止杜撰】
+- 不得编造任何具体数据、统计数字、百分比、金额（如"73%的人..."、"市场规模达XX亿"等）。如需引用数据，用模糊表达（"相当一部分"、"大多数"、"许多人"）。
+- 不得编造具体人物、公司、机构、事件、案例（如"小李在北京..."、"某互联网公司..."）。可以用第一人称泛化叙述（"我见过一些人..."、"身边有朋友..."）。
+- 不得编造历史事件、时间节点、政策名称、法律条文。
+- 不得编造名人名言或将其归因于具体人物。可以用"有人说过"等泛化表达。
+- 不得编造科学结论、研究结论、专家观点。
+- 如果话题本身是具体新闻事件，只写话题引发的思考、情感共鸣、社会现象，不写事件的具体细节、当事人、时间地点。
+- 概括性、观点性、情感性的内容可以自由发挥；具体性、事实性、可查证的内容必须谨慎，宁可不写也不编造。
+
 【去AI化·一次成型·必须遵循】你的文章将通过头条、公众号等平台的朱雀AI检测，以下规则基于 humanizer 项目的去 AI 化规则，在写作时就严格执行：
 
 语言层面：
@@ -3390,19 +3424,19 @@ ${topics.map((t, i) => `${i + 1}. ${t}`).join('\n')}
 1. 文章结构（必须用 Markdown 格式）：
    - 开头用 # 写一个吸引眼球的标题（15-25字，不要用「」号）
    - 紧接着一段 60-90 字的引言，用 > 引用块格式，点出话题的核心矛盾或悬念
-   - 用 ## 划分 4-5 个章节，每个章节标题要有信息量（不要用"第一章"这种，要用观点式标题）
+   - 用 ## 划分 3-4 个章节，每个章节标题要有信息量（不要用"第一章"这种，要用观点式标题）
    - 结尾有一个简短的总结段落
    - 不要在文章末尾写自我介绍、签名、引导关注等内容，排版模板已有
 
 2. 内容与段落（重要·阅读体验）：
-   - 总字数 1500-2000 字
+   - 总字数严格控制在 1000-1500 字，不要超出
    - 段落必须松散短小：每段不超过 3-4 句话，理想 2-3 句
    - 一个观点讲完就换段，不要把多个观点挤在一段里
-   - 每个章节 300-450 字，分 3-5 个自然段
-   - 要有具体数据、真实案例或生动细节
+   - 每个章节 250-350 字，分 3-4 个自然段
+   - 要有真实的生活观察、个人体验、情感细节（但不要编造具体数据/人物/事件）
    - 不要空话套话，不要"众所周知""不可否认""不言而喻"等万能句式
    - 观点要鲜明，有自己的角度，不是复述新闻
-   - 适当使用**加粗**标注关键数据和观点
+   - 适当使用**加粗**标注关键观点
    - 可以用 > 引用块标注金句
 
 3. 不要输出任何解释说明，直接输出 Markdown 正文。
@@ -3413,9 +3447,9 @@ ${topics.map((t, i) => `${i + 1}. ${t}`).join('\n')}
 
     // humanizeArticle 已删除——去 AI 化规则已合并进 generateArticle，避免二次 LLM 调用
 
-    // ===== 8. 规划配图（让 LLM 生成英文图片 prompt）=====
+    // ===== 8. 规划配图（让 LLM 生成英文图片 prompt，与文章强相关）=====
     async function planImages(article, imageCount, settings) {
-        const prompt = `你是一位图片编辑。请阅读以下文章，为文章规划 ${imageCount} 张配图。
+        const prompt = `你是一位资深图片编辑。请仔细阅读以下文章，为文章规划 ${imageCount} 张配图。
 
 文章内容：
 ${article.substring(0, 3000)}
@@ -3424,17 +3458,22 @@ ${article.substring(0, 3000)}
 1. 共 ${imageCount} 行，每行一个 prompt
 2. prompt 格式：[摄影/插画风格] + [主体内容] + [场景环境] + [色调氛围] + ultra detailed, professional photography, 8k quality, no text, no watermark
 3. 所有图片风格统一（都用 editorial photography 或都用 editorial illustration）
-4. 每张图对应文章中不同的章节/主题，不要重复
-5. 只输出英文 prompt，每行一个，不要编号、不要中文、不要其他内容
+4. 【重要】每张图必须与文章具体内容强相关：
+   - 从文章中提取具体的场景、人物、物品、环境作为图片主体
+   - 不要用泛化的"城市风景"、"抽象概念"等与文章无关的图
+   - 图片应该能帮助读者理解文章内容，而不是装饰
+   - 例如：文章写"深夜加班的人"，图就应该是"深夜办公室亮着灯，一个人在电脑前工作"；文章写"菜市场的人情味"，图就应该是"清晨菜市场摊主与顾客交谈"
+5. 每张图对应文章中不同的章节/主题，不要重复
+6. 只输出英文 prompt，每行一个，不要编号、不要中文、不要其他内容
 
-示例：
-editorial photography, modern city skyline at sunset, warm golden light, aerial view, ultra detailed, 8k quality, no text, no watermark
-editorial photography, person working on laptop in cafe, warm ambient lighting, shallow depth of field, ultra detailed, 8k quality, no text, no watermark`;
+示例（假设文章写的是都市生活的孤独感）：
+editorial photography, person sitting alone in late night office, monitor glow on face, empty office background, melancholic mood, ultra detailed, 8k quality, no text, no watermark
+editorial photography, crowded subway platform at rush hour, people looking at phones, isolated feeling despite crowd, warm fluorescent light, ultra detailed, 8k quality, no text, no watermark`;
         const result = await callLLM(prompt, settings);
         const prompts = result.split('\n')
             .map(s => s.trim())
             .filter(s => s && !s.startsWith('prompt') && !s.startsWith('示例') && s.length > 30);
-        // 如果 LLM 输出不够，补充默认 prompt
+        // 如果 LLM 输出不够，补充默认 prompt（与文章弱相关）
         const defaults = [
             'editorial photography, modern cityscape, warm sunset light, aerial view, ultra detailed, 8k quality, no text, no watermark',
             'editorial photography, technology concept, blue tones, abstract, ultra detailed, 8k quality, no text, no watermark',
@@ -3488,9 +3527,8 @@ ${article.substring(0, 3000)}
         };
     }
 
-    // ===== 8.6 生成封面图（Pollinations 背景图 + Canvas 合成文字）=====
-    // 方案：Pollinations 生成纯背景图（无文字，左侧留白）→ Canvas 叠加渐变蒙版+标题+金句+品牌
-    // 这样文字一定清晰美观，不受 AI 生图文字能力限制
+    // ===== 8.6 生成封面图（用户配置的图片API背景 + Canvas 合成文字）=====
+    // 优先使用用户在 AI 设置中配置的图片生成 API，失败时降级 Pollinations
     async function generateArticleCover(plan, seed) {
         const isTech = plan.articleType === 'tech';
         const stylePrompt = isTech
@@ -3498,17 +3536,32 @@ ${article.substring(0, 3000)}
             : 'documentary photography, humanistic photography, golden hour warm light, candid moment, story telling atmosphere, person from behind or side profile not looking at camera, composition biased to the right side, large empty negative space on the left for text overlay, National Geographic style, natural realistic not posed, film grain, ultra detailed, 8k quality, no text, no watermark';
 
         const bgPrompt = `${stylePrompt}, ${plan.scene}, no text, no watermark, no logo`;
-        const encoded = encodeURIComponent(bgPrompt);
-        const bgUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1280&height=720&nologo=true&seed=${seed}&model=flux-realism`;
 
-        // 预加载背景图
-        const bgDataUri = await preloadImageToDataUri(bgUrl, 90000);
+        // 优先用用户配置的图片 API
+        const imgSettings = getImageApiSettings();
+        let bgDataUri = null;
+        if (imgSettings.provider !== 'pollinations' && imgSettings.apiKey) {
+            try {
+                const imgConfig = IMAGE_PROVIDERS[imgSettings.provider] || IMAGE_PROVIDERS.pollinations;
+                bgDataUri = await generateImageViaApi(bgPrompt, imgSettings, imgConfig, 60000);
+            } catch (e) {
+                console.warn('封面图用用户API失败，降级到 Pollinations:', e.message);
+                bgDataUri = null;
+            }
+        }
+        // 降级到 Pollinations
+        if (!bgDataUri) {
+            const encoded = encodeURIComponent(bgPrompt);
+            const bgUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1280&height=720&nologo=true&seed=${seed}&model=flux-realism`;
+            bgDataUri = await preloadImageToDataUri(bgUrl, 90000);
+        }
 
         // Canvas 合成文字
         return await compositeCoverImage(bgDataUri, plan.title, plan.quote);
     }
 
-    // Canvas 合成：背景图 + 渐变蒙版 + 标题 + 金句 + 品牌信息
+    // Canvas 合成：背景图 + 整体淡蒙版 + 左侧渐变蒙版 + 标题 + 金句 + 品牌信息
+    // 设计原则：主体靠右，文字靠左，整体淡淡蒙版突出文字
     function compositeCoverImage(bgDataUri, title, quote) {
         return new Promise((resolve, reject) => {
             const img = new Image();
@@ -3523,43 +3576,78 @@ ${article.substring(0, 3000)}
                     // 1. 绘制背景图
                     ctx.drawImage(img, 0, 0, 1280, 720);
 
-                    // 2. 左侧渐变蒙版（黑色→透明，占约40%宽度）
-                    const gradient = ctx.createLinearGradient(0, 0, 560, 0);
-                    gradient.addColorStop(0, 'rgba(0, 0, 0, 0.78)');
-                    gradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.45)');
+                    // 2. 整体淡淡蒙版（让文字更突出，但不影响背景观感）
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+                    ctx.fillRect(0, 0, 1280, 720);
+
+                    // 3. 左侧渐变蒙版（黑色→透明，占约55%宽度，文字区域更深）
+                    const gradient = ctx.createLinearGradient(0, 0, 720, 0);
+                    gradient.addColorStop(0, 'rgba(0, 0, 0, 0.72)');
+                    gradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.42)');
                     gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
                     ctx.fillStyle = gradient;
-                    ctx.fillRect(0, 0, 560, 720);
+                    ctx.fillRect(0, 0, 720, 720);
 
                     const drawText = () => {
-                        const padding = 64;
+                        // 文字区设计：左安全边距 96px（更宽松），垂直居中
+                        const padding = 96;
+                        const titleLines = (title || '').split('\n').filter(l => l.trim());
+                        const quoteLines = (quote || '').split('\n').filter(l => l.trim());
 
-                        // 3. 标题（米白色 #F4F0E8，大字号，左对齐，行距舒适）
-                        ctx.fillStyle = '#F4F0E8';
-                        ctx.font = '600 40px "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif';
+                        // 标题字号加大到 52px，行距 68px（更舒适）
+                        const titleFontSize = 52;
+                        const titleLineHeight = 68;
+                        // 金句字号 20px，行距 32px
+                        const quoteFontSize = 20;
+                        const quoteLineHeight = 32;
+                        const titleQuoteGap = 40;
+                        const brandGap = 48;
+
+                        // 计算文字总高度，用于垂直居中
+                        const titleHeight = titleLines.length * titleLineHeight;
+                        const quoteHeight = quoteLines.length * quoteLineHeight;
+                        const totalTextHeight = titleHeight + titleQuoteGap + quoteHeight;
+                        // 垂直居中起点（文字区垂直居中）
+                        const startY = Math.max(120, (720 - totalTextHeight) / 2);
+
+                        // 3. 标题（米白色，大字号，左对齐，行距舒适）
+                        ctx.fillStyle = '#F8F5EE';
+                        ctx.font = `600 ${titleFontSize}px "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif`;
                         ctx.textAlign = 'left';
                         ctx.textBaseline = 'top';
-                        const titleLines = (title || '').split('\n').filter(l => l.trim());
-                        const titleStartY = 200;
+                        // 字间距通过 letterSpacing 属性（如果支持）或手动分字
+                        if ('letterSpacing' in ctx) {
+                            ctx.letterSpacing = '2px';
+                        }
                         titleLines.forEach((line, i) => {
-                            ctx.fillText(line, padding, titleStartY + i * 54);
+                            ctx.fillText(line, padding, startY + i * titleLineHeight);
                         });
 
-                        // 4. 金句（浅灰色，约为标题字号30%→约14px，高留白）
-                        const quoteY = titleStartY + titleLines.length * 54 + 32;
-                        ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
-                        ctx.font = '300 15px "Noto Sans SC", "PingFang SC", sans-serif';
-                        const quoteLines = (quote || '').split('\n').filter(l => l.trim());
+                        // 4. 金句（浅灰色，字号适中，行距舒适）
+                        const quoteY = startY + titleHeight + titleQuoteGap;
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
+                        ctx.font = `300 ${quoteFontSize}px "Noto Sans SC", "PingFang SC", sans-serif`;
+                        if ('letterSpacing' in ctx) {
+                            ctx.letterSpacing = '0.5px';
+                        }
                         quoteLines.forEach((line, i) => {
-                            ctx.fillText(line, padding, quoteY + i * 24);
+                            ctx.fillText(line, padding, quoteY + i * quoteLineHeight);
                         });
 
-                        // 5. 左下角品牌信息（非常小字号，半透明）
-                        const brandY = 636;
-                        ctx.fillStyle = 'rgba(255, 255, 255, 0.38)';
-                        ctx.font = '400 13px "Noto Sans SC", sans-serif';
+                        // 5. 左下角品牌信息（与文字区底部对齐，保持安全距离）
+                        const brandY = startY + totalTextHeight + brandGap;
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                        ctx.font = '400 14px "Noto Sans SC", sans-serif';
+                        if ('letterSpacing' in ctx) {
+                            ctx.letterSpacing = '1px';
+                        }
                         ctx.fillText('@北苠', padding, brandY);
-                        ctx.fillText('查看精彩内容 →', padding, brandY + 20);
+                        ctx.fillText('查看精彩内容 →', padding, brandY + 22);
+
+                        // 重置 letterSpacing
+                        if ('letterSpacing' in ctx) {
+                            ctx.letterSpacing = '0px';
+                        }
 
                         // 6. 导出 data URI
                         try {
