@@ -287,6 +287,10 @@
                                     <option value="6">6 张</option>
                                 </select>
                             </div>
+                            <div style="margin-top:16px;padding-top:14px;border-top:1px dashed #E5E7EB;">
+                                <button id="llmTestBtn" type="button" style="padding:8px 16px;background:#10B981;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600;">🔗 测试 LLM 连接</button>
+                                <div id="llmTestResult" style="margin-top:8px;font-size:12px;line-height:1.6;"></div>
+                            </div>
                         </div>
 
                         <!-- Tab 2: 图片生成 -->
@@ -299,6 +303,7 @@
                                 <label style="display:block;font-size:13px;color:#374151;margin-bottom:6px;font-weight:600;">图片生成提供商</label>
                                 <select id="imageProviderSelect" style="width:100%;padding:8px 10px;border:1px solid #D1D5DB;border-radius:6px;font-size:13px;box-sizing:border-box;">
                                     <option value="pollinations">免费方案（Pollinations.ai，海外，较慢）</option>
+                                    <option value="tencent">腾讯云 TokenHub（混元文生图，国内，快速）</option>
                                     <option value="zhipu">智谱 CogView-3（国内，快速）</option>
                                     <option value="dashscope">通义万相（阿里 DashScope，国内，快速）</option>
                                     <option value="dalle">OpenAI DALL-E 3（海外，高质量）</option>
@@ -322,6 +327,10 @@
                             </div>
                             <div style="padding:10px 14px;background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;font-size:12px;color:#92400E;line-height:1.5;">
                                 <strong>提示：</strong>智谱 CogView-3 和通义万相为国内服务，速度通常 3-8 秒/张，比 Pollinations 快 10-20 倍。推荐优先使用。
+                            </div>
+                            <div style="margin-top:14px;padding-top:14px;border-top:1px dashed #E5E7EB;">
+                                <button id="imageTestBtn" type="button" style="padding:8px 16px;background:#3B82F6;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600;">🔗 测试图片 API 连接</button>
+                                <div id="imageTestResult" style="margin-top:8px;font-size:12px;line-height:1.6;"></div>
                             </div>
                         </div>
 
@@ -639,6 +648,6 @@
     <script src="themes/cyber.js"></script>
     <script src="themes/magazine.js"></script>
     <script src="themes/fresh.js"></script>
-    <script src="script.js?v=21"></script>
+    <script src="script.js?v=22"></script>
 </body>
 </html>

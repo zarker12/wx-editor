@@ -3087,6 +3087,11 @@ function formatParagraph(text) {
     const imageApiHelpText = document.getElementById('imageApiHelpText');
     const imageBaseUrlInput = document.getElementById('imageBaseUrlInput');
     const imageModelInput = document.getElementById('imageModelInput');
+    // 测试连接按钮
+    const llmTestBtn = document.getElementById('llmTestBtn');
+    const llmTestResult = document.getElementById('llmTestResult');
+    const imageTestBtn = document.getElementById('imageTestBtn');
+    const imageTestResult = document.getElementById('imageTestResult');
 
     // ===== 图片生成 API 预设配置表 =====
     // 与文章 LLM 不同：图片生成 API 调用格式各厂商差异较大，需按 provider 分别处理
@@ -3123,6 +3128,17 @@ function formatParagraph(text) {
             model: 'dall-e-3',
             helpText: '到 platform.openai.com 创建 API Key',
             helpUrl: 'https://platform.openai.com/api-keys',
+            needsApiKey: true,
+            responseFormat: 'url'
+        },
+        tencent: {
+            name: '腾讯云 TokenHub（混元文生图）',
+            // 腾讯云 TokenHub 是 OpenAI 兼容 API，与文章 LLM 共用同一个 API Key
+            // 仅 endpoint 路径不同：/v1/images/generations
+            baseUrl: 'https://tokenhub.tencentmaas.com/v1/images/generations',
+            model: 'hunyuan-image',
+            helpText: '到腾讯云 TokenHub 控制台创建 API Key（与文章 LLM 共用）',
+            helpUrl: 'https://console.cloud.tencent.com/maas',
             needsApiKey: true,
             responseFormat: 'url'
         },
@@ -3253,7 +3269,21 @@ function formatParagraph(text) {
             throw new Error(`LLM 调用失败 (${resp.status}): ${errText.substring(0, 200)}`);
         }
         const data = await resp.json();
-        return data.choices[0].message.content;
+        // 防御：API 返回异常格式时给清晰错误（避免 "Cannot read properties of null (reading 'length')"）
+        if (!data || !data.choices || !Array.isArray(data.choices) || data.choices.length === 0) {
+            let errInfo = '未知响应';
+            if (data && data.error) {
+                errInfo = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+            } else if (data) {
+                errInfo = JSON.stringify(data).substring(0, 300);
+            }
+            throw new Error(`LLM 返回格式异常（无 choices）: ${errInfo.substring(0, 200)}`);
+        }
+        const msg = data.choices[0].message;
+        if (!msg || typeof msg.content !== 'string') {
+            throw new Error('LLM 返回内容为空');
+        }
+        return msg.content;
     }
 
     // ===== 6. 话题筛选（让 LLM 从热搜中选最适合写文章的话题）=====
@@ -3757,6 +3787,148 @@ ${article.substring(0, 3000)}
         }
     }
 
+    // ===== 测试 LLM 连接（用当前 UI 中填写的配置，不依赖已保存的设置）=====
+    // 发送一个极小的 ping 请求，max_tokens=10，验证 API Key/Base URL/模型是否有效
+    async function testLLMConnection() {
+        if (!llmTestResult) return;
+        const provider = llmProviderSelect ? llmProviderSelect.value : 'deepseek';
+        const config = LLM_PROVIDERS[provider] || LLM_PROVIDERS.deepseek;
+        // 从 UI 读取当前填写的值（不依赖已保存的 localStorage）
+        let apiKey = llmApiKeyInput ? llmApiKeyInput.value.trim() : '';
+        let baseUrl, model;
+        if (config.editable) {
+            baseUrl = llmBaseUrlInput ? llmBaseUrlInput.value.trim() : '';
+            model = llmModelInput ? llmModelInput.value.trim() : '';
+        } else {
+            baseUrl = config.baseUrl;
+            model = config.model;
+        }
+        if (config.editable && llmBaseUrlInput && llmBaseUrlInput.value.trim()) baseUrl = llmBaseUrlInput.value.trim();
+        if (config.editable && llmModelInput && llmModelInput.value.trim()) model = llmModelInput.value.trim();
+
+        if (!apiKey) {
+            llmTestResult.innerHTML = '<span style="color:#DC2626;">❌ 请先填写 API Key</span>';
+            return;
+        }
+        if (!baseUrl || !model) {
+            llmTestResult.innerHTML = '<span style="color:#DC2626;">❌ 请先填写 Base URL 和模型名称</span>';
+            return;
+        }
+        // 清洗 API Key
+        apiKey = apiKey.replace(/[\u3000\u200B\u200C\u200D\uFEFF]/g, '').replace(/[^\x20-\x7E]/g, '').trim();
+        if (!apiKey) {
+            llmTestResult.innerHTML = '<span style="color:#DC2626;">❌ API Key 含非法字符</span>';
+            return;
+        }
+
+        const btn = llmTestBtn;
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ 测试中...'; }
+        llmTestResult.innerHTML = '<span style="color:#6B7280;">⏳ 正在连接 ' + (config.name || provider) + ' ...</span>';
+        const startTime = Date.now();
+
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 30000);
+        try {
+            const resp = await fetch(baseUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: model,
+                    messages: [{ role: 'user', content: '回复"OK"两个字符' }],
+                    temperature: 0,
+                    max_tokens: 10
+                }),
+                signal: controller.signal
+            });
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            if (!resp.ok) {
+                const errText = await resp.text().catch(() => '');
+                llmTestResult.innerHTML = `<span style="color:#DC2626;">❌ 连接失败 (${resp.status}, ${elapsed}s)<br>${errText.substring(0, 200)}</span>`;
+                return;
+            }
+            const data = await resp.json();
+            if (!data || !data.choices || !data.choices[0]) {
+                let errInfo = data && data.error ? JSON.stringify(data.error) : JSON.stringify(data).substring(0, 200);
+                llmTestResult.innerHTML = `<span style="color:#DC2626;">❌ 响应格式异常 (${elapsed}s)<br>${errInfo}</span>`;
+                return;
+            }
+            const reply = data.choices[0].message && data.choices[0].message.content;
+            llmTestResult.innerHTML = `<span style="color:#10B981;font-weight:600;">✅ 大模型连接成功！(${elapsed}s)</span><br><span style="color:#6B7280;">模型回复：${(reply || '').substring(0, 50)}</span>`;
+        } catch (e) {
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            const msg = e.name === 'AbortError' ? `请求超时（${elapsed}s）` : e.message;
+            llmTestResult.innerHTML = `<span style="color:#DC2626;">❌ 连接失败 (${elapsed}s)<br>${msg}</span>`;
+        } finally {
+            clearTimeout(timer);
+            if (btn) { btn.disabled = false; btn.textContent = '🔗 测试 LLM 连接'; }
+        }
+    }
+
+    // ===== 测试图片 API 连接（用当前 UI 中填写的配置）=====
+    async function testImageConnection() {
+        if (!imageTestResult) return;
+        const provider = imageProviderSelect ? imageProviderSelect.value : 'pollinations';
+        const config = IMAGE_PROVIDERS[provider] || IMAGE_PROVIDERS.pollinations;
+
+        if (provider === 'pollinations') {
+            // Pollinations 免费方案，无 API Key，直接测试图源可达性
+            imageTestResult.innerHTML = '<span style="color:#6B7280;">⏳ 正在测试 Pollinations 图源...</span>';
+            const testUrl = 'https://image.pollinations.ai/prompt/test?width=64&height=64&nologo=true&seed=1';
+            const startTime = Date.now();
+            try {
+                await preloadImageToDataUri(testUrl, 20000);
+                const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                imageTestResult.innerHTML = `<span style="color:#10B981;font-weight:600;">✅ 图源可达 (${elapsed}s)</span><br><span style="color:#6B7280;">Pollinations 免费方案可用（速度较慢）</span>`;
+            } catch (e) {
+                imageTestResult.innerHTML = `<span style="color:#DC2626;">❌ 图源不可达: ${e.message}</span>`;
+            }
+            return;
+        }
+
+        let apiKey = imageApiKeyInput ? imageApiKeyInput.value.trim() : '';
+        let baseUrl = imageBaseUrlInput ? imageBaseUrlInput.value.trim() : '';
+        let model = imageModelInput ? imageModelInput.value.trim() : '';
+        if (!apiKey) {
+            imageTestResult.innerHTML = '<span style="color:#DC2626;">❌ 请先填写图片 API Key</span>';
+            return;
+        }
+        if (!baseUrl) baseUrl = config.baseUrl;
+        if (!model) model = config.model;
+        if (!baseUrl || !model) {
+            imageTestResult.innerHTML = '<span style="color:#DC2626;">❌ 请先填写 Base URL 和模型名称</span>';
+            return;
+        }
+        apiKey = apiKey.replace(/[\u3000\u200B\u200C\u200D\uFEFF]/g, '').replace(/[^\x20-\x7E]/g, '').trim();
+        if (!apiKey) {
+            imageTestResult.innerHTML = '<span style="color:#DC2626;">❌ API Key 含非法字符</span>';
+            return;
+        }
+
+        const btn = imageTestBtn;
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ 测试中...'; }
+        imageTestResult.innerHTML = '<span style="color:#6B7280;">⏳ 正在调用 ' + (config.name || provider) + ' 生成测试图（可能需要 5-30 秒）...</span>';
+        const startTime = Date.now();
+        const settings = { provider, apiKey, baseUrl, model };
+        try {
+            // 调用 generateImageViaApi 生成一张测试图
+            const dataUri = await generateImageViaApi('a red apple on white background, simple test image, ultra detailed', settings, config, 60000);
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            if (dataUri && dataUri.startsWith('data:image')) {
+                imageTestResult.innerHTML = `<span style="color:#10B981;font-weight:600;">✅ 图片 API 连接成功！(${elapsed}s)</span><br><img src="${dataUri}" style="max-width:120px;max-height:80px;margin-top:6px;border-radius:4px;border:1px solid #E5E7EB;" alt="测试图">`;
+            } else {
+                imageTestResult.innerHTML = `<span style="color:#DC2626;">❌ 返回异常 (${elapsed}s): ${String(dataUri).substring(0, 100)}</span>`;
+            }
+        } catch (e) {
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            imageTestResult.innerHTML = `<span style="color:#DC2626;">❌ 连接失败 (${elapsed}s)<br>${e.message}</span>`;
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = '🔗 测试图片 API 连接'; }
+        }
+    }
+
     // ===== 10. 把图片插入文章（在 ## 章节标题后插入）=====
     function insertImagesIntoArticle(article, imageUrls, imageCaptions) {
         const lines = article.split('\n');
@@ -4052,6 +4224,12 @@ ${article.substring(0, 3000)}
         aiSettingsCancel.addEventListener('click', () => {
             if (aiSettingsModal) aiSettingsModal.style.display = 'none';
         });
+    }
+    if (llmTestBtn) {
+        llmTestBtn.addEventListener('click', testLLMConnection);
+    }
+    if (imageTestBtn) {
+        imageTestBtn.addEventListener('click', testImageConnection);
     }
     if (aiSettingsSave) {
         aiSettingsSave.addEventListener('click', () => {
