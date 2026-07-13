@@ -3018,7 +3018,12 @@ function formatParagraph(text) {
             apiKey: apiKey,
             baseUrl: localStorage.getItem('llm_base_url') || '',
             model: localStorage.getItem('llm_model') || '',
-            imageCount: parseInt(localStorage.getItem('ai_image_count') || '4', 10)
+            imageCount: parseInt(localStorage.getItem('ai_image_count') || '4', 10),
+            // 图片生成 API 配置
+            imageProvider: localStorage.getItem('image_provider') || 'pollinations',
+            imageApiKey: decodeKey(localStorage.getItem('image_api_key_enc') || ''),
+            imageBaseUrl: localStorage.getItem('image_base_url') || '',
+            imageModel: localStorage.getItem('image_model') || ''
         };
     }
     function saveAISettings(provider, apiKey, imageCount, baseUrl, model) {
@@ -3040,6 +3045,28 @@ function formatParagraph(text) {
         localStorage.setItem('ai_image_count', String(imageCount));
     }
 
+    // 图片生成 API 配置的读写
+    function getImageApiSettings() {
+        return {
+            provider: localStorage.getItem('image_provider') || 'pollinations',
+            apiKey: decodeKey(localStorage.getItem('image_api_key_enc') || ''),
+            baseUrl: localStorage.getItem('image_base_url') || '',
+            model: localStorage.getItem('image_model') || ''
+        };
+    }
+    function saveImageApiSettings(provider, apiKey, baseUrl, model) {
+        localStorage.setItem('image_provider', provider);
+        // 图片 API Key 也加密存储
+        try {
+            localStorage.setItem('image_api_key_enc', encodeKey(apiKey || ''));
+        } catch (e) {
+            console.warn('图片 API Key 加密存储失败:', e);
+            localStorage.setItem('image_api_key', apiKey);
+        }
+        if (baseUrl !== undefined) localStorage.setItem('image_base_url', baseUrl);
+        if (model !== undefined) localStorage.setItem('image_model', model);
+    }
+
     // 缓存 DOM 节点
     const aiWorkflowBtn = document.getElementById('aiWorkflowBtn');
     const aiSettingsBtn = document.getElementById('aiSettingsBtn');
@@ -3053,6 +3080,63 @@ function formatParagraph(text) {
     const llmBaseUrlInput = document.getElementById('llmBaseUrlInput');
     const llmModelInput = document.getElementById('llmModelInput');
     const imageCountInput = document.getElementById('imageCountInput');
+    // 图片生成 API 相关元素
+    const imageProviderSelect = document.getElementById('imageProviderSelect');
+    const imageApiFields = document.getElementById('imageApiFields');
+    const imageApiKeyInput = document.getElementById('imageApiKeyInput');
+    const imageApiHelpText = document.getElementById('imageApiHelpText');
+    const imageBaseUrlInput = document.getElementById('imageBaseUrlInput');
+    const imageModelInput = document.getElementById('imageModelInput');
+
+    // ===== 图片生成 API 预设配置表 =====
+    // 与文章 LLM 不同：图片生成 API 调用格式各厂商差异较大，需按 provider 分别处理
+    const IMAGE_PROVIDERS = {
+        pollinations: {
+            name: '免费方案（Pollinations.ai）',
+            helpText: '无需 API Key，海外免费服务，速度较慢',
+            helpUrl: 'https://pollinations.ai',
+            needsApiKey: false
+        },
+        zhipu: {
+            name: '智谱 CogView-3',
+            baseUrl: 'https://open.bigmodel.cn/api/paas/v4/images/generations',
+            model: 'cogview-3',
+            helpText: '到 open.bigmodel.cn 创建 API Key（与 GLM-4 共用）',
+            helpUrl: 'https://open.bigmodel.cn/usercenter/apikeys',
+            needsApiKey: true,
+            // 智谱图片 API 返回 url，需要再下载转 data URI
+            responseFormat: 'url'
+        },
+        dashscope: {
+            name: '通义万相（阿里 DashScope）',
+            baseUrl: 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis',
+            model: 'wanx-v1',
+            helpText: '到 dashscope.aliyun.com 创建 API Key（与 Qwen 共用）',
+            helpUrl: 'https://dashscope.console.aliyun.com/apiKey',
+            needsApiKey: true,
+            // 通义万相是异步 API：先 POST 拿 task_id，再轮询结果
+            responseFormat: 'async'
+        },
+        dalle: {
+            name: 'OpenAI DALL-E 3',
+            baseUrl: 'https://api.openai.com/v1/images/generations',
+            model: 'dall-e-3',
+            helpText: '到 platform.openai.com 创建 API Key',
+            helpUrl: 'https://platform.openai.com/api-keys',
+            needsApiKey: true,
+            responseFormat: 'url'
+        },
+        custom_image: {
+            name: '自定义',
+            baseUrl: '',
+            model: '',
+            helpText: '填写兼容 OpenAI 图片生成 API 的地址',
+            helpUrl: '',
+            needsApiKey: true,
+            responseFormat: 'url',
+            editable: true
+        }
+    };
 
     // ===== 2. 设置弹窗交互 =====
     // 切换 provider 时更新帮助文本和自定义字段显隐
@@ -3450,6 +3534,8 @@ ${article.substring(0, 3000)}
     // - data URI 完全自包含，不依赖网络，预览/复制/粘贴都能显示
     // - 与 LLM 完全解耦：换任何模型都不影响图片生成
     // - 复制到公众号时，微信自动转存 data URI 中的图片
+    // 性能优化：canvas.toDataURL 是同步阻塞操作，用 setTimeout(0) 让出主线程
+    //   避免 4 张图同时完成时连续阻塞导致 UI 卡死
     async function preloadImageToDataUri(url, timeoutMs = 90000) {
         return new Promise((resolve, reject) => {
             const img = new Image();
@@ -3469,20 +3555,23 @@ ${article.substring(0, 3000)}
                     reject(new Error('图片尺寸异常'));
                     return;
                 }
-                // 尝试通过 canvas 转 data URI（完全自包含，无需二次网络请求）
-                try {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = img.naturalWidth;
-                    canvas.height = img.naturalHeight;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0);
-                    const dataUri = canvas.toDataURL('image/jpeg', 0.85);
-                    resolve(dataUri);
-                } catch (e) {
-                    // canvas 被污染（CORS 不通过），回退到直接 URL
-                    console.warn('canvas 转 data URI 失败（CORS 限制），使用直接 URL:', e.message);
-                    resolve(url);
-                }
+                // 用 setTimeout(0) 让 canvas 转换在下一个事件循环执行
+                // 避免连续 4 张图的 canvas 操作阻塞主线程导致 UI 卡死
+                setTimeout(() => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.naturalWidth;
+                        canvas.height = img.naturalHeight;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        const dataUri = canvas.toDataURL('image/jpeg', 0.85);
+                        resolve(dataUri);
+                    } catch (e) {
+                        // canvas 被污染（CORS 不通过），回退到直接 URL
+                        console.warn('canvas 转 data URI 失败（CORS 限制），使用直接 URL:', e.message);
+                        resolve(url);
+                    }
+                }, 0);
             };
             img.onerror = () => {
                 if (settled) return;
@@ -3495,6 +3584,22 @@ ${article.substring(0, 3000)}
     }
 
     async function generateImage(prompt, seed, timeoutMs = 90000) {
+        // 读取图片生成 API 配置
+        const imgSettings = getImageApiSettings();
+        const imgConfig = IMAGE_PROVIDERS[imgSettings.provider] || IMAGE_PROVIDERS.pollinations;
+
+        // 如果配置了多模态 API（非 pollinations），优先使用
+        if (imgSettings.provider !== 'pollinations' && imgSettings.apiKey) {
+            try {
+                const dataUri = await generateImageViaApi(prompt, imgSettings, imgConfig, timeoutMs);
+                return dataUri;
+            } catch (e) {
+                console.warn(`图片 API (${imgConfig.name}) 失败: ${e.message}，降级到 Pollinations...`);
+                // 失败时降级到 Pollinations 兜底
+            }
+        }
+
+        // Pollinations 免费方案（兜底）
         const encoded = encodeURIComponent(prompt);
         // 主图源：Pollinations.ai + flux-realism 模型（写实照片级，解决人脸变形问题）
         const primaryUrl = `https://image.pollinations.ai/prompt/${encoded}?width=1280&height=720&nologo=true&seed=${seed}&model=flux-realism`;
@@ -3518,6 +3623,138 @@ ${article.substring(0, 3000)}
             }
         }
         throw new Error('所有图源均失败');
+    }
+
+    // 通过多模态 API 生成图片（智谱 CogView / 通义万相 / DALL-E / 自定义）
+    async function generateImageViaApi(prompt, settings, config, timeoutMs) {
+        const apiKey = settings.apiKey;
+        const baseUrl = settings.baseUrl || config.baseUrl;
+        const model = settings.model || config.model;
+
+        if (!apiKey || !baseUrl) {
+            throw new Error('图片 API 配置不完整');
+        }
+
+        // 清洗 API Key（去除非 ASCII 字符，与 callLLM 一致）
+        const cleanKey = apiKey.replace(/[\u3000\u200B\u200C\u200D\uFEFF]/g, '').replace(/[^\x20-\x7E]/g, '').trim();
+        if (!cleanKey) throw new Error('API Key 无效');
+
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+            let imageUrl = '';
+
+            if (config.responseFormat === 'async') {
+                // 通义万相：异步 API，先 POST 拿 task_id，再轮询
+                imageUrl = await generateImageDashScope(prompt, cleanKey, baseUrl, model, timeoutMs);
+            } else {
+                // 智谱 CogView / DALL-E / 自定义：同步 API，POST 直接返回 URL 或 base64
+                const responseFormat = (settings.provider === 'dalle') ? 'url' : config.responseFormat;
+                const res = await fetch(baseUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${cleanKey}`
+                    },
+                    body: JSON.stringify({
+                        model: model,
+                        prompt: prompt,
+                        n: 1,
+                        size: '1280x720',
+                        response_format: responseFormat
+                    }),
+                    signal: controller.signal
+                });
+
+                if (!res.ok) {
+                    const errText = await res.text().catch(() => '');
+                    throw new Error(`API 返回 ${res.status}: ${errText.substring(0, 200)}`);
+                }
+
+                const data = await res.json();
+                // 兼容不同 API 的返回格式
+                if (data.data && data.data[0]) {
+                    if (data.data[0].b64_json) {
+                        // 直接返回 base64 data URI
+                        return `data:image/png;base64,${data.data[0].b64_json}`;
+                    }
+                    imageUrl = data.data[0].url || data.data[0].image_url || '';
+                } else if (data.url) {
+                    imageUrl = data.url;
+                } else if (data.images && data.images[0]) {
+                    imageUrl = data.images[0];
+                } else {
+                    throw new Error('API 返回格式无法识别: ' + JSON.stringify(data).substring(0, 200));
+                }
+            }
+
+            if (!imageUrl) throw new Error('API 未返回图片 URL');
+
+            // 下载图片 URL 并转为 data URI（与 Pollinations 流程一致）
+            const dataUri = await preloadImageToDataUri(imageUrl, Math.min(timeoutMs, 60000));
+            return dataUri;
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+
+    // 通义万相（DashScope）异步图片生成：POST 创建任务 → 轮询任务状态 → 获取图片 URL
+    async function generateImageDashScope(prompt, apiKey, baseUrl, model, timeoutMs) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+            // 1. 创建任务
+            const createRes = await fetch(baseUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`,
+                    'X-DashScope-Async': 'enable'
+                },
+                body: JSON.stringify({
+                    model: model,
+                    input: { prompt: prompt },
+                    parameters: { size: '1280*720', n: 1 }
+                }),
+                signal: controller.signal
+            });
+
+            if (!createRes.ok) {
+                const errText = await createRes.text().catch(() => '');
+                throw new Error(`创建任务失败 ${createRes.status}: ${errText.substring(0, 200)}`);
+            }
+
+            const createData = await createRes.json();
+            const taskId = createData.output && createData.output.task_id;
+            if (!taskId) throw new Error('未获取到 task_id');
+
+            // 2. 轮询任务状态（每 2 秒查一次，最多 60 秒）
+            const pollUrl = `https://dashscope.aliyuncs.com/api/v1/tasks/${taskId}`;
+            const startTime = Date.now();
+            while (Date.now() - startTime < timeoutMs) {
+                await new Promise(r => setTimeout(r, 2000));
+                const pollRes = await fetch(pollUrl, {
+                    headers: { 'Authorization': `Bearer ${apiKey}` },
+                    signal: controller.signal
+                });
+                if (!pollRes.ok) continue;
+                const pollData = await pollRes.json();
+                const status = pollData.output && pollData.output.task_status;
+                if (status === 'SUCCEEDED') {
+                    const url = pollData.output.results && pollData.output.results[0] && pollData.output.results[0].url;
+                    if (!url) throw new Error('任务成功但未返回图片 URL');
+                    return url;
+                } else if (status === 'FAILED') {
+                    throw new Error('图片生成任务失败: ' + (pollData.output && pollData.output.message || ''));
+                }
+                // PENDING / RUNNING 继续轮询
+            }
+            throw new Error('通义万相任务超时');
+        } finally {
+            clearTimeout(timer);
+        }
     }
 
     // ===== 10. 把图片插入文章（在 ## 章节标题后插入）=====
@@ -3726,9 +3963,91 @@ ${article.substring(0, 3000)}
                 if (llmBaseUrlInput) llmBaseUrlInput.dataset.provider = s.provider;
                 if (llmModelInput) llmModelInput.dataset.provider = s.provider;
             }
+
+            // 图片生成 tab 初始化
+            if (imageProviderSelect) imageProviderSelect.value = s.imageProvider || 'pollinations';
+            if (imageApiKeyInput) imageApiKeyInput.value = s.imageApiKey || '';
+            if (imageBaseUrlInput) imageBaseUrlInput.value = s.imageBaseUrl || '';
+            if (imageModelInput) imageModelInput.value = s.imageModel || '';
+            updateImageProviderUI();
+
             if (aiSettingsModal) aiSettingsModal.style.display = 'flex';
         });
     }
+
+    // 图片生成 provider 切换时更新帮助文本和字段显隐
+    function updateImageProviderUI() {
+        if (!imageProviderSelect) return;
+        const provider = imageProviderSelect.value;
+        const config = IMAGE_PROVIDERS[provider];
+        if (!config) return;
+        // 更新帮助文本
+        if (imageApiHelpText) {
+            if (config.helpUrl) {
+                imageApiHelpText.innerHTML = `${config.helpText} → <a href="${config.helpUrl}" target="_blank" style="color:#3B82F6;">点击创建</a>`;
+            } else {
+                imageApiHelpText.textContent = config.helpText;
+            }
+        }
+        // pollinations 不需要 API Key，隐藏字段
+        if (imageApiFields) {
+            imageApiFields.style.display = config.needsApiKey ? 'block' : 'none';
+        }
+        // 非 custom 的预设 provider 自动填入默认 baseUrl/model
+        if (config.editable) {
+            // custom 模式：用户自己填，不自动覆盖
+            if (imageBaseUrlInput && imageBaseUrlInput.dataset.provider !== provider) {
+                imageBaseUrlInput.value = config.baseUrl || '';
+                imageBaseUrlInput.dataset.provider = provider;
+            }
+            if (imageModelInput && imageModelInput.dataset.provider !== provider) {
+                imageModelInput.value = config.model || '';
+                imageModelInput.dataset.provider = provider;
+            }
+        } else if (config.needsApiKey) {
+            // 预设 provider（智谱/通义/DALL-E）：自动填入默认值（只读感）
+            if (imageBaseUrlInput) {
+                imageBaseUrlInput.value = config.baseUrl || '';
+                imageBaseUrlInput.dataset.provider = provider;
+            }
+            if (imageModelInput) {
+                imageModelInput.value = config.model || '';
+                imageModelInput.dataset.provider = provider;
+            }
+        }
+    }
+    if (imageProviderSelect) {
+        imageProviderSelect.addEventListener('change', () => {
+            // 清除 dataset 标记，让 updateImageProviderUI 自动填入新 provider 的默认值
+            if (imageBaseUrlInput) imageBaseUrlInput.dataset.provider = '';
+            if (imageModelInput) imageModelInput.dataset.provider = '';
+            updateImageProviderUI();
+        });
+    }
+
+    // Tab 切换逻辑
+    document.querySelectorAll('.ai-settings-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            const targetTab = tab.dataset.tab;
+            // 切换 tab 激活态
+            document.querySelectorAll('.ai-settings-tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.tab === targetTab);
+                if (t.dataset.tab === targetTab) {
+                    t.style.color = '#10B981';
+                    t.style.borderBottom = '2px solid #10B981';
+                    t.style.fontWeight = '600';
+                } else {
+                    t.style.color = '#6B7280';
+                    t.style.borderBottom = '2px solid transparent';
+                    t.style.fontWeight = '500';
+                }
+            });
+            // 切换 panel 显隐
+            document.querySelectorAll('.ai-settings-panel').forEach(p => {
+                p.style.display = (p.dataset.panel === targetTab) ? 'block' : 'none';
+            });
+        });
+    });
     if (aiSettingsCancel) {
         aiSettingsCancel.addEventListener('click', () => {
             if (aiSettingsModal) aiSettingsModal.style.display = 'none';
@@ -3743,6 +4062,14 @@ ${article.substring(0, 3000)}
             const baseUrl = llmBaseUrlInput ? llmBaseUrlInput.value.trim() : '';
             const model = llmModelInput ? llmModelInput.value.trim() : '';
             saveAISettings(provider, apiKey, imageCount, baseUrl, model);
+
+            // 保存图片生成 API 配置
+            const imgProvider = imageProviderSelect ? imageProviderSelect.value : 'pollinations';
+            const imgApiKey = imageApiKeyInput ? imageApiKeyInput.value.trim() : '';
+            const imgBaseUrl = imageBaseUrlInput ? imageBaseUrlInput.value.trim() : '';
+            const imgModel = imageModelInput ? imageModelInput.value.trim() : '';
+            saveImageApiSettings(imgProvider, imgApiKey, imgBaseUrl, imgModel);
+
             if (aiSettingsModal) aiSettingsModal.style.display = 'none';
             showToast('设置已保存');
         });
