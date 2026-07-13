@@ -50,6 +50,10 @@
         </header>
 
         <div class="tab-bar">
+            <button class="tab-btn" data-tab="create">
+                <span class="tab-icon">✍</span>
+                创作
+            </button>
             <button class="tab-btn active" data-tab="editor">
                 <span class="tab-icon">✎</span>
                 排版助手
@@ -60,6 +64,90 @@
             </button>
         </div>
 
+        <!-- Tab 1: 创作 -->
+        <div class="tab-content" id="tab-create">
+            <main class="main-content" style="background:#F9FAFB;">
+                <section style="flex:1;display:flex;flex-direction:column;padding:32px 40px;overflow-y:auto;">
+                    <div style="max-width:820px;margin:0 auto;width:100%;">
+                        <h2 style="font-family:var(--font-serif);font-size:24px;font-weight:600;color:#1F2937;margin:0 0 8px;">文章创作</h2>
+                        <p style="color:#6B7280;font-size:13px;margin:0 0 24px;">输入话题或抓取热搜，AI 一键生成文章。生成后可编辑、重新生成，确认后进入「排版助手」。</p>
+
+                        <!-- 话题输入区 -->
+                        <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                            <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:14px;">
+                                <div style="flex:1;">
+                                    <label style="display:block;font-size:12px;color:#6B7280;margin-bottom:6px;font-weight:600;">话题</label>
+                                    <input type="text" id="createTopicInput" placeholder="输入你想写的话题，或点「抓热搜」选择" style="width:100%;padding:10px 12px;border:1px solid #D1D5DB;border-radius:8px;font-size:14px;box-sizing:border-box;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#D1D5DB'">
+                                </div>
+                                <button id="fetchHotBtn" type="button" style="padding:10px 16px;background:#fff;color:#10B981;border:1px solid #10B981;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;white-space:nowrap;height:42px;">🔥 抓热搜</button>
+                            </div>
+
+                            <!-- 热搜候选区 -->
+                            <div id="hotTopicsList" style="display:none;margin-top:8px;"></div>
+
+                            <!-- 参数 -->
+                            <div style="display:flex;gap:16px;margin-top:14px;flex-wrap:wrap;">
+                                <div style="flex:1;min-width:140px;">
+                                    <label style="display:block;font-size:12px;color:#6B7280;margin-bottom:6px;font-weight:600;">字数</label>
+                                    <select id="createWordCount" style="width:100%;padding:8px 10px;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;box-sizing:border-box;">
+                                        <option value="800">800 字（短文）</option>
+                                        <option value="1200" selected>1200 字（标准）</option>
+                                        <option value="1500">1500 字（长文）</option>
+                                    </select>
+                                </div>
+                                <div style="flex:1;min-width:140px;">
+                                    <label style="display:block;font-size:12px;color:#6B7280;margin-bottom:6px;font-weight:600;">风格</label>
+                                    <select id="createStyle" style="width:100%;padding:8px 10px;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;box-sizing:border-box;">
+                                        <option value="deep" selected>深度思考</option>
+                                        <option value="casual">轻松随性</option>
+                                        <option value="story">故事叙事</option>
+                                    </select>
+                                </div>
+                                <div style="flex:1;min-width:140px;">
+                                    <label style="display:block;font-size:12px;color:#6B7280;margin-bottom:6px;font-weight:600;">章节数</label>
+                                    <select id="createSections" style="width:100%;padding:8px 10px;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;box-sizing:border-box;">
+                                        <option value="3">3 章节</option>
+                                        <option value="4" selected>4 章节</option>
+                                        <option value="5">5 章节</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div style="display:flex;gap:10px;margin-top:16px;">
+                                <button id="createGenerateBtn" type="button" style="flex:1;padding:11px 20px;background:linear-gradient(135deg,#10B981,#3B82F6);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">🚀 生成文章</button>
+                                <button id="createRegenerateBtn" type="button" disabled style="padding:11px 18px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;cursor:not-allowed;">↻ 重新生成</button>
+                            </div>
+                        </div>
+
+                        <!-- 状态条 -->
+                        <div id="createStatus" style="display:none;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#1E40AF;">
+                            <span id="createStatusText">准备就绪</span>
+                        </div>
+
+                        <!-- 文章编辑区 -->
+                        <div id="createArticleSection" style="display:none;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                                <h3 style="font-family:var(--font-serif);font-size:17px;color:#1F2937;margin:0;">文章编辑</h3>
+                                <div style="display:flex;gap:8px;">
+                                    <span id="createWordNum" style="font-size:12px;color:#9CA3AF;padding:6px 10px;background:#F3F4F6;border-radius:6px;">0 字</span>
+                                    <button id="createCopyBtn" type="button" style="padding:6px 12px;background:#fff;color:#10B981;border:1px solid #10B981;border-radius:6px;font-size:12px;cursor:pointer;">复制</button>
+                                    <button id="createGotoEditorBtn" type="button" style="padding:6px 14px;background:#10B981;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">下一步 → 排版</button>
+                                </div>
+                            </div>
+                            <textarea id="createArticleArea" placeholder="文章将显示在这里，可自由编辑..." style="width:100%;min-height:520px;padding:18px;border:1px solid #E5E7EB;border-radius:12px;font-size:14px;line-height:1.8;font-family:var(--font-serif);resize:vertical;outline:none;box-sizing:border-box;background:#fff;transition:border-color 0.2s;" onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#E5E7EB'"></textarea>
+                        </div>
+
+                        <!-- 空状态 -->
+                        <div id="createEmptyState" style="text-align:center;padding:60px 20px;color:#9CA3AF;">
+                            <div style="font-size:48px;margin-bottom:12px;">📝</div>
+                            <p style="font-size:14px;margin:0;">输入话题，点「生成文章」开始创作</p>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- Tab 2: 排版助手 -->
         <div class="tab-content active" id="tab-editor">
         <main class="main-content">
             <aside class="sidebar">
@@ -221,6 +309,13 @@
                         <button class="smart-btn" id="smartFormatBtn">
                             <span class="import-icon">✨</span>
                             <span>智能排版</span>
+                        </button>
+                    </div>
+                    <div class="import-divider"></div>
+                    <div class="import-section">
+                        <button class="smart-btn" id="gotoImageBtn" data-tooltip="把当前文章带到图片生成 Tab 做精细化配图" style="background:#fff;color:#10B981;border-color:#10B981;">
+                            <span class="import-icon">🎯</span>
+                            <span>精细化配图</span>
                         </button>
                     </div>
                 </div>
@@ -511,6 +606,13 @@
                     <div class="section">
                         <h4>生成模式</h4>
                         <div class="mode-tabs">
+                            <button class="mode-btn" data-mode="article-illustration" data-tooltip="接收排版助手文章，生成封面+文中配图，可单独重新生成">
+                                <span class="mode-icon">🎯</span>
+                                <div>
+                                    <div class="mode-title">文章配图</div>
+                                    <div class="mode-desc">封面+文中配图，精细化</div>
+                                </div>
+                            </button>
                             <button class="mode-btn active" data-mode="cover">
                                 <span class="mode-icon">📌</span>
                                 <div>
@@ -648,6 +750,51 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- 文章配图工作区（独立面板，mode=article-illustration 时显示） -->
+                <div id="articleIllustrationPanel" style="display:none;flex:1;flex-direction:column;padding:24px 32px;overflow-y:auto;">
+                    <div style="max-width:960px;margin:0 auto;width:100%;">
+                        <!-- 文章信息卡片 -->
+                        <div id="aiArticleInfo" style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+                            <div style="flex:1;">
+                                <div style="font-size:12px;color:#6B7280;margin-bottom:4px;font-weight:600;">当前文章</div>
+                                <div id="aiArticleTitle" style="font-family:var(--font-serif);font-size:16px;color:#1F2937;font-weight:600;line-height:1.4;">未选择文章</div>
+                                <div id="aiArticleMeta" style="font-size:12px;color:#9CA3AF;margin-top:4px;"></div>
+                            </div>
+                            <button id="aiFetchFromEditorBtn" type="button" style="padding:8px 14px;background:#fff;color:#10B981;border:1px solid #10B981;border-radius:6px;font-size:12px;cursor:pointer;white-space:nowrap;">从排版助手导入</button>
+                        </div>
+
+                        <!-- 操作工具栏 -->
+                        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+                            <button id="aiPlanImagesBtn" type="button" style="flex:1;min-width:180px;padding:11px 16px;background:linear-gradient(135deg,#10B981,#3B82F6);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">🎯 规划配图 Prompt</button>
+                            <button id="aiGenerateAllBtn" type="button" disabled style="padding:11px 16px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;cursor:not-allowed;">⚡ 一键生成全部</button>
+                            <button id="aiApplyToEditorBtn" type="button" disabled style="padding:11px 16px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;cursor:not-allowed;">应用到排版助手 →</button>
+                        </div>
+
+                        <!-- 状态条 -->
+                        <div id="aiStatus" style="display:none;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#1E40AF;">
+                            <span id="aiStatusText">准备就绪</span>
+                        </div>
+
+                        <!-- 封面图区 -->
+                        <div id="aiCoverSection" style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:18px;margin-bottom:16px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                                <h4 style="font-family:var(--font-serif);font-size:15px;color:#1F2937;margin:0;">封面图</h4>
+                                <button id="aiCoverRegenerateBtn" type="button" disabled style="padding:5px 12px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:6px;font-size:11px;cursor:not-allowed;">↻ 重新生成</button>
+                            </div>
+                            <div id="aiCoverPreview" style="background:#F9FAFB;border:2px dashed #E5E7EB;border-radius:8px;min-height:180px;display:flex;align-items:center;justify-content:center;color:#9CA3AF;font-size:13px;">尚未生成</div>
+                        </div>
+
+                        <!-- 配图列表 -->
+                        <div id="aiImagesList" style="display:flex;flex-direction:column;gap:12px;"></div>
+
+                        <!-- 空状态 -->
+                        <div id="aiEmptyState" style="text-align:center;padding:40px 20px;color:#9CA3AF;">
+                            <div style="font-size:36px;margin-bottom:8px;">🎯</div>
+                            <p style="font-size:13px;margin:0;">点击「规划配图 Prompt」开始</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -657,6 +804,6 @@
     <script src="themes/cyber.js"></script>
     <script src="themes/magazine.js"></script>
     <script src="themes/fresh.js"></script>
-    <script src="script.js?v=27"></script>
+    <script src="script.js?v=31"></script>
 </body>
 </html>

@@ -2567,10 +2567,27 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
             document.getElementById('inputTitle').textContent = '输入标题';
             document.getElementById('inputHint').textContent = '建议20字以内';
             document.getElementById('imageInput').placeholder = '在这里输入标题或短句...';
-        } else {
+        } else if (currentImgMode === 'article') {
             document.getElementById('inputTitle').textContent = '输入文章内容';
             document.getElementById('inputHint').textContent = '支持Markdown，自动分页';
             document.getElementById('imageInput').placeholder = '在这里输入文章内容...\n\n可以用Markdown语法：\n# 大标题\n## 小标题\n- 列表项\n> 引用内容\n**加粗文字**';
+        }
+        // 显示/隐藏文章配图工作区
+        const aiPanel = document.getElementById('articleIllustrationPanel');
+        const legacyInput = document.querySelector('.image-input-section');
+        const legacyPreview = document.querySelector('.image-preview-section');
+        if (currentImgMode === 'article-illustration') {
+            if (aiPanel) aiPanel.style.display = 'flex';
+            if (legacyInput) legacyInput.style.display = 'none';
+            if (legacyPreview) legacyPreview.style.display = 'none';
+            // 加载 workflowState 的文章信息
+            if (window.workflowState && window.workflowState.article) {
+                updateArticleIllustrationPanel();
+            }
+        } else {
+            if (aiPanel) aiPanel.style.display = 'none';
+            if (legacyInput) legacyInput.style.display = '';
+            if (legacyPreview) legacyPreview.style.display = '';
         }
         clearGeneratedImages();
     });
@@ -3070,6 +3087,23 @@ function formatParagraph(text) {
     // 缓存 DOM 节点
     const aiWorkflowBtn = document.getElementById('aiWorkflowBtn');
     const aiSettingsBtn = document.getElementById('aiSettingsBtn');
+    // Tab1 创作相关
+    const createTopicInput = document.getElementById('createTopicInput');
+    const fetchHotBtn = document.getElementById('fetchHotBtn');
+    const hotTopicsList = document.getElementById('hotTopicsList');
+    const createWordCount = document.getElementById('createWordCount');
+    const createStyleSel = document.getElementById('createStyle');
+    const createSectionsSel = document.getElementById('createSections');
+    const createGenerateBtn = document.getElementById('createGenerateBtn');
+    const createRegenerateBtn = document.getElementById('createRegenerateBtn');
+    const createStatus = document.getElementById('createStatus');
+    const createStatusText = document.getElementById('createStatusText');
+    const createArticleSection = document.getElementById('createArticleSection');
+    const createArticleArea = document.getElementById('createArticleArea');
+    const createWordNum = document.getElementById('createWordNum');
+    const createEmptyState = document.getElementById('createEmptyState');
+    const createCopyBtn = document.getElementById('createCopyBtn');
+    const createGotoEditorBtn = document.getElementById('createGotoEditorBtn');
     const aiSettingsCancel = document.getElementById('aiSettingsCancel');
     const aiSettingsSave = document.getElementById('aiSettingsSave');
     const aiSettingsModal = document.getElementById('aiSettingsModal');
@@ -4403,6 +4437,624 @@ ${article.substring(0, 3000)}
         } finally {
             if (btn) btn.disabled = false;
         }
+    }
+
+    // ===== 9.5 Tab1 创作：文章生成（参数化版本，不影响原 aiWorkflow）=====
+    // 共享状态：三 Tab 之间传递的文章内容
+    window.workflowState = window.workflowState || {
+        article: '',      // Tab1 产出的 Markdown 文章
+        topic: '',        // 当前话题
+        wordCount: 1200,  // 字数设置
+        style: 'deep',    // 风格
+        sections: 4        // 章节数
+    };
+
+    // 参数化文章生成（与原 generateArticle 并存，避免影响 aiWorkflow）
+    async function generateArticleWithParams(topic, settings, opts) {
+        opts = opts || {};
+        const wordCount = opts.wordCount || 1200;
+        const style = opts.style || 'deep';
+        const sections = opts.sections || 4;
+
+        // 字数区间
+        const minWords = Math.max(600, wordCount - 200);
+        const maxWords = wordCount + 200;
+        // 每章节字数
+        const sectionWords = Math.floor(wordCount / sections);
+
+        // 风格描述
+        const styleMap = {
+            deep: '深度思考型，观点犀利，有逻辑推演',
+            casual: '轻松随性型，口语化，像朋友聊天',
+            story: '故事叙事型，用具体场景和人物展开'
+        };
+
+        const prompt = `你是一位资深公众号主笔，擅长用独特的视角和有温度的故事写出10w+爆款文章。
+
+请基于以下话题写一篇公众号文章：
+
+话题：${topic}
+
+【红线·绝对禁止】以下内容一律不得出现在文章中，违反则整篇作废重写：
+- 宗教（任何宗教教义、信仰争议、宗教冲突、宗教评价）
+- 政治（政党、政策立场、意识形态争论、政治制度比较）
+- 国家领导人（任何国家现任或前任领导人的名字、评价、轶事）
+- 民族独立、主权争议、领土争端、地缘政治
+- 民族矛盾、种族冲突、地域歧视
+如果话题本身触碰红线，请转换角度，只写生活化、人性化、情感化的侧面，绝不触及敏感维度。
+
+【事实红线·禁止杜撰】
+- 不得编造任何具体数据、统计数字、百分比、金额。如需引用数据，用模糊表达（"相当一部分"、"大多数"、"许多人"）。
+- 不得编造具体人物、公司、机构、事件、案例。可以用第一人称泛化叙述（"我见过一些人..."、"身边有朋友..."）。
+- 不得编造历史事件、时间节点、政策名称、法律条文。
+- 不得编造名人名言或将其归因于具体人物。可以用"有人说过"等泛化表达。
+- 不得编造科学结论、研究结论、专家观点。
+- 概括性、观点性、情感性的内容可以自由发挥；具体性、事实性、可查证的内容必须谨慎，宁可不写也不编造。
+
+【去AI化·一次成型】
+- 禁止使用破折号（— –），用句号/逗号/冒号替换
+- 禁止 AI 高频词汇：此外、值得一提的是、至关重要、深入探讨、增强、培育、彰显、交织、精妙、格局、关键、展示、见证、凸显、活力
+- 禁止"不仅是…更是…""不是…而是…"等否定平行结构
+- 禁止三连句式
+- 禁止"总分总"三段论结构
+- 禁止"首先/其次/最后/此外/然而/总之"等AI式过渡词
+- 禁止段落结尾用"这不禁让我们思考…""这提醒我们…""未来必将…"等AI式反思句
+- 禁止"在XX的背景下""随着XX的发展"等AI式开头
+- 段落长度要变化：有的段落只有一句话，有的三四句
+
+【风格要求】
+${styleMap[style] || styleMap.deep}
+- 加入口语化表达（说实话、坦白讲、老实说）
+- 加入个人视角和情感体验
+- 用具体细节替代抽象概括
+- 句子长度混排：短句有力。然后长句慢慢展开。再来个短的。
+
+【写作要求】
+1. 文章结构（Markdown 格式）：
+   - 开头用 # 写一个吸引眼球的标题（15-25字，不要用「」号）
+   - 紧接着一段 60-90 字的引言，用 > 引用块格式，点出核心矛盾或悬念
+   - 用 ## 划分 ${sections} 个章节，标题要有信息量（观点式标题，不要用"第一章"）
+   - 结尾有一个简短的总结段落
+   - 不要在文章末尾写自我介绍、签名、引导关注
+
+2. 内容与段落：
+   - 总字数严格控制在 ${minWords}-${maxWords} 字
+   - 每个章节约 ${sectionWords} 字，分 3-4 个自然段
+   - 每段不超过 3-4 句话，理想 2-3 句
+   - 一个观点讲完就换段
+   - 要有真实的生活观察、个人体验、情感细节（不要编造具体数据/人物/事件）
+   - 不要"众所周知""不可否认"等万能句式
+   - 观点要鲜明，有自己的角度
+   - 适当使用**加粗**标注关键观点
+   - 可以用 > 引用块标注金句
+
+3. 不要输出任何解释说明，直接输出 Markdown 正文。
+
+现在请开始写：`;
+        return await callLLM(prompt, settings);
+    }
+
+    // 更新创作状态显示
+    function setCreateStatus(text, show) {
+        if (createStatus) createStatus.style.display = show ? 'block' : 'none';
+        if (createStatusText) createStatusText.textContent = text;
+    }
+
+    // 生成文章主函数（Tab1）
+    async function createGenerateArticle(isRegenerate) {
+        const settings = getAISettings();
+        if (!settings.apiKey) {
+            showToast('请先在 AI 设置中配置 API Key');
+            if (aiSettingsModal) aiSettingsModal.style.display = 'flex';
+            return;
+        }
+        const topic = (createTopicInput && createTopicInput.value.trim()) || window.workflowState.topic;
+        if (!topic) {
+            showToast('请先输入话题或选择热搜');
+            return;
+        }
+        // 记录参数
+        window.workflowState.topic = topic;
+        window.workflowState.wordCount = createWordCount ? parseInt(createWordCount.value, 10) : 1200;
+        window.workflowState.style = createStyleSel ? createStyleSel.value : 'deep';
+        window.workflowState.sections = createSectionsSel ? parseInt(createSectionsSel.value, 10) : 4;
+
+        // 按钮 loading
+        const btn = isRegenerate ? createRegenerateBtn : createGenerateBtn;
+        const origText = btn ? btn.textContent : '';
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ 生成中...'; }
+        if (createGenerateBtn) { createGenerateBtn.disabled = true; createGenerateBtn.textContent = '⏳ 生成中...'; }
+        setCreateStatus('AI 正在生成文章（含去 AI 化处理）...', true);
+
+        try {
+            const article = await generateArticleWithParams(topic, settings, {
+                wordCount: window.workflowState.wordCount,
+                style: window.workflowState.style,
+                sections: window.workflowState.sections
+            });
+            // 显示编辑区
+            if (createArticleSection) createArticleSection.style.display = 'block';
+            if (createEmptyState) createEmptyState.style.display = 'none';
+            if (createArticleArea) createArticleArea.value = article;
+            // 更新字数
+            updateCreateWordNum();
+            // 启用重新生成按钮
+            if (createRegenerateBtn) { createRegenerateBtn.disabled = false; createRegenerateBtn.style.cursor = 'pointer'; createRegenerateBtn.style.color = '#10B981'; createRegenerateBtn.style.borderColor = '#10B981'; }
+            // 存入 workflowState
+            window.workflowState.article = article;
+            setCreateStatus(`文章已生成，约 ${article.length} 字。可编辑后进入「排版助手」。`, true);
+            showToast('文章生成完成！');
+        } catch (e) {
+            console.error(e);
+            setCreateStatus('生成失败：' + e.message, true);
+            showToast('生成失败：' + e.message);
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = origText; }
+            if (createGenerateBtn) { createGenerateBtn.disabled = false; createGenerateBtn.textContent = '🚀 生成文章'; }
+        }
+    }
+
+    // 字数统计
+    function updateCreateWordNum() {
+        if (!createArticleArea || !createWordNum) return;
+        const text = createArticleArea.value.trim();
+        // 去除 markdown 标记后的中文字符数
+        const cleanText = text.replace(/[#*>`\-\[\]\(\)!]/g, '');
+        createWordNum.textContent = `${cleanText.length} 字`;
+    }
+
+    // 抓热搜按钮
+    if (fetchHotBtn) {
+        fetchHotBtn.addEventListener('click', async () => {
+            const origText = fetchHotBtn.textContent;
+            fetchHotBtn.disabled = true;
+            fetchHotBtn.textContent = '⏳ 抓取中...';
+            setCreateStatus('正在抓取热搜...', true);
+            try {
+                const topics = await fetchHotTopics();
+                if (!topics || topics.length === 0) {
+                    setCreateStatus('未抓取到热搜，请手动输入话题', true);
+                    return;
+                }
+                // 渲染热搜列表
+                if (hotTopicsList) {
+                    hotTopicsList.innerHTML = '<div style="font-size:12px;color:#6B7280;margin-bottom:8px;font-weight:600;">点击选择话题：</div>' +
+                        topics.map((t, i) =>
+                            `<button type="button" data-topic="${t.replace(/"/g, '&quot;')}" style="display:block;width:100%;text-align:left;padding:8px 12px;margin-bottom:4px;border:1px solid #E5E7EB;background:#fff;border-radius:6px;font-size:13px;color:#374151;cursor:pointer;transition:all 0.15s;">${i + 1}. ${t}</button>`
+                        ).join('');
+                    hotTopicsList.style.display = 'block';
+                    // 绑定点击
+                    hotTopicsList.querySelectorAll('button[data-topic]').forEach(b => {
+                        b.addEventListener('mouseenter', () => { b.style.background = '#F0FDF4'; b.style.borderColor = '#10B981'; });
+                        b.addEventListener('mouseleave', () => { b.style.background = '#fff'; b.style.borderColor = '#E5E7EB'; });
+                        b.addEventListener('click', () => {
+                            if (createTopicInput) createTopicInput.value = b.dataset.topic;
+                            hotTopicsList.style.display = 'none';
+                            setCreateStatus(`已选择话题：${b.dataset.topic}`, true);
+                        });
+                    });
+                }
+                setCreateStatus(`抓取到 ${topics.length} 个热搜，点击下方列表选择`, true);
+            } catch (e) {
+                setCreateStatus('热搜抓取失败：' + e.message + '，请手动输入话题', true);
+            } finally {
+                fetchHotBtn.disabled = false;
+                fetchHotBtn.textContent = origText;
+            }
+        });
+    }
+
+    // 生成按钮
+    if (createGenerateBtn) {
+        createGenerateBtn.addEventListener('click', () => createGenerateArticle(false));
+    }
+    // 重新生成按钮
+    if (createRegenerateBtn) {
+        createRegenerateBtn.addEventListener('click', () => createGenerateArticle(true));
+    }
+    // 字数实时统计
+    if (createArticleArea) {
+        createArticleArea.addEventListener('input', updateCreateWordNum);
+    }
+    // 复制
+    if (createCopyBtn) {
+        createCopyBtn.addEventListener('click', () => {
+            if (!createArticleArea) return;
+            const text = createArticleArea.value;
+            if (!text) { showToast('暂无文章可复制'); return; }
+            navigator.clipboard.writeText(text).then(() => showToast('已复制文章到剪贴板'));
+        });
+    }
+    // 下一步：进入排版助手
+    if (createGotoEditorBtn) {
+        createGotoEditorBtn.addEventListener('click', () => {
+            if (!createArticleArea || !createArticleArea.value.trim()) {
+                showToast('请先生成文章');
+                return;
+            }
+            // 存入 workflowState
+            window.workflowState.article = createArticleArea.value;
+            // 切到排版 tab
+            const editorTab = document.querySelector('.tab-btn[data-tab="editor"]');
+            if (editorTab) editorTab.click();
+            // 把文章填入编辑器
+            const formatted = smartFormatText(createArticleArea.value);
+            const html = markdownToHTML(formatted);
+            editor.innerHTML = html;
+            updatePreview();
+            showToast('已进入排版助手，文章已填入编辑器');
+        });
+    }
+
+    // ===== 9.6 Tab3 文章配图：精细化封面/配图单独重新生成 =====
+    // Tab3 文章配图相关的 DOM 元素
+    const aiFetchFromEditorBtn = document.getElementById('aiFetchFromEditorBtn');
+    const aiPlanImagesBtn = document.getElementById('aiPlanImagesBtn');
+    const aiGenerateAllBtn = document.getElementById('aiGenerateAllBtn');
+    const aiApplyToEditorBtn = document.getElementById('aiApplyToEditorBtn');
+    const aiArticleTitle = document.getElementById('aiArticleTitle');
+    const aiArticleMeta = document.getElementById('aiArticleMeta');
+    const aiCoverRegenerateBtn = document.getElementById('aiCoverRegenerateBtn');
+    const aiCoverPreview = document.getElementById('aiCoverPreview');
+    const aiImagesList = document.getElementById('aiImagesList');
+    const aiEmptyState = document.getElementById('aiEmptyState');
+    const aiStatus = document.getElementById('aiStatus');
+    const aiStatusText = document.getElementById('aiStatusText');
+
+    // Tab3 文章配图的内部状态
+    const tab3State = {
+        coverPrompt: '',
+        coverDataUri: '',
+        imagePrompts: [],   // [{prompt, dataUri, generating, fail}]
+        coverPlan: null
+    };
+
+    function setAIStatus(text, show) {
+        if (aiStatus) aiStatus.style.display = show ? 'block' : 'none';
+        if (aiStatusText) aiStatusText.textContent = text;
+    }
+
+    // 更新文章信息显示
+    function updateArticleIllustrationPanel() {
+        const article = window.workflowState && window.workflowState.article;
+        if (!article) {
+            if (aiArticleTitle) aiArticleTitle.textContent = '未选择文章';
+            if (aiArticleMeta) aiArticleMeta.textContent = '';
+            return;
+        }
+        // 提取文章标题（首个 # 开头行）
+        const titleMatch = article.match(/^#\s+(.+)$/m);
+        const title = titleMatch ? titleMatch[1] : '(无标题)';
+        if (aiArticleTitle) aiArticleTitle.textContent = title;
+        const wordCount = article.replace(/[#*>`\-\[\]\(\)!]/g, '').length;
+        if (aiArticleMeta) aiArticleMeta.textContent = `${wordCount} 字 · 来自 ${window.workflowState.topic ? '创作' : '排版助手'}`;
+    }
+
+    // 渲染配图列表
+    function renderAIImageList() {
+        if (!aiImagesList) return;
+        if (tab3State.imagePrompts.length === 0) {
+            aiImagesList.innerHTML = '';
+            if (aiEmptyState) aiEmptyState.style.display = 'block';
+            return;
+        }
+        if (aiEmptyState) aiEmptyState.style.display = 'none';
+        aiImagesList.innerHTML = tab3State.imagePrompts.map((item, i) => `
+            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:14px 16px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <div style="font-weight:600;font-size:13px;color:#1F2937;">配图 ${i + 1}${item.fail ? '（失败）' : ''}</div>
+                    <button data-idx="${i}" class="ai-img-regen" style="padding:4px 10px;background:#fff;color:#10B981;border:1px solid #10B981;border-radius:5px;font-size:11px;cursor:pointer;">↻ 重新生成</button>
+                </div>
+                <textarea data-idx="${i}" class="ai-img-prompt" style="width:100%;min-height:60px;padding:8px 10px;border:1px solid #E5E7EB;border-radius:6px;font-size:12px;color:#374151;font-family:monospace;resize:vertical;box-sizing:border-box;outline:none;">${(item.prompt || '').replace(/</g, '&lt;')}</textarea>
+                <div data-idx="${i}" class="ai-img-preview" style="margin-top:8px;min-height:100px;display:flex;align-items:center;justify-content:center;background:#F9FAFB;border-radius:6px;color:#9CA3AF;font-size:12px;">
+                    ${item.dataUri
+                        ? `<img src="${item.dataUri}" style="max-width:100%;max-height:200px;border-radius:6px;" alt="配图${i + 1}">`
+                        : (item.generating ? '⏳ 生成中...' : '尚未生成')}
+                </div>
+            </div>
+        `).join('');
+        // 绑定重新生成按钮
+        aiImagesList.querySelectorAll('.ai-img-regen').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.idx, 10);
+                regenerateSingleImage(idx);
+            });
+        });
+        // 绑定 prompt 编辑
+        aiImagesList.querySelectorAll('.ai-img-prompt').forEach(ta => {
+            ta.addEventListener('change', () => {
+                const idx = parseInt(ta.dataset.idx, 10);
+                if (tab3State.imagePrompts[idx]) {
+                    tab3State.imagePrompts[idx].prompt = ta.value;
+                }
+            });
+        });
+    }
+
+    // 渲染封面
+    function renderAICover() {
+        if (!aiCoverPreview) return;
+        if (tab3State.coverDataUri) {
+            aiCoverPreview.innerHTML = `<img src="${tab3State.coverDataUri}" style="max-width:100%;max-height:200px;border-radius:6px;" alt="封面">`;
+            if (aiCoverRegenerateBtn) {
+                aiCoverRegenerateBtn.disabled = false;
+                aiCoverRegenerateBtn.style.cursor = 'pointer';
+                aiCoverRegenerateBtn.style.color = '#10B981';
+                aiCoverRegenerateBtn.style.borderColor = '#10B981';
+            }
+        } else {
+            aiCoverPreview.innerHTML = tab3State.coverPrompt ? '⏳ 封面生成中...' : '尚未生成';
+        }
+    }
+
+    // 从排版助手导入文章
+    if (aiFetchFromEditorBtn) {
+        aiFetchFromEditorBtn.addEventListener('click', () => {
+            // 优先用 workflowState（保留 markdown 结构），如果不存在则尝试从编辑器提取文本
+            if (window.workflowState && window.workflowState.article) {
+                // 已有 markdown 文章，直接用
+                updateArticleIllustrationPanel();
+                showToast('已导入文章：' + ((window.workflowState.article.match(/^#\s+(.+)$/m) || [])[1] || ''));
+            } else {
+                // 尝试从编辑器提取（会丢失 markdown 结构，作为兜底）
+                const text = editor.innerText || editor.textContent || '';
+                if (text.trim()) {
+                    window.workflowState.article = text;
+                    updateArticleIllustrationPanel();
+                    showToast('已从排版助手导入文章（提示：建议从「创作」Tab 生成文章以保留 Markdown 结构）');
+                } else {
+                    showToast('排版助手中暂无内容，请先在「创作」Tab 生成文章');
+                    return;
+                }
+            }
+            // 启用规划按钮
+            if (aiPlanImagesBtn) {
+                aiPlanImagesBtn.disabled = false;
+                aiPlanImagesBtn.style.cursor = 'pointer';
+            }
+        });
+    }
+
+    // 规划配图 Prompt
+    if (aiPlanImagesBtn) {
+        aiPlanImagesBtn.addEventListener('click', async () => {
+            const settings = getAISettings();
+            if (!settings.apiKey) {
+                showToast('请先在 AI 设置中配置 API Key');
+                if (aiSettingsModal) aiSettingsModal.style.display = 'flex';
+                return;
+            }
+            const article = window.workflowState && window.workflowState.article;
+            if (!article) {
+                showToast('请先导入文章');
+                return;
+            }
+            const origText = aiPlanImagesBtn.textContent;
+            aiPlanImagesBtn.disabled = true;
+            aiPlanImagesBtn.textContent = '⏳ 规划中...';
+            setAIStatus('AI 正在规划配图 Prompt（含封面）...', true);
+            try {
+                // 规划封面
+                const coverPlan = await planCoverImage(article, settings);
+                tab3State.coverPlan = coverPlan;
+                tab3State.coverPrompt = `documentary photography, ${coverPlan.scene}, golden hour warm light, large empty negative space on the left, no text, no watermark, ultra detailed, 8k quality`;
+                // 规划配图
+                const imageCount = settings.imageCount || 4;
+                const prompts = await planImages(article, imageCount, settings);
+                tab3State.imagePrompts = prompts.map(p => ({ prompt: p, dataUri: '', generating: false, fail: false }));
+                // 渲染
+                renderAICover();
+                renderAIImageList();
+                // 启用后续按钮
+                if (aiGenerateAllBtn) {
+                    aiGenerateAllBtn.disabled = false;
+                    aiGenerateAllBtn.style.cursor = 'pointer';
+                    aiGenerateAllBtn.style.color = '#10B981';
+                    aiGenerateAllBtn.style.borderColor = '#10B981';
+                }
+                setAIStatus(`已规划：1 张封面 + ${prompts.length} 张配图。可编辑 prompt 后点「一键生成全部」`, true);
+                showToast(`规划完成：封面 + ${prompts.length} 张配图`);
+            } catch (e) {
+                console.error(e);
+                setAIStatus('规划失败：' + e.message, true);
+                showToast('规划失败：' + e.message);
+            } finally {
+                aiPlanImagesBtn.disabled = false;
+                aiPlanImagesBtn.textContent = origText;
+            }
+        });
+    }
+
+    // 一键生成全部（封面 + 所有配图，并行）
+    if (aiGenerateAllBtn) {
+        aiGenerateAllBtn.addEventListener('click', async () => {
+            const settings = getAISettings();
+            if (!settings.apiKey) {
+                showToast('请先配置 API Key');
+                return;
+            }
+            if (!tab3State.coverPrompt && tab3State.imagePrompts.length === 0) {
+                showToast('请先规划配图');
+                return;
+            }
+            const origText = aiGenerateAllBtn.textContent;
+            aiGenerateAllBtn.disabled = true;
+            aiGenerateAllBtn.textContent = '⏳ 生成中...';
+            setAIStatus(`正在生成：封面 + ${tab3State.imagePrompts.length} 张配图（并行）...`, true);
+
+            // 启动并行任务
+            const tasks = [];
+            // 封面任务
+            if (tab3State.coverPrompt && !tab3State.coverDataUri) {
+                tab3State.coverPlan = tab3State.coverPlan || {};
+                tasks.push(
+                    generateArticleCover(tab3State.coverPlan, 88888)
+                        .then(uri => { tab3State.coverDataUri = uri; renderAICover(); })
+                        .catch(e => { console.error('封面生成失败:', e); tab3State.coverDataUri = ''; })
+                );
+            }
+            // 配图任务
+            tab3State.imagePrompts.forEach((item, i) => {
+                if (item.dataUri || item.generating) return;
+                item.generating = true;
+                tasks.push(
+                    generateImage(item.prompt, 1000 + i * 111, 90000)
+                        .then(uri => {
+                            tab3State.imagePrompts[i].dataUri = uri;
+                            tab3State.imagePrompts[i].generating = false;
+                            tab3State.imagePrompts[i].fail = false;
+                            renderAIImageList();
+                        })
+                        .catch(e => {
+                            console.error(`配图 ${i + 1} 生成失败:`, e);
+                            tab3State.imagePrompts[i].generating = false;
+                            tab3State.imagePrompts[i].fail = true;
+                            renderAIImageList();
+                        })
+                );
+            });
+
+            let completed = 0;
+            const total = tasks.length;
+            tasks.forEach(t => t.finally(() => {
+                completed++;
+                setAIStatus(`生成中... ${completed}/${total} 完成`, true);
+            }));
+
+            try {
+                await Promise.all(tasks);
+                const success = tab3State.imagePrompts.filter(x => x.dataUri).length;
+                setAIStatus(`完成！封面${tab3State.coverDataUri ? '✓' : '✗'} + 配图 ${success}/${tab3State.imagePrompts.length}`, true);
+                // 启用应用按钮
+                if (aiApplyToEditorBtn) {
+                    aiApplyToEditorBtn.disabled = false;
+                    aiApplyToEditorBtn.style.cursor = 'pointer';
+                    aiApplyToEditorBtn.style.color = '#10B981';
+                    aiApplyToEditorBtn.style.borderColor = '#10B981';
+                }
+                showToast(`生成完成！`);
+            } catch (e) {
+                setAIStatus('部分生成失败：' + e.message, true);
+            } finally {
+                aiGenerateAllBtn.disabled = false;
+                aiGenerateAllBtn.textContent = origText;
+            }
+        });
+    }
+
+    // 单独重新生成某张配图
+    async function regenerateSingleImage(idx) {
+        const settings = getAISettings();
+        const item = tab3State.imagePrompts[idx];
+        if (!item) return;
+        item.generating = true;
+        item.dataUri = '';
+        item.fail = false;
+        renderAIImageList();
+        setAIStatus(`正在重新生成配图 ${idx + 1}...`, true);
+        try {
+            const uri = await generateImage(item.prompt, 2000 + idx * 333, 90000);
+            tab3State.imagePrompts[idx].dataUri = uri;
+            tab3State.imagePrompts[idx].generating = false;
+            renderAIImageList();
+            setAIStatus(`配图 ${idx + 1} 重新生成完成`, true);
+            showToast(`配图 ${idx + 1} 已重新生成`);
+        } catch (e) {
+            tab3State.imagePrompts[idx].generating = false;
+            tab3State.imagePrompts[idx].fail = true;
+            renderAIImageList();
+            setAIStatus(`配图 ${idx + 1} 生成失败：${e.message}`, true);
+        }
+    }
+
+    // 重新生成封面
+    if (aiCoverRegenerateBtn) {
+        aiCoverRegenerateBtn.addEventListener('click', async () => {
+            if (!tab3State.coverPlan) return;
+            const origText = aiCoverRegenerateBtn.textContent;
+            aiCoverRegenerateBtn.disabled = true;
+            aiCoverRegenerateBtn.textContent = '⏳';
+            tab3State.coverDataUri = '';
+            renderAICover();
+            setAIStatus('正在重新生成封面...', true);
+            try {
+                const uri = await generateArticleCover(tab3State.coverPlan, 99999);
+                tab3State.coverDataUri = uri;
+                renderAICover();
+                setAIStatus('封面重新生成完成', true);
+                showToast('封面已重新生成');
+            } catch (e) {
+                setAIStatus('封面生成失败：' + e.message, true);
+            } finally {
+                aiCoverRegenerateBtn.disabled = false;
+                aiCoverRegenerateBtn.textContent = origText;
+            }
+        });
+    }
+
+    // 应用到排版助手：把图片插入文章并切回 Tab2
+    if (aiApplyToEditorBtn) {
+        aiApplyToEditorBtn.addEventListener('click', () => {
+            const article = window.workflowState && window.workflowState.article;
+            if (!article) {
+                showToast('暂无文章');
+                return;
+            }
+            // 收集所有成功的图片
+            const imageUrls = tab3State.imagePrompts.filter(x => x.dataUri).map(x => x.dataUri);
+            const imageCaptions = tab3State.imagePrompts.filter((x, i) => x.dataUri).map((x, i) => `配图${i + 1}`);
+            let finalArticle = article;
+            if (imageUrls.length > 0) {
+                finalArticle = insertImagesIntoArticle(finalArticle, imageUrls, imageCaptions);
+            }
+            if (tab3State.coverDataUri) {
+                finalArticle = `![封面](${tab3State.coverDataUri})\n\n` + finalArticle;
+            }
+            // 更新 workflowState
+            window.workflowState.article = finalArticle;
+            // 切到排版 tab
+            const editorTab = document.querySelector('.tab-btn[data-tab="editor"]');
+            if (editorTab) editorTab.click();
+            // 填入编辑器
+            const formatted = smartFormatText(finalArticle);
+            const html = markdownToHTML(formatted);
+            editor.innerHTML = html;
+            updatePreview();
+            showToast(`已应用到排版助手（${imageUrls.length} 张配图 + 封面${tab3State.coverDataUri ? '✓' : '✗'}）`);
+        });
+    }
+
+    // ===== 9.7 三 Tab 状态打通：从排版助手跳转到配图 Tab =====
+    // Tab2 排版助手的「精细化配图」按钮
+    const gotoImageBtn = document.getElementById('gotoImageBtn');
+    if (gotoImageBtn) {
+        gotoImageBtn.addEventListener('click', () => {
+            // 优先用 workflowState，否则尝试从编辑器提取
+            let article = (window.workflowState && window.workflowState.article) || '';
+            if (!article) {
+                // 从编辑器 innerHTML 反推 markdown 不可靠，提示用户
+                const editorText = editor.innerText || editor.textContent || '';
+                if (editorText.trim()) {
+                    article = editorText;
+                    window.workflowState.article = article;
+                }
+            }
+            if (!article) {
+                showToast('请先在创作 Tab 生成文章，或在排版助手中导入文章');
+                return;
+            }
+            // 同步 workflowState
+            window.workflowState.article = article;
+            // 切到 Tab3 图片生成 tab
+            const imageTab = document.querySelector('.tab-btn[data-tab="image"]');
+            if (imageTab) imageTab.click();
+            // 切换 mode 到 article-illustration
+            const aiModeBtn = document.querySelector('.mode-btn[data-mode="article-illustration"]');
+            if (aiModeBtn) aiModeBtn.click();
+            // 更新 Tab3 文章信息
+            setTimeout(() => updateArticleIllustrationPanel(), 100);
+            showToast('已进入配图 Tab，可点击「规划配图 Prompt」开始');
+        });
     }
 
     // ===== 10. 事件绑定 =====
