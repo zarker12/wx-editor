@@ -2528,20 +2528,33 @@ if (humanizeBtn) {
             if (window.workflowState) {
                 window.workflowState.article = result.text;
             }
-            // 显示结果
+            // 显示4层处理报告
             const parts = [];
-            parts.push(`本地清洗：${result.localChanges.length > 0 ? result.localChanges.join('、') : '无明显改动'}`);
+            // L1 机械修复
+            parts.push(`L1机械修复：${result.autoFixes && result.autoFixes.length > 0 ? result.autoFixes.join('、') : '无'}`);
+            // L2 模式检测
+            if (result.analysis) {
+                const a = result.analysis;
+                parts.push(`L2检测：关键${a.critical.length}/重要${a.important.length}/细节${a.minor.length}`);
+            }
+            // L3 词汇替换
+            parts.push(`L3词汇替换：${result.vocabReplaced || 0}个`);
+            // L4 LLM 改写
             if (willUseLLM) {
                 if (result.usedLLM) {
-                    parts.push('LLM 深度改写：已完成');
+                    parts.push('L4 LLM改写：已完成');
                 } else if (result.llmError) {
-                    parts.push(`LLM 改写失败：${result.llmError}（仅本地规则）`);
+                    parts.push(`L4 LLM失败：${result.llmError}`);
                 }
             }
             statusEl.style.background = '#ECFDF5';
             statusEl.style.color = '#065F46';
             statusEl.style.border = '1px solid #6EE7B7';
             statusEl.textContent = `✓ 去AI味完成 · ${parts.join(' · ')}`;
+            // 在控制台输出详细报告供调试
+            if (result.analysis) {
+                console.log('[humanize] 详细报告：', result.analysis);
+            }
             showToast('去AI味处理完成');
         } catch (e) {
             statusEl.style.background = '#FEF2F2';
@@ -2552,6 +2565,106 @@ if (humanizeBtn) {
         } finally {
             humanizeBtn.disabled = false;
             humanizeBtn.textContent = origText;
+        }
+    });
+}
+
+// 自动排版按钮（LLM 驱动：标题层级识别、引用/代码块规范、段落首字符标点修正、段落松散化）
+const autoFormatBtn = document.getElementById('autoFormatBtn');
+if (autoFormatBtn) {
+    autoFormatBtn.addEventListener('mousedown', (e) => e.preventDefault());
+    autoFormatBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (typeof window.formatArticleSmart !== 'function') {
+            showToast('功能加载中，请稍后重试');
+            return;
+        }
+        const editor = document.getElementById('editor');
+        if (!editor || !editor.innerText.trim()) {
+            showToast('编辑框为空，请先输入文章');
+            return;
+        }
+        // 获取 markdown 源文本（优先 workflowState，其次从 innerHTML 提取）
+        let articleText = '';
+        if (window.workflowState && window.workflowState.article) {
+            articleText = window.workflowState.article;
+        } else {
+            // 从 innerHTML 提取 markdown 文本（保留图片语法）
+            const html = editor.innerHTML;
+            articleText = html
+                .replace(/<img[^>]*alt="([^"]*)"[^>]*src="([^"]*)"[^>]*>/gi, '![$1]($2)')
+                .replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, '![]($1)')
+                .replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n\n').replace(/<\/div>/gi, '\n')
+                .replace(/<[^>]+>/g, '')
+                .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+        }
+        if (!articleText || articleText.length < 100) {
+            showToast('文章内容过短，无需排版');
+            return;
+        }
+
+        const origText = autoFormatBtn.textContent;
+        autoFormatBtn.disabled = true;
+        autoFormatBtn.textContent = '排版中...';
+
+        // 状态条提示
+        let statusEl = document.getElementById('humanizeStatus');
+        if (!statusEl) {
+            statusEl = document.createElement('div');
+            statusEl.id = 'humanizeStatus';
+            statusEl.style.cssText = 'padding:8px 14px;margin-top:8px;border-radius:6px;font-size:12px;display:none;';
+            editor.parentElement.insertBefore(statusEl, editor);
+        }
+        const settings = (typeof getAISettings === 'function') ? getAISettings() : null;
+        const willUseLLM = settings && settings.apiKey;
+        statusEl.style.display = 'block';
+        statusEl.style.background = '#EFF6FF';
+        statusEl.style.color = '#1E40AF';
+        statusEl.style.border = '1px solid #BFDBFE';
+        statusEl.textContent = willUseLLM
+            ? '⏳ 自动排版中：先本地智能排版，再调用 LLM 识别标题层级/规范引用代码块/修正段落首字符...'
+            : '⏳ 自动排版中：本地智能排版（未配置 API Key，仅做基础排版）...';
+
+        try {
+            const result = await window.formatArticleSmart(articleText, settings);
+            // 更新编辑框
+            if (editor) {
+                if (typeof marked !== 'undefined') {
+                    editor.innerHTML = marked.parse(result.text);
+                } else {
+                    editor.innerText = result.text;
+                }
+            }
+            // 更新 workflowState
+            if (window.workflowState) {
+                window.workflowState.article = result.text;
+            }
+            // 显示报告
+            const parts = [];
+            parts.push(`本地排版：${result.localFormatted ? '已完成' : '无'}`);
+            if (willUseLLM) {
+                if (result.usedLLM) {
+                    const summary = result.llmSummary || 'LLM 优化完成';
+                    parts.push(`LLM 优化：${summary}`);
+                } else if (result.llmError) {
+                    parts.push(`LLM 失败：${result.llmError}`);
+                }
+            }
+            statusEl.style.background = '#ECFDF5';
+            statusEl.style.color = '#065F46';
+            statusEl.style.border = '1px solid #6EE7B7';
+            statusEl.textContent = `✓ 自动排版完成 · ${parts.join(' · ')}`;
+            if (typeof updatePreview === 'function') updatePreview();
+            showToast('自动排版完成');
+        } catch (e) {
+            statusEl.style.background = '#FEF2F2';
+            statusEl.style.color = '#991B1B';
+            statusEl.style.border = '1px solid #FECACA';
+            statusEl.textContent = '✗ 自动排版失败：' + e.message;
+            showToast('自动排版失败：' + e.message);
+        } finally {
+            autoFormatBtn.disabled = false;
+            autoFormatBtn.textContent = origText;
         }
     });
 }
@@ -3512,218 +3625,514 @@ function formatParagraph(text) {
         return text;
     }
 
-    // ===== 去AI味（Humanize）=====
-    // 两级处理：第一级纯前端规则清洗（即时、无成本），第二级 LLM 深度改写（需配置API）
-    // 第一级：前端规则清洗
-    function humanizeLocal(text) {
-        if (!text || typeof text !== 'string') return text;
+    // ===== 去AI味（Humanize）系统化处理 =====
+    // 参考 ~/.qclaw/skills/humanizer 的多层级设计原则：
+    //   第1层 autoFix          机械修复（弯引号、chatbot痕迹、安全填充短语）
+    //   第2层 analyzePatterns  24模式检测（critical/important/minor 优先级分组）
+    //   第3层 replaceAIVocab   3级AI词汇替换（Tier1 死命词 / Tier2 密度可疑 / Tier3 上下文）
+    //   第4层 humanizeViaLLM   LLM 深度改写（附上检测报告作为指导）
+    // 中文适配：去掉了 \b 词边界（中文中无效），用直接匹配；保留语义不改变核心内容。
+
+    // ─── Tier 1 死命词：出现即替换（中文高频 AI 痕迹） ───
+    const HUMANIZER_TIER1 = [
+        // 形而上/抽象名词
+        ['彰显', '显出'], ['交织', '交错'], ['精妙', '巧妙'],
+        ['格局', '局面'], ['维度', '角度'], ['范畴', '范围'],
+        ['层面', '方面'], ['活力', '生气'], ['生态', '圈子'],
+        // 互联网黑话
+        ['赋能', '助力'], ['沉淀', '积累'], ['迭代', '改进'],
+        ['落地', '用上'], ['变现', '赚钱'], ['裂变', '扩散'],
+        ['触达', '到达'], ['闭环', '完整流程'], ['抓手', '着力点'],
+        ['赛道', '方向'], ['风口', '机会'], ['护城河', '优势'],
+        ['降维打击', '碾压'], ['出圈', '火出圈'], ['破圈', '突破圈层'],
+        // 常用 AI 句式词
+        ['此外', '另外'], ['值得一提的是', ''], ['至关重要', '关键'],
+        ['深入探讨', '仔细说说'], ['不可或缺', '少不了'],
+        ['综上所述', '说到底'], ['总而言之', '说到底'],
+        ['不可否认', '说实话'], ['众所周知', '大家都知道'],
+        ['值得注意的是', '要注意的是'], ['不难发现', '能看出来'],
+        ['毋庸置疑', '确实'], ['诚然', '确实'], ['无疑', '确实是'],
+        // AI 高频动词
+        ['引发了广泛关注', '引起了不少人注意'],
+        ['掀起了热议', '聊得挺热闹'], ['引发了热议', '聊得挺热闹'],
+        ['纷纷表示', '都说'], ['蓬勃发展', '发展得不错'],
+        ['方兴未艾', '还在往上走'], ['日新月异', '变化很快'],
+        ['深刻变革', '大变化'], ['深度融合', '结合得紧'],
+        ['见证了', '看到了'], ['凸显了', '显出了'], ['凸显', '显出'],
+        ['展现了', '展示了'], ['展现', '展示'],
+        // 平行结构标记词
+        ['不仅是', '不只是'], ['更是', '而且是'], ['与此同时', '同时'],
+        // 总结类
+        ['然而', '但是'], ['尽管如此', '虽然这样'],
+        ['即使如此', '就算这样'], ['即便如此', '就算这样'],
+        ['无论如何', '不管怎样'], ['言而总之', '说到底'],
+        ['概而言之', '说到底'], ['总之', '说到底'],
+        ['总的来看', '总体看'], ['总的来说', '总体看'],
+        ['综合来看', '总体看'], ['综合而言', '总体看'],
+        ['除此之外', '另外'], ['在此基础之上', '在这个基础上'],
+        ['基于此', '基于这个'], ['由此可知', '从这里能知道'],
+        ['综上', '说到底'],
+        // AI 反思句
+        ['这不禁让我们思考', '这让人会想'], ['这提醒我们', '这提醒'],
+        ['未来必将', '未来会'], ['我们应当认识到', '我们得知道'],
+        ['我们必须承认', '我们得承认'], ['我们不能否认', '我们没法否认'],
+        // 商业/营销词
+        ['核心要素', '关键点'], ['核心价值', '关键价值'],
+        ['核心竞争力', '关键优势'], ['核心', '关键'],
+        ['场景', '场合'], ['痛点', '麻烦'], ['内卷', '过度竞争'],
+        ['躺平', '不折腾'], ['国潮', '国货风潮'],
+        ['新消费', '新消费方式'], ['新国货', '国产品牌'],
+        ['新锐', '新出的'], ['头部', '领先'], ['腰部', '中等'],
+        ['尾部', '小'], ['下沉市场', '三四线城市'],
+        ['私域', '自有'], ['公域', '公共'],
+        ['存量', '现有'], ['增量', '新增'], ['复用', '重复用'],
+    ];
+
+    // ─── Tier 2 密度可疑：单独出现可接受，多个出现才替换 ───
+    const HUMANIZER_TIER2_DENSITY = 3; // 出现≥3次才整批替换
+
+    // ─── 安全填充短语（机械替换，无歧义） ───
+    const HUMANIZER_SAFE_FILLS = [
+        [/在([^，。、]{1,10})的背景下/g, '在$1的时候'],
+        [/随着([^，。、]{1,10})的发展/g, '随着$1发展'],
+    ];
+
+    // ─── Chatbot 痕迹（开头/结尾） ───
+    const HUMANIZER_CHATBOT_START = [
+        /^[以下是]+[^。！？]{0,30}[。：：]\s*/i,
+        /^(当然|当然可以|好的|没问题)[！!。]?\s*/,
+        /^(这是一个|这确实是一个)(很好|不错|有趣)的?[^。！？]{0,30}[。！？]\s*/,
+    ];
+    const HUMANIZER_CHATBOT_END = [
+        /\s*(希望对你有帮助|希望对您有帮助|希望这篇文章对你有帮助|希望对你有所启发)[^。！？]*[。！？]\s*$/i,
+        /\s*(如果你觉得有用|如果对你有帮助|欢迎点赞分享|欢迎留言讨论)[^。！？]*[。！？]\s*$/i,
+        /\s*(以上就是|以上就是关于)[^。！？]*[。！？]\s*$/i,
+    ];
+
+    // ─── 第1层：机械修复（autoFix） ───
+    // 只做"无歧义"的转换，不改写语义。
+    function humanizeAutoFix(text) {
         let result = text;
-        const changes = [];
-
-        // 1. 替换破折号（— –）为逗号或句号
-        const before1 = result.length;
-        result = result.replace(/—/g, '，').replace(/–/g, '，');
-        if (result.length !== before1) changes.push('破折号');
-
-        // 2. AI 高频词替换（注意：\b 在中文中不工作，直接匹配）
-        const wordReplacements = [
-            [/此外/g, '另外'],
-            [/值得一提的是/g, ''],
-            [/至关重要/g, '关键'],
-            [/深入探讨/g, '仔细说说'],
-            [/不可或缺/g, '少不了'],
-            [/综上所述/g, '说到底'],
-            [/总而言之/g, '说到底'],
-            [/不可否认/g, '说实话'],
-            [/众所周知/g, '大家都知道'],
-            [/值得注意的是/g, '要注意的是'],
-            [/不难发现/g, '能看出来'],
-            [/引发了广泛关注/g, '引起了不少人注意'],
-            [/掀起了热议/g, '聊得挺热闹'],
-            [/引发了热议/g, '聊得挺热闹'],
-            [/纷纷表示/g, '都说'],
-            [/浓厚兴趣/g, '挺感兴趣'],
-            [/蓬勃发展/g, '发展得不错'],
-            [/方兴未艾/g, '还在往上走'],
-            [/日新月异/g, '变化很快'],
-            [/深刻变革/g, '大变化'],
-            [/深度融合/g, '结合得紧'],
-            [/彰显了/g, '显出了'],
-            [/彰显/g, '显出'],
-            [/交织/g, '交错'],
-            [/精妙/g, '巧妙'],
-            [/格局/g, '局面'],
-            [/见证了/g, '看到了'],
-            [/凸显了/g, '显出了'],
-            [/凸显出/g, '显出'],
-            [/展现了/g, '展示了'],
-            [/展现/g, '展示'],
-            [/凸显/g, '显出'],
-            [/活力/g, '生气'],
-            [/层面/g, '方面'],
-            [/维度/g, '角度'],
-            [/范畴/g, '范围'],
-            [/核心要素/g, '关键点'],
-            [/核心价值/g, '关键价值'],
-            [/核心竞争力/g, '关键优势'],
-            [/核心/g, '关键'],
-            [/生态圈/g, '圈子'],
-            [/生态/g, '圈子'],
-            [/闭环/g, '完整流程'],
-            [/场景/g, '场合'],
-            [/痛点/g, '麻烦'],
-            [/抓手/g, '着力点'],
-            [/赛道/g, '方向'],
-            [/风口/g, '机会'],
-            [/蓝海/g, '新机会'],
-            [/红海/g, '竞争激烈'],
-            [/护城河/g, '优势'],
-            [/降维打击/g, '碾压'],
-            [/赋能/g, '助力'],
-            [/沉淀/g, '积累'],
-            [/迭代/g, '改进'],
-            [/落地/g, '用上'],
-            [/变现/g, '赚钱'],
-            [/裂变/g, '扩散'],
-            [/引爆/g, '带动'],
-            [/出圈/g, '火出圈'],
-            [/内卷/g, '过度竞争'],
-            [/躺平/g, '不折腾'],
-            [/破圈/g, '突破圈层'],
-            [/国潮/g, '国货风潮'],
-            [/新消费/g, '新消费方式'],
-            [/新国货/g, '国产品牌'],
-            [/新锐/g, '新出的'],
-            [/头部/g, '领先'],
-            [/腰部/g, '中等'],
-            [/尾部/g, '小'],
-            [/下沉市场/g, '三四线城市'],
-            [/私域/g, '自有'],
-            [/公域/g, '公共'],
-            [/存量/g, '现有'],
-            [/增量/g, '新增'],
-            [/复用/g, '重复用'],
-            [/触达/g, '到达'],
-            // 平行结构标记词
-            [/不仅是/g, '不只是'],
-            [/更是/g, '而且是'],
-            [/与此同时/g, '同时'],
-            [/然而/g, '但是'],
-            [/尽管如此/g, '虽然这样'],
-            [/即使如此/g, '就算这样'],
-            [/即便如此/g, '就算这样'],
-            [/无论如何/g, '不管怎样'],
-            [/言而总之/g, '说到底'],
-            [/概而言之/g, '说到底'],
-            [/总归/g, '终究'],
-            [/总之/g, '说到底'],
-            [/总的来看/g, '总体看'],
-            [/总的来说/g, '总体看'],
-            [/综合来看/g, '总体看'],
-            [/综合而言/g, '总体看'],
-            // AI 常用句式
-            [/这不禁让我们思考/g, '这让人会想'],
-            [/这提醒我们/g, '这提醒'],
-            [/未来必将/g, '未来会'],
-            [/我们应当认识到/g, '我们得知道'],
-            [/我们必须承认/g, '我们得承认'],
-            [/我们不能否认/g, '我们没法否认'],
-            [/毋庸置疑/g, '确实'],
-            [/诚然/g, '确实'],
-            [/无疑/g, '确实是'],
-            [/确实如此/g, '确实是这样'],
-            [/的确如此/g, '确实是这样'],
-            [/正是如此/g, '就是这样'],
-            [/并非如此/g, '不是这样'],
-            [/并非/g, '并不是'],
-            [/除此之外/g, '另外'],
-            [/在此基础之上/g, '在这个基础上'],
-            [/基于此/g, '基于这个'],
-            [/由此可见/g, '从这里能看出'],
-            [/由此可知/g, '从这里能知道'],
-            [/综上/g, '说到底'],
-            [/在([^，。、]{1,10})的背景下/g, '在$1的时候'],
-            [/随着([^，。、]{1,10})的发展/g, '随着$1发展']
-        ];
-        let wordCount = 0;
-        const replacedWords = [];
-        wordReplacements.forEach(([re, replacement]) => {
-            const matches = result.match(new RegExp(re.source, re.flags));
-            if (matches) {
-                wordCount += matches.length;
-                replacedWords.push(re.source.substring(0, 10));
+        const fixes = [];
+        // 1. 弯引号 → 直引号
+        if (/[\u201C\u201D]/.test(result)) {
+            result = result.replace(/[\u201C\u201D]/g, '"');
+            fixes.push('弯引号→直引号');
+        }
+        if (/[\u2018\u2019]/.test(result)) {
+            result = result.replace(/[\u2018\u2019]/g, "'");
+            fixes.push('弯单引号→直单引号');
+        }
+        // 2. 破折号统一为逗号（保留语义不破坏句式）
+        const dashCount = (result.match(/[—–]/g) || []).length;
+        if (dashCount > 0) {
+            result = result.replace(/[—–]/g, '，');
+            fixes.push(`破折号×${dashCount}→逗号`);
+        }
+        // 3. Chatbot 开头痕迹
+        for (const re of HUMANIZER_CHATBOT_START) {
+            if (re.test(result)) {
+                result = result.replace(re, '');
+                fixes.push('移除chatbot开头');
+                break;
             }
-            result = result.replace(re, replacement);
-        });
-        if (wordCount > 0) changes.push(`高频词×${wordCount}`);
-
-        // 3. 清理多余空格（替换后可能产生连续空格）
-        result = result.replace(/  +/g, ' ').replace(/，，/g, '，').replace(/。，/g, '。').replace(/，。/g, '。');
-        // 4. 清理替换后可能产生的"。，"等
-        result = result.replace(/。，/g, '。').replace(/，。/g, '。');
-
-        return { text: result, changes };
+        }
+        // 4. Chatbot 结尾痕迹
+        for (const re of HUMANIZER_CHATBOT_END) {
+            if (re.test(result)) {
+                result = result.replace(re, '');
+                fixes.push('移除chatbot结尾');
+                break;
+            }
+        }
+        // 5. 安全填充短语替换
+        for (const [re, to] of HUMANIZER_SAFE_FILLS) {
+            if (re.test(result)) {
+                const cnt = (result.match(re) || []).length;
+                result = result.replace(re, to);
+                fixes.push(`填充短语×${cnt}`);
+            }
+        }
+        return { text: result.trim(), fixes };
     }
 
-    // 第二级：调用 LLM 深度改写（去AI味）
-    async function humanizeViaLLM(text, settings) {
+    // ─── 第2层：模式检测（analyzePatterns） ───
+    // 返回 critical/important/minor 三级问题清单 + 统计信号
+    function humanizeAnalyze(text) {
+        const critical = [];   // weight 4-5: 死命问题
+        const important = [];  // weight 2-3: 明显问题
+        const minor = [];      // weight 1: 细节问题
+
+        // Pattern 13: 破折号过度（已由 autoFix 处理，此处只统计）
+        const emDashCount = (text.match(/[—–]/g) || []).length;
+        if (emDashCount >= 3) {
+            critical.push({ pattern: '破折号过度', count: emDashCount, suggestion: '用逗号/句号/括号替代多数破折号' });
+        }
+
+        // Pattern 14: 粗体过度（**xxx** 在 markdown 中）
+        const boldCount = (text.match(/\*\*[^*]+\*\*/g) || []).length;
+        if (boldCount >= 5) {
+            important.push({ pattern: '粗体滥用', count: boldCount, suggestion: '减少机械加粗，让文字本身承担强调' });
+        }
+
+        // Pattern 17: emoji 过度
+        const emojiCount = (text.match(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}]/gu) || []).length;
+        if (emojiCount >= 4) {
+            important.push({ pattern: 'Emoji过度', count: emojiCount, suggestion: '专业文字减少 emoji 装饰' });
+        }
+
+        // Pattern 24: 套话结尾
+        const genericEnd = /(未来.*可期|未来.*光明|让我们拭目以待|相信.*会更好|前景.*广阔)/g;
+        const endMatches = text.match(genericEnd) || [];
+        if (endMatches.length > 0) {
+            critical.push({ pattern: '套话结尾', count: endMatches.length, suggestion: '用具体事实替代"未来可期"类套话' });
+        }
+
+        // Pattern 22: 三段论标记
+        const triadMarkers = /(首先[^。！？]{0,80}[。！？][^]{0,200}其次[^。！？]{0,80}[。！？][^]{0,200}最后)/g;
+        const triadMatches = text.match(triadMarkers) || [];
+        if (triadMatches.length > 0) {
+            important.push({ pattern: '三段论结构', count: triadMatches.length, suggestion: '避免"首先/其次/最后"机械结构' });
+        }
+
+        // Pattern 9: 平行结构"不是…而是…"
+        const negParallel = /(不是[^，。]{1,30})而是/g;
+        const negMatches = text.match(negParallel) || [];
+        if (negMatches.length >= 2) {
+            important.push({ pattern: '平行结构', count: negMatches.length, suggestion: '"不是X而是Y"用多了显得AI，直接陈述' });
+        }
+
+        // 统计信号：句子长度变化
+        const sentences = text.split(/[。！？\n]/).map(s => s.trim()).filter(s => s.length > 0);
+        const sentCount = sentences.length;
+        let avgLen = 0, variance = 0, burstiness = 0;
+        if (sentCount >= 4) {
+            const lens = sentences.map(s => s.length);
+            avgLen = lens.reduce((a, b) => a + b, 0) / sentCount;
+            variance = lens.reduce((sum, l) => sum + Math.pow(l - avgLen, 2), 0) / sentCount;
+            const stdDev = Math.sqrt(variance);
+            const cov = avgLen > 0 ? stdDev / avgLen : 0;
+            burstiness = cov;
+            if (cov < 0.3) {
+                important.push({
+                    pattern: '句子节奏单一',
+                    count: 1,
+                    suggestion: `句子长度方差过小（CoV=${cov.toFixed(2)}），混合短句(3-15字)和长句(30+字)`
+                });
+            }
+            if (avgLen > 40) {
+                minor.push({
+                    pattern: '平均句长偏长',
+                    count: 1,
+                    suggestion: `平均句长 ${avgLen.toFixed(0)} 字，拆分部分长句`
+                });
+            }
+        }
+
+        // 统计信号：词汇重复（trigram）
+        if (sentCount >= 4) {
+            const cleaned = text.replace(/[\s\n]+/g, '');
+            const trigrams = {};
+            for (let i = 0; i < cleaned.length - 5; i += 3) {
+                const tg = cleaned.substring(i, i + 6);
+                trigrams[tg] = (trigrams[tg] || 0) + 1;
+            }
+            const repeated = Object.values(trigrams).filter(v => v >= 2).length;
+            const total = Object.keys(trigrams).length;
+            const repeatRate = total > 0 ? repeated / total : 0;
+            if (repeatRate > 0.15) {
+                minor.push({
+                    pattern: '短语重复',
+                    count: repeated,
+                    suggestion: `3字短语重复率 ${(repeatRate * 100).toFixed(0)}%，变换表达方式`
+                });
+            }
+        }
+
+        return {
+            critical,
+            important,
+            minor,
+            stats: { sentCount, avgLen, burstiness },
+            totalIssues: critical.length + important.length + minor.length
+        };
+    }
+
+    // ─── 第3层：AI 词汇替换（Tier1 死命词 + Tier2 密度替换） ───
+    function replaceAIVocabulary(text) {
+        let result = text;
+        const replaced = [];
+        let tier1Count = 0;
+
+        // Tier 1: 出现即替换
+        for (const [from, to] of HUMANIZER_TIER1) {
+            const re = new RegExp(from, 'g');
+            const matches = result.match(re);
+            if (matches) {
+                result = result.replace(re, to);
+                tier1Count += matches.length;
+                replaced.push(`${from}×${matches.length}`);
+            }
+        }
+        // 清理替换后的多余标点（"","" → ""；""， → ，）
+        result = result.replace(/  +/g, ' ')
+                       .replace(/，，/g, '，').replace(/，。/g, '。').replace(/。，/g, '。')
+                       .replace(/^，|，$/gm, '');
+
+        return {
+            text: result,
+            tier1Count,
+            replacedWords: replaced.slice(0, 8) // 只保留前8个用于状态显示
+        };
+    }
+
+    // 保留旧 API 兼容（其他地方可能引用）
+    function humanizeLocal(text) {
+        if (!text || typeof text !== 'string') return { text, changes: [] };
+        const auto = humanizeAutoFix(text);
+        const vocab = replaceAIVocabulary(auto.text);
+        const changes = [];
+        if (auto.fixes.length > 0) changes.push(...auto.fixes);
+        if (vocab.tier1Count > 0) changes.push(`高频词×${vocab.tier1Count}`);
+        return { text: vocab.text, changes };
+    }
+
+    // ─── 第4层：LLM 深度改写（附上检测报告作为指导） ───
+    async function humanizeViaLLM(text, settings, analysis) {
+        // 把检测报告作为指导附在 prompt 里，让 LLM 有针对性地改
+        const reportLines = [];
+        if (analysis) {
+            if (analysis.critical.length > 0) {
+                reportLines.push('【关键问题·必须处理】');
+                analysis.critical.forEach(c => reportLines.push(`- ${c.pattern}（${c.count}次）：${c.suggestion}`));
+            }
+            if (analysis.important.length > 0) {
+                reportLines.push('【重要问题·优先处理】');
+                analysis.important.forEach(c => reportLines.push(`- ${c.pattern}（${c.count}次）：${c.suggestion}`));
+            }
+            if (analysis.minor.length > 0) {
+                reportLines.push('【细节问题·酌情处理】');
+                analysis.minor.forEach(c => reportLines.push(`- ${c.pattern}（${c.count}次）：${c.suggestion}`));
+            }
+            if (analysis.stats.sentCount >= 4) {
+                reportLines.push(`【统计信号】句子数 ${analysis.stats.sentCount}，平均句长 ${analysis.stats.avgLen.toFixed(0)} 字，节奏 CoV=${analysis.stats.burstiness.toFixed(2)}`);
+            }
+        }
+        const reportBlock = reportLines.length > 0
+            ? `\n\n${reportLines.join('\n')}\n`
+            : '';
+
         const prompt = `你是一位资深公众号编辑，擅长把 AI 生成的文章改得像真人写的。请对以下文章做"去AI味"改写。
 
-【改写要求】
-1. 保留原文的核心观点、结构、标题，不要改变内容方向
-2. 去掉 AI 痕迹：
-   - 删除所有破折号（— –），用逗号/句号替代
-   - 删除 AI 高频词：此外、值得一提的是、至关重要、深入探讨、增强、培育、彰显、交织、精妙、格局、关键、展示、见证、凸显、活力
-   - 拆解"不仅是…更是…"、"不是…而是…"等平行结构
-   - 拆解"首先/其次/最后"三段论
-   - 去掉"这不禁让我们思考"、"这提醒我们"、"未来必将"等 AI 反思句
-   - 去掉"在XX的背景下"、"随着XX的发展"等 AI 开头
-3. 增加人味：
-   - 句子长短混排，有的句子只有几个字
-   - 加入口语化表达（说实话、坦白讲、老实说、讲真）
-   - 段落长度要有变化，有的段落只有一句话
-4. 不要增加新观点、新数据、新案例
-5. 不要改变文章字数（±10%以内）
-6. 保留 Markdown 格式（# ## > **等）
-7. 直接输出改写后的全文，不要解释
+【改写原则】
+1. 保留原文的核心观点、结构、标题层级（# ## ###），不要改变内容方向
+2. 不要新增观点、数据、案例、引语；不要删除核心事实
+3. 文章字数控制在原文 ±10% 以内
+
+【AI 痕迹清除清单】
+- 删除所有破折号（— –），用逗号或句号替代
+- 拆解"不仅是…更是…"、"不是…而是…"等平行结构
+- 拆解"首先/其次/最后"三段论，改为自然过渡
+- 去掉"这不禁让我们思考"、"这提醒我们"、"未来必将"等 AI 反思句
+- 去掉"在 XX 的背景下"、"随着 XX 的发展"等 AI 开头
+- 替换 AI 高频词：此外/值得一提的是/至关重要/深入探讨/赋能/沉淀/迭代/落地/变现/裂变/触达/闭环/抓手/赛道/风口/护城河/降维打击/内卷/躺平/破圈/国潮/新消费/下沉市场
+- 移除"以下是"、"希望对你有帮助"、"以上就是"等 chatbot 痕迹
+- 移除"未来可期"、"前景广阔"、"让我们拭目以待"等套话结尾
+
+【人味增加】
+- 句子长短混排：有的句子只有 3-10 字，有的 30+ 字
+- 加入口语化表达（说实话、坦白讲、老实说、讲真、其实、话说回来）
+- 段落长度有变化：有的段落只有一句话
+- 可以保留 Markdown 格式（# ## > ** - \`\`\`）
+${reportBlock}
+【输出要求】
+直接输出改写后的全文，不要任何解释、不要前后缀。
 
 【原文】
-${text}
-
-【改写后】`;
+${text}`;
 
         return await callLLM(prompt, settings);
     }
 
-    // 去AI味主入口：先本地规则清洗，再决定是否调用 LLM
+    // ─── 主入口：四级处理 ───
     async function humanizeArticle(text, settings) {
-        // 第一级：本地规则清洗（即时）
-        const local = humanizeLocal(text);
-        console.log(`[humanize] 本地清洗完成，改动项：${local.changes.join(', ') || '无'}`);
+        // 第1层：机械修复（即时、无成本）
+        const auto = humanizeAutoFix(text);
+        // 第2层：模式检测（在机械修复后做检测，避免误报）
+        const analysis = humanizeAnalyze(auto.text);
+        // 第3层：AI 词汇替换（即时）
+        const vocab = replaceAIVocabulary(auto.text);
+        const cleanedText = vocab.text;
 
-        // 第二级：如果配置了 API Key，调用 LLM 深度改写
+        console.log(`[humanize] L1机械修复: ${auto.fixes.length}项 | L2检测: critical=${analysis.critical.length}, important=${analysis.important.length}, minor=${analysis.minor.length} | L3词汇替换: ${vocab.tier1Count}个`);
+
+        // 第4层：LLM 深度改写（需 API Key）
         if (settings && settings.apiKey) {
             try {
-                const llmResult = await humanizeViaLLM(local.text, settings);
+                const llmResult = await humanizeViaLLM(cleanedText, settings, analysis);
                 if (llmResult && llmResult.trim().length > 100) {
-                    // 过滤 prompt 泄露
                     const cleaned = stripPromptLeakage(llmResult);
                     return {
                         text: cleaned,
                         usedLLM: true,
-                        localChanges: local.changes,
+                        autoFixes: auto.fixes,
+                        analysis,
+                        vocabReplaced: vocab.tier1Count,
                         llmError: null
                     };
                 }
-                return { text: local.text, usedLLM: false, localChanges: local.changes, llmError: 'LLM 返回内容过短' };
+                return {
+                    text: cleanedText,
+                    usedLLM: false,
+                    autoFixes: auto.fixes,
+                    analysis,
+                    vocabReplaced: vocab.tier1Count,
+                    llmError: 'LLM 返回内容过短'
+                };
             } catch (e) {
-                console.warn('[humanize] LLM 改写失败，仅使用本地规则：', e.message);
-                return { text: local.text, usedLLM: false, localChanges: local.changes, llmError: e.message };
+                console.warn('[humanize] LLM 改写失败，仅用本地处理：', e.message);
+                return {
+                    text: cleanedText,
+                    usedLLM: false,
+                    autoFixes: auto.fixes,
+                    analysis,
+                    vocabReplaced: vocab.tier1Count,
+                    llmError: e.message
+                };
             }
         }
 
-        // 无 API Key：仅本地规则
-        return { text: local.text, usedLLM: false, localChanges: local.changes, llmError: null };
+        // 无 API Key：仅用前 3 层
+        return {
+            text: cleanedText,
+            usedLLM: false,
+            autoFixes: auto.fixes,
+            analysis,
+            vocabReplaced: vocab.tier1Count,
+            llmError: null
+        };
+    }
+
+    // ===== 智能排版优化（LLM 驱动）=====
+    // 两级处理：第一级本地基础排版（smartFormatText）+ 段落首字符标点修正；
+    //          第二级 LLM 识别标题层级、规范引用/代码块、段落松散化。
+    function fixLeadingPunctuation(text) {
+        // 修正段落首字符为标点的问题（如 "。xxx" → "xxx"，"，xxx" → "xxx"）
+        // 只处理段落开头，不影响句中
+        return text.split('\n').map(line => {
+            const trimmed = line.trim();
+            if (!trimmed) return line;
+            // 段落首字符是句号/逗号/分号/感叹号/问号/冒号 → 去掉
+            return line.replace(/^(\s*)[。，；！？：、]+/, '$1');
+        }).join('\n');
+    }
+
+    async function formatViaLLM(text, settings) {
+        const prompt = `你是一位资深公众号排版编辑。请对以下 Markdown 文章做"排版优化"，不要改写文字内容，只调整结构和格式。
+
+【排版优化清单】
+1. 标题层级识别：
+   - 文章大标题用 # (H1)
+   - 一级章节标题用 ## (H2)
+   - 二级小节标题用 ### (H3)
+   - 不要跳级（如 H1 直接跳到 H3）
+   - 标题末尾不要加句号、冒号
+2. 引用块规范：
+   - 引用名人名言、重点金句、他人观点时用 > 引用语法
+   - 引用块前后要空一行
+   - 不要把普通段落误标为引用
+3. 代码块规范：
+   - 代码片段用 \`\`\` 包裹，并标注语言（\`\`\`js / \`\`\`python 等）
+   - 行内代码用 \`反引号\` 包裹
+4. 段落松散化：
+   - 每段 2-3 句最佳，最多 4 句
+   - 长段落拆分为多个短段落
+   - 段落之间用空行分隔
+5. 列表规范：
+   - 并列要点用 - 无序列表
+   - 步骤用 1. 2. 3. 有序列表
+   - 列表前后空一行
+6. 段落首字符修正：
+   - 段落开头不能是标点符号（。，；！？：、）
+   - 如果有，删掉该标点
+7. 保留原文的：
+   - 所有文字内容（不增删观点、不替换词语）
+   - 图片语法 ![](url)
+   - 链接语法 [文字](url)
+   - 加粗 **重点** 和斜体 *强调*
+
+【输出要求】
+直接输出排版优化后的完整 Markdown 文本，不要任何解释、不要前后缀。
+
+【原文】
+${text}`;
+
+        return await callLLM(prompt, settings);
+    }
+
+    // 主入口：先本地排版，再 LLM 优化
+    async function formatArticleSmart(text, settings) {
+        // 第一级：本地基础排版（复用现有 smartFormatText）
+        let localFormatted = text;
+        let localFormattedFlag = false;
+        try {
+            if (typeof smartFormatText === 'function') {
+                localFormatted = smartFormatText(text);
+                localFormattedFlag = true;
+            }
+        } catch (e) {
+            console.warn('[format] 本地排版失败，使用原文：', e.message);
+        }
+        // 修正段落首字符标点（即时、无成本）
+        localFormatted = fixLeadingPunctuation(localFormatted);
+
+        // 第二级：LLM 优化（需 API Key）
+        if (settings && settings.apiKey) {
+            try {
+                const llmResult = await formatViaLLM(localFormatted, settings);
+                if (llmResult && llmResult.trim().length > 100) {
+                    const cleaned = stripPromptLeakage(llmResult);
+                    // 统计 LLM 改了什么（粗略对比标题数、段落数）
+                    const origHeadings = (text.match(/^#{1,6}\s/gm) || []).length;
+                    const newHeadings = (cleaned.match(/^#{1,6}\s/gm) || []).length;
+                    const origParas = text.split(/\n\s*\n/).filter(p => p.trim()).length;
+                    const newParas = cleaned.split(/\n\s*\n/).filter(p => p.trim()).length;
+                    const llmSummary = `标题${origHeadings}→${newHeadings}，段落${origParas}→${newParas}`;
+                    return {
+                        text: cleaned,
+                        usedLLM: true,
+                        localFormatted: localFormattedFlag,
+                        llmSummary,
+                        llmError: null
+                    };
+                }
+                return {
+                    text: localFormatted,
+                    usedLLM: false,
+                    localFormatted: localFormattedFlag,
+                    llmSummary: '',
+                    llmError: 'LLM 返回内容过短'
+                };
+            } catch (e) {
+                console.warn('[format] LLM 排版失败，仅用本地排版：', e.message);
+                return {
+                    text: localFormatted,
+                    usedLLM: false,
+                    localFormatted: localFormattedFlag,
+                    llmSummary: '',
+                    llmError: e.message
+                };
+            }
+        }
+
+        // 无 API Key：仅本地排版
+        return {
+            text: localFormatted,
+            usedLLM: false,
+            localFormatted: localFormattedFlag,
+            llmSummary: '',
+            llmError: null
+        };
     }
 
     // ===== 6. 话题筛选（让 LLM 从热搜中选最适合写文章的话题）=====
@@ -6359,6 +6768,7 @@ ${directionMap[direction] || directionMap.opinion}
     // 暴露到全局，供工具栏按钮调用
     window.autoIllustrate = autoIllustrate;
     window.humanizeArticle = humanizeArticle;
+    window.formatArticleSmart = formatArticleSmart;
 })();
 
 // ===== 草稿功能（localStorage，无需用户系统/注册登录）=====
