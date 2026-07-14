@@ -3371,7 +3371,52 @@ function formatParagraph(text) {
             // 最后兜底：转字符串
             content = String(content || '');
         }
+        // 过滤 prompt 泄露：某些模型会回显 prompt 内容
+        content = stripPromptLeakage(content);
         return content;
+    }
+
+    // 检测并过滤 LLM 回显的 prompt 内容
+    // 某些模型（特别是国内部分 API）会把 prompt 的指令部分当作返回内容
+    function stripPromptLeakage(text) {
+        if (!text || typeof text !== 'string') return text;
+        // prompt 特征标记（这些只出现在 prompt 里，不会出现在正常文章里）
+        const promptMarkers = [
+            '事实红线·禁止杜撰',
+            '禁止杜撰',
+            '总字数必须达到',
+            '总字数严格控制在',
+            '风格要求',
+            '内容方向',
+            '每章节必须达到',
+            '不得编造',
+            '不得编造任何',
+            '不要输出任何解释说明',
+            '现在请开始写',
+            '你是一位资深的公众号',
+            '严格遵循以下要求',
+            '字数要求'
+        ];
+        // 检测是否包含 prompt 标记
+        const hasLeakage = promptMarkers.some(m => text.includes(m));
+        if (!hasLeakage) return text;
+        // 找到第一个 markdown 标题（# 开头）的位置，从那里截取
+        const titleMatch = text.match(/^#\s+.+/m);
+        if (titleMatch) {
+            const idx = text.indexOf(titleMatch[0]);
+            if (idx > 0) {
+                console.warn('[callLLM] 检测到 prompt 泄露，已截取正文部分');
+                return text.substring(idx).trim();
+            }
+        }
+        // 如果找不到标题，按段落分割，去掉包含 prompt 标记的段落
+        const paragraphs = text.split(/\n\n+/);
+        const cleanParas = paragraphs.filter(p => !promptMarkers.some(m => p.includes(m)));
+        if (cleanParas.length < paragraphs.length) {
+            console.warn('[callLLM] 检测到 prompt 泄露，已过滤包含指令的段落');
+            return cleanParas.join('\n\n').trim();
+        }
+        return text;
     }
 
     // ===== 6. 话题筛选（让 LLM 从热搜中选最适合写文章的话题）=====
@@ -4729,60 +4774,30 @@ ${directionMap[direction] || directionMap.opinion}
     // 来源优先级：1.微博热搜 2.抖音热点 3.36氪科技 4.推荐选题
     // 四大板块：互联网 #2563eb / 职场 #7c3aed / 科技 #16a34a / 社会爆款 #dc2626
 
-    // ===== 日历组件 + 时间校准 =====
+    // ===== 长条形时间栏 + 时间校准 =====
     function renderCalendar() {
-        const calGrid = document.getElementById('calGrid');
-        const calMonthYear = document.getElementById('calMonthYear');
+        const calDate = document.getElementById('calDate');
         const calWeekday = document.getElementById('calWeekday');
-        const calTimeStatus = document.getElementById('calTimeStatus');
-        if (!calGrid) return;
+        const calTime = document.getElementById('calTime');
+        const calStatus = document.getElementById('calStatus');
+        if (!calDate) return;
 
         const now = new Date();
         const year = now.getFullYear();
-        const month = now.getMonth();
-        const today = now.getDate();
-        const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
-        const weekdaysFull = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-        const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
-
-        if (calMonthYear) calMonthYear.textContent = `${year}年 ${months[month]}`;
-        if (calWeekday) calWeekday.textContent = `${weekdaysFull[now.getDay()]} · ${today}日`;
-
-        // 计算当月第一天是星期几，当月有多少天
-        const firstDay = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-        // 渲染星期表头
-        let html = '';
-        weekdays.forEach(w => {
-            html += `<span style="font-size:10px;color:#9CA3AF;padding:2px 0;font-weight:600;">${w}</span>`;
-        });
-        // 空白填充
-        for (let i = 0; i < firstDay; i++) {
-            html += `<span></span>`;
-        }
-        // 日期
-        for (let d = 1; d <= daysInMonth; d++) {
-            const isToday = d === today;
-            if (isToday) {
-                html += `<span style="font-size:11px;padding:4px 0;border-radius:4px;background:#10B981;color:#fff;font-weight:600;">${d}</span>`;
-            } else {
-                html += `<span style="font-size:11px;padding:4px 0;color:#374151;">${d}</span>`;
-            }
-        }
-        calGrid.innerHTML = html;
-
-        // 时间校准状态
+        const month = now.getMonth() + 1;
+        const day = now.getDate();
+        const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
         const hour = now.getHours();
         const min = now.getMinutes();
         const timeStr = `${hour < 10 ? '0' + hour : hour}:${min < 10 ? '0' + min : min}`;
-        if (calTimeStatus) {
-            calTimeStatus.innerHTML = `<span style="color:#10B981;">●</span> 系统时间 ${timeStr} · 热榜时效正常`;
-        }
+
+        if (calDate) calDate.textContent = `${year}年${month}月${day}日`;
+        if (calWeekday) calWeekday.textContent = weekdays[now.getDay()];
+        if (calTime) calTime.textContent = timeStr;
+        if (calStatus) calStatus.innerHTML = '<span style="color:#10B981;">●</span> 实时';
     }
     renderCalendar();
-    // 每分钟更新一次时间
-    setInterval(renderCalendar, 60000);
+    setInterval(renderCalendar, 30000);
 
     const TOPIC_CATEGORIES = {
         internet: { name: '互联网', color: '#2563eb' },
@@ -4845,7 +4860,7 @@ ${directionMap[direction] || directionMap.opinion}
 
     // 选题中心状态
     const topicCenterState = {
-        currentSource: 'recommend',      // weibo / douyin / 36kr / recommend
+        currentSource: '36kr',         // weibo / douyin / 36kr / recommend
         currentCategory: 'all',          // all / internet / workplace / tech / society
         currentList: []                  // [{title, cat, source}]
     };
@@ -4900,11 +4915,85 @@ ${directionMap[direction] || directionMap.opinion}
     // 简易分类：根据标题关键词猜测板块
     function guessCategory(title) {
         const t = title.toLowerCase();
-        if (/(ai|人工智能|大模型|gpt|claude|芯片|算法|科技|产品发布|手机|电脑)/.test(t)) return 'tech';
-        if (/(裁员|招聘|工作|上班|职场|996|加班|副业|就业|同事|boss)/.test(t)) return 'workplace';
-        if (/(抖音|微博|平台|流量|算法推荐|内容生态|公众号|小红书|b站)/.test(t)) return 'internet';
+        if (/(ai|人工智能|大模型|gpt|claude|芯片|算法|科技|产品发布|手机|电脑|deepseek|openai|苹果|特斯拉|小米|华为)/.test(t)) return 'tech';
+        if (/(裁员|招聘|工作|上班|职场|996|加班|副业|就业|同事|boss|裁员|年终奖|薪酬)/.test(t)) return 'workplace';
+        if (/(抖音|微博|平台|流量|算法推荐|内容生态|公众号|小红书|b站|互联网|大厂|腾讯|阿里|字节)/.test(t)) return 'internet';
         return 'society';
     }
+
+    // ===== 真实 RSS 资讯抓取（通过 rss2json 服务绕过 CORS）=====
+    async function fetchRSSNews(rssUrl, sourceName) {
+        const apiUrl = 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(rssUrl);
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 10000);
+        try {
+            const resp = await fetch(apiUrl, { signal: controller.signal });
+            clearTimeout(timer);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const data = await resp.json();
+            if (data.status !== 'ok' || !data.items) throw new Error('RSS 解析失败');
+            const items = data.items.slice(0, 20).map(item => {
+                // 解析发布时间
+                let timeStr = '未知时间';
+                try {
+                    const d = new Date(item.pubDate);
+                    if (!isNaN(d)) {
+                        const now = new Date();
+                        const diff = (now - d) / 3600000; // 小时差
+                        if (diff < 1) timeStr = `${Math.floor(diff * 60)}分钟前`;
+                        else if (diff < 24) timeStr = `${Math.floor(diff)}小时前`;
+                        else timeStr = `${d.getMonth() + 1}月${d.getDate()}日`;
+                    }
+                } catch {}
+                // 提取摘要（去掉 HTML 标签）
+                let desc = item.description || item.content || '';
+                desc = desc.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').trim();
+                if (desc.length > 80) desc = desc.slice(0, 80) + '...';
+                return {
+                    title: item.title || '',
+                    cat: guessCategory(item.title || ''),
+                    source: sourceName,
+                    desc: desc || '暂无摘要',
+                    time: timeStr,
+                    link: item.link || ''
+                };
+            }).filter(it => it.title);
+            if (items.length === 0) throw new Error('无有效条目');
+            return filterByRedline(items);
+        } catch (e) {
+            clearTimeout(timer);
+            throw e;
+        }
+    }
+
+    // 抖音热榜：尝试 vvhan API 抓真实数据，失败时用预置
+    async function fetchDouyinTopics() {
+        for (let attempt = 0; attempt < 2; attempt++) {
+            try {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), 6000);
+                const resp = await fetch('https://api.vvhan.com/api/hotlist/douyinHot', { signal: controller.signal });
+                clearTimeout(timer);
+                if (!resp.ok) continue;
+                const data = await resp.json();
+                const now = new Date();
+                const timeStr = `${now.getHours() < 10 ? '0' + now.getHours() : now.getHours()}:${now.getMinutes() < 10 ? '0' + now.getMinutes() : now.getMinutes()}`;
+                const items = (data.data || []).slice(0, 20).map(item => ({
+                    title: item.title || item.name || '',
+                    cat: guessCategory(item.title || item.name || ''),
+                    source: '抖音',
+                    desc: (item.title || '').slice(0, 30) + '...',
+                    time: timeStr
+                })).filter(it => it.title);
+                if (items.length > 0) return filterByRedline(items);
+            } catch (e) {
+                if (attempt < 1) await new Promise(r => setTimeout(r, 400));
+            }
+        }
+        // fallback 到预置
+        return DOUYIN_TOPICS.map(t => ({ ...t, source: '抖音', time: '今日精选' }));
+    }
+
 
     // 统一渲染选题列表
     function renderTopicList() {
@@ -4997,9 +5086,11 @@ ${directionMap[direction] || directionMap.opinion}
             if (source === 'weibo') {
                 items = await fetchWeiboTopics();
             } else if (source === 'douyin') {
-                items = DOUYIN_TOPICS.map(t => ({ ...t, source: 'douyin', time: '今日精选' }));
+                // 抖音热榜：先用 vvhan API 抓真实数据，失败时用预置
+                items = await fetchDouyinTopics();
             } else if (source === '36kr') {
-                items = KR36_TOPICS.map(t => ({ ...t, source: '36kr', time: '今日精选' }));
+                // 36氪：真实 RSS 抓取
+                items = await fetchRSSNews('https://36kr.com/feed', '36氪');
             } else {
                 items = RECOMMEND_TOPICS.map(t => ({ ...t, source: 'recommend', time: '今日精选' }));
             }
@@ -5053,7 +5144,8 @@ ${directionMap[direction] || directionMap.opinion}
     }
 
     // 初始化：默认加载推荐选题
-    setTimeout(() => switchTopicSource('recommend'), 100);
+    // 默认激活 36 氪（真实 RSS 资讯）
+    setTimeout(() => switchTopicSource('36kr'), 100);
 
     // 生成按钮
     if (createGenerateBtn) {

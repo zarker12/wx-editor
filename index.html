@@ -69,19 +69,19 @@
             <main class="main-content" style="background:#F9FAFB;">
                 <section style="flex:1;display:flex;flex-direction:column;padding:32px 40px;overflow-y:auto;">
                     <div style="max-width:820px;margin:0 auto;width:100%;">
-                        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin:0 0 24px;gap:20px;flex-wrap:wrap;">
-                            <div style="flex:1;min-width:280px;">
-                                <h2 style="font-family:var(--font-serif);font-size:24px;font-weight:600;color:#1F2937;margin:0 0 8px;">文章创作</h2>
-                                <p style="color:#6B7280;font-size:13px;margin:0;">输入话题或抓取热搜，AI 一键生成文章。生成后可编辑、重新生成，确认后进入「排版助手」。</p>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 20px;gap:16px;flex-wrap:wrap;">
+                            <div style="flex:1;min-width:260px;">
+                                <h2 style="font-family:var(--font-serif);font-size:24px;font-weight:600;color:#1F2937;margin:0 0 6px;">文章创作</h2>
+                                <p style="color:#6B7280;font-size:13px;margin:0;">输入话题或选择资讯，AI 一键生成文章。</p>
                             </div>
-                            <!-- 日历组件（时间校准） -->
-                            <div id="createCalendar" style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:14px 18px;box-shadow:0 1px 3px rgba(0,0,0,0.04);min-width:220px;">
-                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                                    <span id="calMonthYear" style="font-size:13px;font-weight:600;color:#1F2937;"></span>
-                                    <span id="calWeekday" style="font-size:11px;color:#6B7280;"></span>
-                                </div>
-                                <div id="calGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;"></div>
-                                <div id="calTimeStatus" style="margin-top:8px;padding-top:8px;border-top:1px solid #F3F4F6;font-size:11px;color:#9CA3AF;text-align:center;"></div>
+                            <!-- 长条形时间栏（时间校准） -->
+                            <div id="createCalendar" style="display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#fff,#F9FAFB);border:1px solid #E5E7EB;border-radius:8px;padding:8px 16px;box-shadow:0 1px 2px rgba(0,0,0,0.04);">
+                                <span id="calDate" style="font-size:14px;font-weight:600;color:#1F2937;white-space:nowrap;"></span>
+                                <span style="color:#E5E7EB;">|</span>
+                                <span id="calWeekday" style="font-size:12px;color:#6B7280;white-space:nowrap;"></span>
+                                <span style="color:#E5E7EB;">|</span>
+                                <span id="calTime" style="font-size:14px;font-weight:600;color:#10B981;font-variant-numeric:tabular-nums;white-space:nowrap;"></span>
+                                <span id="calStatus" style="font-size:11px;color:#9CA3AF;white-space:nowrap;"></span>
                             </div>
                         </div>
 
@@ -98,8 +98,8 @@
                             <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
                                 <button data-source="weibo" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#E11D48;border:1px solid #E11D48;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">🔥 微博热搜</button>
                                 <button data-source="douyin" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#111;border:1px solid #111;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">🎵 抖音热点</button>
-                                <button data-source="36kr" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#1E40AF;border:1px solid #1E40AF;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">📊 36氪科技</button>
-                                <button data-source="recommend" class="topic-source-btn active" type="button" style="padding:7px 14px;background:#3B82F6;color:#fff;border:1px solid #3B82F6;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">💡 推荐选题</button>
+                                <button data-source="36kr" class="topic-source-btn active" type="button" style="padding:7px 14px;background:#1E40AF;color:#fff;border:1px solid #1E40AF;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">📊 36氪科技</button>
+                                <button data-source="recommend" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#3B82F6;border:1px solid #3B82F6;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">💡 推荐选题</button>
                                 <button id="refreshTopicsBtn" type="button" style="padding:7px 12px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:6px;font-size:12px;cursor:pointer;margin-left:auto;">🔄 刷新</button>
                             </div>
 
@@ -845,6 +845,6 @@
     <script src="themes/cyber.js"></script>
     <script src="themes/magazine.js"></script>
     <script src="themes/fresh.js"></script>
-    <script src="script.js?v=33"></script>
+    <script src="script.js?v=34"></script>
 </body>
 </html>
