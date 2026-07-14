@@ -4511,7 +4511,14 @@ ${article.substring(0, 3000)}
         }
 
         try {
-            return await _generateArticleWithLLM(topic, settings, opts);
+            const article = await _generateArticleWithLLM(topic, settings, opts);
+            // 检查返回内容：如果太短（<100字）说明 LLM 返回异常，回退到演示模式
+            if (!article || article.trim().length < 100) {
+                console.warn('[generateArticleWithParams] LLM 返回内容过短（' + (article?.length || 0) + '字），回退到演示模式');
+                showToast('LLM 返回内容异常，已切换演示模式');
+                return generateMockArticle(topic, { wordCount, style, direction, sections });
+            }
+            return article;
         } catch (e) {
             console.warn('[generateArticleWithParams] LLM 调用失败，回退到演示模式：', e.message);
             showToast('LLM 调用失败，已切换演示模式：' + e.message);
@@ -4873,43 +4880,44 @@ ${directionMap[direction] || directionMap.opinion}
         });
     }
 
-    // 抓取微博热搜（使用 vvhan API，带重试和 fallback）
+    // 抓取微博热搜（vvhan API 1次3秒 → 失败后用 IT之家 RSS 作为热点 fallback）
     async function fetchWeiboTopics() {
         const now = new Date();
         const timeStr = `${now.getHours() < 10 ? '0' + now.getHours() : now.getHours()}:${now.getMinutes() < 10 ? '0' + now.getMinutes() : now.getMinutes()}`;
-        const fallback = [
-            { title: '当代年轻人的精神状态', cat: 'society', desc: '年轻人面对压力的真实反应', time: timeStr },
-            { title: '打工人的一天', cat: 'workplace', desc: '职场人日常生活的真实记录', time: timeStr },
-            { title: 'AI 改变了哪些工作', cat: 'tech', desc: 'AI 技术对传统岗位的冲击', time: timeStr },
-            { title: '大厂年终奖真相', cat: 'workplace', desc: '互联网行业薪酬福利现状', time: timeStr },
-            { title: '互联网行业的下一个风口', cat: 'internet', desc: '行业趋势预测与新机会', time: timeStr },
-            { title: '为什么年轻人不爱看新闻了', cat: 'society', desc: '信息消费习惯的变化', time: timeStr },
-            { title: '独居生活的真实感受', cat: 'society', desc: '一个人住的生活体验', time: timeStr },
-            { title: 'AI 工具让人变懒了吗', cat: 'tech', desc: 'AI 工具对人类能力的影响', time: timeStr },
-            { title: '内容创作者的生存现状', cat: 'internet', desc: '自媒体行业的内卷与出路', time: timeStr },
-            { title: '慢就业的年轻人', cat: 'workplace', desc: '不急于就业的年轻人心态', time: timeStr }
-        ];
-        for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-                const controller = new AbortController();
-                const timer = setTimeout(() => controller.abort(), 8000);
-                const resp = await fetch('https://api.vvhan.com/api/hotlist/wbHot', { signal: controller.signal });
-                clearTimeout(timer);
-                if (!resp.ok) continue;
+        // 尝试 vvhan API（1 次，3 秒超时）
+        try {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 3000);
+            const resp = await fetch('https://api.vvhan.com/api/hotlist/wbHot', { signal: controller.signal });
+            clearTimeout(timer);
+            if (resp.ok) {
                 const data = await resp.json();
-                const items = (data.data || []).slice(0, 30).map(item => ({
+                const items = (data.data || []).slice(0, 20).map(item => ({
                     title: item.title || item.name || '',
                     cat: guessCategory(item.title || item.name || ''),
-                    source: 'weibo',
-                    desc: (item.title || '').slice(0, 20) + '...',
+                    source: '微博',
+                    desc: (item.title || '').slice(0, 30) + '...',
                     time: timeStr
                 })).filter(it => it.title);
                 if (items.length > 0) return filterByRedline(items);
-            } catch (e) {
-                if (attempt < 2) await new Promise(r => setTimeout(r, 500));
             }
+        } catch (e) {
+            console.warn('[微博] vvhan API 失败，切换到 IT之家 RSS');
         }
-        return fallback;
+        // fallback：IT之家 RSS（真实资讯）
+        try {
+            const items = await fetchRSSNews('https://www.ithome.com/rss', '微博');
+            if (items.length > 0) return items;
+        } catch (e) {
+            console.warn('[微博] IT之家 RSS 也失败，使用预置选题');
+        }
+        // 最后兜底：预置选题
+        return [
+            { title: '当代年轻人的精神状态', cat: 'society', desc: '年轻人面对压力的真实反应', time: timeStr, source: '微博' },
+            { title: 'AI 改变了哪些工作', cat: 'tech', desc: 'AI 技术对传统岗位的冲击', time: timeStr, source: '微博' },
+            { title: '大厂年终奖真相', cat: 'workplace', desc: '互联网行业薪酬福利现状', time: timeStr, source: '微博' },
+            { title: '互联网行业的下一个风口', cat: 'internet', desc: '行业趋势预测与新机会', time: timeStr, source: '微博' }
+        ];
     }
 
     // 简易分类：根据标题关键词猜测板块
@@ -4966,18 +4974,18 @@ ${directionMap[direction] || directionMap.opinion}
         }
     }
 
-    // 抖音热榜：尝试 vvhan API 抓真实数据，失败时用预置
+    // 抖音热榜：vvhan API 1次3秒 → 失败后用少数派 RSS 作为 fallback
     async function fetchDouyinTopics() {
-        for (let attempt = 0; attempt < 2; attempt++) {
-            try {
-                const controller = new AbortController();
-                const timer = setTimeout(() => controller.abort(), 6000);
-                const resp = await fetch('https://api.vvhan.com/api/hotlist/douyinHot', { signal: controller.signal });
-                clearTimeout(timer);
-                if (!resp.ok) continue;
+        const now = new Date();
+        const timeStr = `${now.getHours() < 10 ? '0' + now.getHours() : now.getHours()}:${now.getMinutes() < 10 ? '0' + now.getMinutes() : now.getMinutes()}`;
+        // 尝试 vvhan API（1 次，3 秒超时）
+        try {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 3000);
+            const resp = await fetch('https://api.vvhan.com/api/hotlist/douyinHot', { signal: controller.signal });
+            clearTimeout(timer);
+            if (resp.ok) {
                 const data = await resp.json();
-                const now = new Date();
-                const timeStr = `${now.getHours() < 10 ? '0' + now.getHours() : now.getHours()}:${now.getMinutes() < 10 ? '0' + now.getMinutes() : now.getMinutes()}`;
                 const items = (data.data || []).slice(0, 20).map(item => ({
                     title: item.title || item.name || '',
                     cat: guessCategory(item.title || item.name || ''),
@@ -4986,12 +4994,45 @@ ${directionMap[direction] || directionMap.opinion}
                     time: timeStr
                 })).filter(it => it.title);
                 if (items.length > 0) return filterByRedline(items);
-            } catch (e) {
-                if (attempt < 1) await new Promise(r => setTimeout(r, 400));
             }
+        } catch (e) {
+            console.warn('[抖音] vvhan API 失败，切换到少数派 RSS');
         }
-        // fallback 到预置
-        return DOUYIN_TOPICS.map(t => ({ ...t, source: '抖音', time: '今日精选' }));
+        // fallback：少数派 RSS（真实资讯）
+        try {
+            const items = await fetchRSSNews('https://sspai.com/feed', '抖音');
+            if (items.length > 0) return items;
+        } catch (e) {
+            console.warn('[抖音] 少数派 RSS 也失败，使用预置选题');
+        }
+        // 最后兜底：预置选题
+        return DOUYIN_TOPICS.map(t => ({ ...t, source: '抖音', time: timeStr }));
+    }
+
+    // 综合资讯：聚合多个 RSS 源（36氪+IT之家+少数派），各取前 8 条混合
+    async function fetchAggregatedNews() {
+        const sources = [
+            { url: 'https://36kr.com/feed', name: '36氪' },
+            { url: 'https://www.ithome.com/rss', name: 'IT之家' },
+            { url: 'https://sspai.com/feed', name: '少数派' }
+        ];
+        const results = await Promise.allSettled(
+            sources.map(s => fetchRSSNews(s.url, s.name))
+        );
+        let allItems = [];
+        results.forEach((r, i) => {
+            if (r.status === 'fulfilled' && r.value && r.value.length > 0) {
+                // 每个源取前 8 条
+                allItems = allItems.concat(r.value.slice(0, 8));
+            }
+        });
+        if (allItems.length === 0) throw new Error('所有 RSS 源均失败');
+        // 打乱顺序，让不同来源的内容交叉展示
+        for (let i = allItems.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [allItems[i], allItems[j]] = [allItems[j], allItems[i]];
+        }
+        return allItems.slice(0, 20);
     }
 
 
@@ -5012,11 +5053,13 @@ ${directionMap[direction] || directionMap.opinion}
             weibo: '微博热搜',
             douyin: '抖音热点',
             '36kr': '36氪科技',
-            recommend: '推荐选题'
+            recommend: '综合资讯'
         }[topicCenterState.currentSource] || '';
 
         // 时间标签：实时抓取的显示"实时"，预置的显示"今日精选"
-        const timeLabel = topicCenterState.currentSource === 'weibo' ? '实时' : '今日精选';
+        const now = new Date();
+        const timeStr = `${now.getHours() < 10 ? '0' + now.getHours() : now.getHours()}:${now.getMinutes() < 10 ? '0' + now.getMinutes() : now.getMinutes()}`;
+        const timeLabel = `实时 ${timeStr}`;
 
         hotTopicsList.innerHTML = `<div style="font-size:12px;color:#6B7280;margin-bottom:8px;font-weight:600;">${sourceLabel} · ${timeLabel}（共 ${items.length} 条，点击选择）：</div>` +
             items.map((it, i) => {
@@ -5086,13 +5129,13 @@ ${directionMap[direction] || directionMap.opinion}
             if (source === 'weibo') {
                 items = await fetchWeiboTopics();
             } else if (source === 'douyin') {
-                // 抖音热榜：先用 vvhan API 抓真实数据，失败时用预置
                 items = await fetchDouyinTopics();
             } else if (source === '36kr') {
                 // 36氪：真实 RSS 抓取
                 items = await fetchRSSNews('https://36kr.com/feed', '36氪');
             } else {
-                items = RECOMMEND_TOPICS.map(t => ({ ...t, source: 'recommend', time: '今日精选' }));
+                // 推荐选题 → 综合资讯：聚合 36氪+IT之家+少数派 RSS
+                items = await fetchAggregatedNews();
             }
         } catch (e) {
             console.error('加载选题失败:', e);
