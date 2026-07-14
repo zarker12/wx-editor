@@ -3586,42 +3586,70 @@ function formatParagraph(text) {
     // 某些模型（特别是国内部分 API）会把 prompt 的指令部分当作返回内容
     function stripPromptLeakage(text) {
         if (!text || typeof text !== 'string') return text;
-        // prompt 特征标记（这些只出现在 prompt 里，不会出现在正常文章里）
+        // 1. prompt 特征标记（prompt 原文回显）
         const promptMarkers = [
-            '事实红线·禁止杜撰',
-            '禁止杜撰',
-            '总字数必须达到',
-            '总字数严格控制在',
-            '风格要求',
-            '内容方向',
-            '每章节必须达到',
-            '不得编造',
-            '不得编造任何',
-            '不要输出任何解释说明',
-            '现在请开始写',
-            '你是一位资深的公众号',
-            '严格遵循以下要求',
-            '字数要求'
+            '事实红线·禁止杜撰', '禁止杜撰', '总字数必须达到', '总字数严格控制在',
+            '风格要求', '内容方向', '每章节必须达到', '不得编造',
+            '不要输出任何解释说明', '现在请开始写', '你是一位资深的公众号',
+            '严格遵循以下要求', '字数要求', '你是一位资深公众号', '【红线', '【事实红线',
+            '【写作核心要求', '【爆款标题技巧', '【去AI化', '【写作要求', '【资讯背景', '【话题背景'
         ];
-        // 检测是否包含 prompt 标记
-        const hasLeakage = promptMarkers.some(m => text.includes(m));
+        // 2. CoT 元思考特征（推理模型把思考过程当答案输出）
+        const cotMarkers = [
+            '解构话题', '检查约束', '起草内容', '审查与打磨', '字数计算', '精确计算字数',
+            '结构安排', '结构规划', '结构设计', '让我们', '我需要', '我可以这样写',
+            '我的建议是', '删减策略', '精简', '逐字', '逐步进行', '完美。',
+            '字数：', '（字数：', '(字数：', '字左右', '字，符合', '字，稍微',
+            '引言：', '章节1：', '章节2：', '章节3：', '章节4：', '章节5：', '结尾：',
+            '标题：', '1. 引言', '2. 章节', '3. 章节', '4. 章节', '5. 章节',
+            '符合。', '可以。', '-> 可以', '-> 删减', '不要编造', '触碰红线'
+        ];
+        const allMarkers = [...promptMarkers, ...cotMarkers];
+        // 检测是否包含任一标记
+        const hasLeakage = allMarkers.some(m => text.includes(m));
         if (!hasLeakage) return text;
-        // 找到第一个 markdown 标题（# 开头）的位置，从那里截取
-        const titleMatch = text.match(/^#\s+.+/m);
-        if (titleMatch) {
-            const idx = text.indexOf(titleMatch[0]);
+        console.warn('[callLLM] 检测到 prompt/CoT 泄露，尝试截取正文');
+
+        // 策略1：找到最后一个 markdown 标题（# 开头），从那里截取（CoT 通常在正文之前）
+        const titleMatches = [...text.matchAll(/^#\s+[^\n]+/gm)];
+        if (titleMatches.length > 0) {
+            // 取最后一个 # 标题的位置（真正的文章标题，CoT 里的"标题："不算）
+            const lastTitle = titleMatches[titleMatches.length - 1];
+            const idx = lastTitle.index;
             if (idx > 0) {
-                console.warn('[callLLM] 检测到 prompt 泄露，已截取正文部分');
-                return text.substring(idx).trim();
+                const candidate = text.substring(idx).trim();
+                // 截取后必须够长（避免截到 CoT 里的假标题）
+                if (candidate.length > 200) {
+                    return candidate;
+                }
             }
         }
-        // 如果找不到标题，按段落分割，去掉包含 prompt 标记的段落
-        const paragraphs = text.split(/\n\n+/);
-        const cleanParas = paragraphs.filter(p => !promptMarkers.some(m => p.includes(m)));
-        if (cleanParas.length < paragraphs.length) {
-            console.warn('[callLLM] 检测到 prompt 泄露，已过滤包含指令的段落');
-            return cleanParas.join('\n\n').trim();
+        // 策略2：找"直接输出"或"以下是"之后的内容
+        const outputMarkers = ['直接输出', '以下是文章', '以下是正文', '文章如下', '正文开始'];
+        for (const marker of outputMarkers) {
+            const idx = text.lastIndexOf(marker);
+            if (idx >= 0) {
+                const after = text.substring(idx + marker.length).replace(/^[:：\s\n]+/, '').trim();
+                if (after.length > 200) return after;
+            }
         }
+        // 策略3：按双换行分段，丢弃所有包含 CoT 特征的段落，保留看起来像文章的段落
+        const paras = text.split(/\n\s*\n/);
+        const cleanParas = paras.filter(p => {
+            const t = p.trim();
+            if (!t) return false;
+            // 丢弃含 CoT 标记的段
+            if (allMarkers.some(m => t.includes(m))) return false;
+            // 丢弃"数字. "开头的提纲式段
+            if (/^\d+[\.\、]\s*(引言|章节|标题|结尾|结构)/.test(t)) return false;
+            // 丢弃括号注释（如"(字数：260字左右，3-4段，无禁用词)"）
+            if (/^\(字数|^（字数/.test(t)) return false;
+            return true;
+        });
+        if (cleanParas.length >= 3) {
+            return cleanParas.join('\n\n');
+        }
+        // 都失败，返回原文（让用户看到问题）
         return text;
     }
 
@@ -5260,112 +5288,41 @@ ${article.substring(0, 3000)}
         const style = opts.style || 'deep';
         const direction = opts.direction || 'opinion';
         const sections = opts.sections || 4;
-        const newsContext = opts.newsContext || '';  // 资讯摘要（来自选题列表）
+        const newsContext = opts.newsContext || '';
 
-        // 字数区间
-        const minWords = Math.max(600, wordCount - 200);
-        const maxWords = wordCount + 200;
-        // 每章节字数
-        const sectionWords = Math.floor(wordCount / sections);
-
-        // 风格描述
+        // 风格一句话
         const styleMap = {
-            deep: '深度思考型，观点犀利，有逻辑推演',
-            casual: '轻松随性型，口语化，像朋友聊天',
-            story: '故事叙事型，用具体场景和人物展开',
-            sharp: '观点犀利型，立场鲜明，敢下判断，但避免情绪化攻击',
-            warm: '温暖治愈型，关注普通人的微小感受，不煽情但有人情味'
+            deep: '深度思考，观点犀利',
+            casual: '轻松随性，口语化',
+            story: '故事叙事，具体场景',
+            sharp: '立场鲜明，敢下判断',
+            warm: '温暖治愈，关注普通人'
         };
-
-        // 内容方向描述
         const directionMap = {
-            opinion: '观点评论型：表达独立思考后的判断，敢于给出立场，避免中庸骑墙',
-            experience: '经验分享型：以第一人称讲实操经验，给出可执行的建议',
-            knowledge: '知识科普型：用通俗的语言讲清楚一个概念或原理，避免术语堆砌',
-            emotion: '情感共鸣型：关注普通人的内心感受，写到读者心里去'
+            opinion: '表达独立判断',
+            experience: '分享实操经验',
+            knowledge: '通俗讲清楚一个概念',
+            emotion: '关注读者内心感受'
         };
 
-        // 【核心】资讯背景：如果有资讯摘要，让 LLM 基于真实背景写分析
-        const newsSection = newsContext
-            ? `\n【资讯背景】以下是关于「${topic}」的真实资讯摘要，请基于这些信息写文章，可以引用但不要照抄：\n${newsContext}\n`
-            : `\n【话题背景】请针对「${topic}」这个话题写文章。如果你了解相关的真实事件、案例、趋势，可以引用作为论据。如果不确定具体事实，用"最近看到""有人提到"等泛化表达，不要编造具体数字/人物/公司。\n`;
+        // 资讯背景：简洁一句话
+        const bgLine = newsContext
+            ? `资讯背景：${newsContext}\n`
+            : '';
 
-        const prompt = `你是一位资深公众号主笔，有人设、有立场、有洞察力，擅长基于真实资讯写出有价值的分析文章，而不是空泛的套话。
+        // 极简 prompt：避免触发推理模型的 CoT 思考链
+        // 关键：不要堆砌结构化指令，直接给话题和要求，让 LLM 直接写
+        const prompt = `你是公众号主笔。基于「${topic}」写一篇 ${wordCount} 字左右的文章，风格${styleMap[style] || '深度思考'}，${directionMap[direction] || '表达独立判断'}。
+${bgLine}
+要求：
+- 用 Markdown 格式，# 大标题 + ## 划分 ${sections} 个章节
+- 段落松散，每段 2-3 句，不要写大段堆砌
+- 写真人会说的话，不要"此外/值得一提的是/至关重要"这类 AI 腔
+- 不编造具体数据/人物/公司/事件，观点和情感可以自由发挥
+- 不碰宗教/政治/领导人/民族争议
+- 标题用爆款技巧（数字、悬念、反差），15-25 字
 
-请基于以下信息写一篇公众号文章：
-
-话题：${topic}
-${newsSection}
-【红线·绝对禁止】以下内容一律不得出现在文章中，违反则整篇作废重写：
-- 宗教（任何宗教教义、信仰争议、宗教冲突、宗教评价）
-- 政治（政党、政策立场、意识形态争论、政治制度比较）
-- 国家领导人（任何国家现任或前任领导人的名字、评价、轶事）
-- 民族独立、主权争议、领土争端、地缘政治
-- 民族矛盾、种族冲突、地域歧视
-如果话题本身触碰红线，请转换角度，只写生活化、人性化、情感化的侧面，绝不触及敏感维度。
-
-【事实红线·禁止杜撰】
-- 不得编造任何具体数据、统计数字、百分比、金额。如需引用数据，用模糊表达（"相当一部分"、"大多数"、"许多人"）。
-- 不得编造具体人物、公司、机构、事件、案例。可以用第一人称泛化叙述（"我见过一些人..."、"身边有朋友..."）。
-- 不得编造历史事件、时间节点、政策名称、法律条文。
-- 不得编造名人名言或将其归因于具体人物。可以用"有人说过"等泛化表达。
-- 不得编造科学结论、研究结论、专家观点。
-- 概括性、观点性、情感性的内容可以自由发挥；具体性、事实性、可查证的内容必须谨慎，宁可不写也不编造。
-
-【写作核心要求·有价值】
-- 文章必须围绕「${topic}」展开，每一段都要紧扣主题，不要跑题到泛泛的人生哲理
-- 如果有资讯背景，请分析事件背后的原因、影响、对普通人的意义
-- 要有独立观点：不要复述常识，要给出读者想不到的角度
-- 要有信息增量：让读者读完之后获得新认知，而不是"道理我都懂"
-- 要有人设：像一个具体的人在跟读者聊天，有自己的态度和口吻，不是 AI 在做总结
-
-【爆款标题技巧】
-- 用数字、悬念、反差、具体场景制造点击欲
-- 不要用"关于XX的思考"这种平淡标题
-- 好标题示例："为什么90%的人对XX的理解都是错的"、"XX火了，但我发现了3个被忽略的细节"
-- 标题字数 15-25 字，不要用「」号
-
-【去AI化·一次成型】
-- 禁止使用破折号（— –），用句号/逗号/冒号替换
-- 禁止 AI 高频词汇：此外、值得一提的是、至关重要、深入探讨、增强、培育、彰显、交织、精妙、格局、关键、展示、见证、凸显、活力
-- 禁止"不仅是…更是…""不是…而是…"等否定平行结构
-- 禁止三连句式
-- 禁止"总分总"三段论结构
-- 禁止"首先/其次/最后/此外/然而/总之"等AI式过渡词
-- 禁止段落结尾用"这不禁让我们思考…""这提醒我们…""未来必将…"等AI式反思句
-- 禁止"在XX的背景下""随着XX的发展"等AI式开头
-- 段落长度要变化：有的段落只有一句话，有的三四句
-
-【风格要求】
-${styleMap[style] || styleMap.deep}
-${directionMap[direction] || directionMap.opinion}
-- 加入口语化表达（说实话、坦白讲、老实说）
-- 加入个人视角和情感体验
-- 用具体细节替代抽象概括
-- 句子长度混排：短句有力。然后长句慢慢展开。再来个短的。
-
-【写作要求】
-1. 文章结构（Markdown 格式）：
-   - 开头用 # 写一个用爆款技巧的标题（15-25字，不要用「」号）
-   - 紧接着一段 60-90 字的引言，用 > 引用块格式，点出核心矛盾或悬念
-   - 用 ## 划分 ${sections} 个章节，标题要有信息量（观点式标题，不要用"第一章"）
-   - 结尾有一个简短的总结段落
-   - 不要在文章末尾写自我介绍、签名、引导关注
-   - 【重要】不要在正文末尾添加 "- E N D -" 标记，排版模板会自动处理
-
-2. 内容与段落：
-   - 【重要】总字数必须达到 ${wordCount} 字以上，严格控制在 ${minWords}-${maxWords} 字，不要少于 ${wordCount} 字
-   - 每个章节必须达到 ${sectionWords} 字以上，分 3-4 个自然段
-   - 段落松散自由，每段 2-3 句话即可，一个想法讲完就换段，不必凑字数
-   - 要有真实的生活观察、个人体验、情感细节（不要编造具体数据/人物/事件）
-   - 不要"众所周知""不可否认"等万能句式
-   - 观点要鲜明，有自己的角度
-   - 适当使用**加粗**标注关键观点
-   - 可以用 > 引用块标注金句
-
-3. 不要输出任何解释说明，直接输出 Markdown 正文。
-
-现在请开始写：`;
+直接输出文章正文，从 # 标题开始，不要任何解释、思考过程、字数统计。`;
         return await callLLM(prompt, settings);
     }
 
