@@ -99,8 +99,21 @@
                                 <button data-source="weibo" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#E11D48;border:1px solid #E11D48;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">🔥 微博热搜</button>
                                 <button data-source="douyin" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#111;border:1px solid #111;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">🎵 抖音热点</button>
                                 <button data-source="36kr" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#1E40AF;border:1px solid #1E40AF;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">📊 36氪科技</button>
+                                <button data-source="xhunt" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#7C3AED;border:1px solid #7C3AED;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">🤖 XHunt AI</button>
                                 <button data-source="recommend" class="topic-source-btn active" type="button" style="padding:7px 14px;background:#3B82F6;color:#fff;border:1px solid #3B82F6;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">💡 推荐选题</button>
                                 <button id="refreshTopicsBtn" type="button" style="padding:7px 12px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:6px;font-size:12px;cursor:pointer;margin-left:auto;">🔄 刷新</button>
+                            </div>
+
+                            <!-- XHunt 子控制栏（频率 + 区域） -->
+                            <div id="xhuntControls" style="display:none;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center;padding:9px 12px;background:#F5F3FF;border:1px solid #DDD6FE;border-radius:8px;">
+                                <span style="font-size:11px;color:#7C3AED;font-weight:600;">⏱ 频率：</span>
+                                <button data-xhunt-hours="1" class="xhunt-hours-btn" type="button" style="padding:4px 10px;background:#fff;color:#7C3AED;border:1px solid #DDD6FE;border-radius:5px;font-size:11px;cursor:pointer;">1h</button>
+                                <button data-xhunt-hours="4" class="xhunt-hours-btn active" type="button" style="padding:4px 10px;background:#7C3AED;color:#fff;border:1px solid #7C3AED;border-radius:5px;font-size:11px;cursor:pointer;font-weight:600;">4h</button>
+                                <button data-xhunt-hours="24" class="xhunt-hours-btn" type="button" style="padding:4px 10px;background:#fff;color:#7C3AED;border:1px solid #DDD6FE;border-radius:5px;font-size:11px;cursor:pointer;">24h</button>
+                                <span style="font-size:11px;color:#7C3AED;font-weight:600;margin-left:6px;">🌐 区域：</span>
+                                <button data-xhunt-group="cn" class="xhunt-group-btn active" type="button" style="padding:4px 10px;background:#7C3AED;color:#fff;border:1px solid #7C3AED;border-radius:5px;font-size:11px;cursor:pointer;font-weight:600;">华语区</button>
+                                <button data-xhunt-group="global" class="xhunt-group-btn" type="button" style="padding:4px 10px;background:#fff;color:#7C3AED;border:1px solid #DDD6FE;border-radius:5px;font-size:11px;cursor:pointer;">全球</button>
+                                <a href="https://trends.xhunt.ai" target="_blank" rel="noopener" style="margin-left:auto;font-size:11px;color:#7C3AED;text-decoration:none;">↗ 访问 XHunt 官网</a>
                             </div>
 
                             <!-- 分类筛选 -->

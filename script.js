@@ -4845,9 +4845,11 @@ ${directionMap[direction] || directionMap.opinion}
 
     // 选题中心状态
     const topicCenterState = {
-        currentSource: 'recommend',      // weibo / douyin / 36kr / recommend
+        currentSource: 'recommend',      // weibo / douyin / 36kr / xhunt / recommend
         currentCategory: 'all',          // all / internet / workplace / tech / society
-        currentList: []                  // [{title, cat, source}]
+        currentList: [],                 // [{title, cat, source}]
+        xhuntHours: 4,                   // XHunt 频率：1 / 4 / 24
+        xhuntGroup: 'cn'                 // XHunt 区域：cn（华语区）/ global（全球）
     };
 
     // 红线过滤
@@ -4906,6 +4908,104 @@ ${directionMap[direction] || directionMap.opinion}
         return 'society';
     }
 
+    // 抓取 XHunt AI 热门推文（通过已有 CORS 代理 fetchWebpage）
+    async function fetchXHuntTopics(hours, group) {
+        hours = hours || topicCenterState.xhuntHours || 4;
+        group = group || topicCenterState.xhuntGroup || 'cn';
+        const now = new Date();
+        const timeStr = `${now.getHours() < 10 ? '0' + now.getHours() : now.getHours()}:${now.getMinutes() < 10 ? '0' + now.getMinutes() : now.getMinutes()}`;
+        const fallback = [
+            { title: 'OpenAI 发布新模型动态', cat: 'tech', desc: 'AI 前沿资讯', time: timeStr },
+            { title: 'Claude 用量限制调整引发讨论', cat: 'tech', desc: 'AI 工具使用变化', time: timeStr },
+            { title: 'AI Agent 落地应用案例', cat: 'tech', desc: '智能体实战分享', time: timeStr },
+            { title: '开源大模型生态新进展', cat: 'tech', desc: '开源模型动态', time: timeStr },
+            { title: 'AI 编程助手横向对比', cat: 'tech', desc: 'Cursor/Copilot/Windsurf', time: timeStr }
+        ];
+        try {
+            // 先尝试 AI 专标签
+            let url = `https://trends.xhunt.ai/zh/tweets?group=${group}&hours=${hours}&tag=ai`;
+            let html = await fetchWebpage(url);
+            let items = parseXHuntHTML(html, timeStr);
+
+            // 若 AI 标签结果过少，抓取全部并按 AI 关键词过滤
+            if (items.length < 3) {
+                url = `https://trends.xhunt.ai/zh/tweets?group=${group}&hours=${hours}`;
+                html = await fetchWebpage(url);
+                items = parseXHuntHTML(html, timeStr);
+                items = items.filter(it => /ai|人工智能|大模型|gpt|claude|gemini|llm|agent|chatgpt|openai|anthropic|智能|模型|生成|deepseek|文心|通义|豆包|kimi|grok|sora|midjourney|stable|diffusion/i.test(it.title + ' ' + it.desc));
+            }
+
+            if (items.length > 0) return filterByRedline(items);
+            return fallback;
+        } catch (e) {
+            console.error('XHunt 抓取失败:', e);
+            return fallback;
+        }
+    }
+
+    // 解析 XHunt 推文页 HTML，提取推文卡片
+    function parseXHuntHTML(html, timeStr) {
+        const items = [];
+        try {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            // 每条推文是一个指向 twitter.com/<user>/status/<id> 的 <a> 卡片
+            const seen = new Set();
+            doc.querySelectorAll('a[href*="twitter.com"][href*="/status/"]').forEach(card => {
+                const href = card.getAttribute('href') || '';
+                if (!/\/status\/\d+/.test(href) || seen.has(href)) return;
+                seen.add(href);
+
+                // 作者名
+                const nameEl = card.querySelector('p.truncate.text-sm.font-semibold');
+                const author = nameEl ? nameEl.textContent.trim() : '';
+
+                // 推文标题/摘要
+                const titleEl = card.querySelector('p.cursor-help');
+                let title = titleEl ? titleEl.textContent.trim() : '';
+
+                if (!title && !author) return;
+                if (!title) title = `[${author} 的推文]`;
+
+                // @handle
+                const handleEl = card.querySelector('p.truncate.text-xs.text-slate-500');
+                const handle = handleEl ? handleEl.textContent.replace(/@/g, '').trim() : '';
+
+                // 热度分数
+                const heatEl = card.querySelector('[title^="热度"]');
+                let heat = '';
+                if (heatEl) {
+                    const m = (heatEl.getAttribute('title') || '').match(/热度[:\s]*([\d.]+)/);
+                    if (m) heat = m[1];
+                }
+
+                // 互动数据
+                const viewsEl = card.querySelector('[title="Views"] .tabular-nums');
+                const likesEl = card.querySelector('[title="Likes"] .tabular-nums');
+                const views = viewsEl ? viewsEl.textContent.trim() : '';
+                const likes = likesEl ? likesEl.textContent.trim() : '';
+
+                const descParts = [];
+                if (author) descParts.push(author);
+                if (handle) descParts.push('@' + handle);
+                if (views) descParts.push('👁' + views);
+                if (likes) descParts.push('❤' + likes);
+                if (heat) descParts.push('🔥' + heat);
+
+                items.push({
+                    title: title,
+                    cat: 'tech',
+                    source: 'xhunt',
+                    desc: descParts.join(' · '),
+                    time: timeStr,
+                    url: href
+                });
+            });
+        } catch (e) {
+            console.error('XHunt 解析失败:', e);
+        }
+        return items;
+    }
+
     // 统一渲染选题列表
     function renderTopicList() {
         if (!hotTopicsList) return;
@@ -4923,19 +5023,22 @@ ${directionMap[direction] || directionMap.opinion}
             weibo: '微博热搜',
             douyin: '抖音热点',
             '36kr': '36氪科技',
+            xhunt: 'XHunt AI 热点',
             recommend: '推荐选题'
         }[topicCenterState.currentSource] || '';
 
-        // 时间标签：实时抓取的显示"实时"，预置的显示"今日精选"
-        const timeLabel = topicCenterState.currentSource === 'weibo' ? '实时' : '今日精选';
+        // 时间标签：实时抓取的显示"实时"，XHunt 显示频率，预置的显示"今日精选"
+        const timeLabel = topicCenterState.currentSource === 'weibo' ? '实时'
+            : (topicCenterState.currentSource === 'xhunt' ? `${topicCenterState.xhuntHours}h 实时` : '今日精选');
 
         hotTopicsList.innerHTML = `<div style="font-size:12px;color:#6B7280;margin-bottom:8px;font-weight:600;">${sourceLabel} · ${timeLabel}（共 ${items.length} 条，点击选择）：</div>` +
             items.map((it, i) => {
                 const catInfo = TOPIC_CATEGORIES[it.cat] || TOPIC_CATEGORIES.society;
                 const safeTitle = (it.title || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
                 const safeDesc = (it.desc || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+                const safeUrl = (it.url || '').replace(/"/g, '&quot;');
                 const itemTime = it.time || timeLabel;
-                return `<div style="padding:10px 12px;margin-bottom:6px;border:1px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;transition:all 0.15s;" data-topic="${safeTitle}" class="topic-item">
+                return `<div style="padding:10px 12px;margin-bottom:6px;border:1px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;transition:all 0.15s;" data-topic="${safeTitle}" data-url="${safeUrl}" class="topic-item">
                     <div style="display:flex;align-items:center;margin-bottom:4px;">
                         <span style="color:#9CA3AF;font-size:11px;margin-right:8px;min-width:20px;">${i + 1}.</span>
                         <span style="flex:1;font-size:13px;color:#1F2937;font-weight:500;">${safeTitle}</span>
@@ -4943,7 +5046,8 @@ ${directionMap[direction] || directionMap.opinion}
                     </div>
                     <div style="display:flex;align-items:center;padding-left:28px;">
                         <span style="font-size:11px;color:#9CA3AF;margin-right:8px;">${itemTime}</span>
-                        ${safeDesc ? `<span style="font-size:11px;color:#6B7280;line-height:1.4;">${safeDesc}</span>` : ''}
+                        ${safeDesc ? `<span style="font-size:11px;color:#6B7280;line-height:1.4;flex:1;min-width:0;">${safeDesc}</span>` : '<span style="flex:1;"></span>'}
+                        ${safeUrl ? `<a href="${safeUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="margin-left:8px;font-size:11px;color:#7C3AED;text-decoration:none;white-space:nowrap;">↗原文</a>` : ''}
                     </div>
                 </div>`;
             }).join('');
@@ -4973,6 +5077,7 @@ ${directionMap[direction] || directionMap.opinion}
                 weibo: '#E11D48',
                 douyin: '#111',
                 '36kr': '#1E40AF',
+                xhunt: '#7C3AED',
                 recommend: '#3B82F6'
             };
             const c = colors[source] || '#3B82F6';
@@ -4989,8 +5094,13 @@ ${directionMap[direction] || directionMap.opinion}
             }
         });
 
+        // XHunt 子控制栏（频率/区域）仅在该来源激活时显示
+        const xhuntControls = document.getElementById('xhuntControls');
+        if (xhuntControls) xhuntControls.style.display = source === 'xhunt' ? 'flex' : 'none';
+
         // 加载列表
-        setCreateStatus(`正在加载${({weibo:'微博热搜',douyin:'抖音热点','36kr':'36氪科技',recommend:'推荐选题'})[source]}...`, true);
+        const sourceNames = { weibo:'微博热搜', douyin:'抖音热点', '36kr':'36氪科技', xhunt:'XHunt AI 热点', recommend:'推荐选题' };
+        setCreateStatus(`正在加载${sourceNames[source] || ''}...`, true);
 
         let items = [];
         try {
@@ -5000,6 +5110,8 @@ ${directionMap[direction] || directionMap.opinion}
                 items = DOUYIN_TOPICS.map(t => ({ ...t, source: 'douyin', time: '今日精选' }));
             } else if (source === '36kr') {
                 items = KR36_TOPICS.map(t => ({ ...t, source: '36kr', time: '今日精选' }));
+            } else if (source === 'xhunt') {
+                items = await fetchXHuntTopics();
             } else {
                 items = RECOMMEND_TOPICS.map(t => ({ ...t, source: 'recommend', time: '今日精选' }));
             }
@@ -5041,6 +5153,43 @@ ${directionMap[direction] || directionMap.opinion}
                 }
             });
             renderTopicList();
+        });
+    });
+
+    // 绑定 XHunt 频率按钮
+    document.querySelectorAll('.xhunt-hours-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const hours = parseInt(btn.dataset.xhuntHours, 10);
+            topicCenterState.xhuntHours = hours;
+            // UI 切换
+            document.querySelectorAll('.xhunt-hours-btn').forEach(b => {
+                const on = parseInt(b.dataset.xhuntHours, 10) === hours;
+                b.style.background = on ? '#7C3AED' : '#fff';
+                b.style.color = on ? '#fff' : '#7C3AED';
+                b.style.borderColor = on ? '#7C3AED' : '#DDD6FE';
+                b.style.fontWeight = on ? '600' : '400';
+                b.classList.toggle('active', on);
+            });
+            // 仅当 XHunt 为当前来源时重新加载
+            if (topicCenterState.currentSource === 'xhunt') switchTopicSource('xhunt');
+        });
+    });
+
+    // 绑定 XHunt 区域按钮
+    document.querySelectorAll('.xhunt-group-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const group = btn.dataset.xhuntGroup;
+            topicCenterState.xhuntGroup = group;
+            // UI 切换
+            document.querySelectorAll('.xhunt-group-btn').forEach(b => {
+                const on = b.dataset.xhuntGroup === group;
+                b.style.background = on ? '#7C3AED' : '#fff';
+                b.style.color = on ? '#fff' : '#7C3AED';
+                b.style.borderColor = on ? '#7C3AED' : '#DDD6FE';
+                b.style.fontWeight = on ? '600' : '400';
+                b.classList.toggle('active', on);
+            });
+            if (topicCenterState.currentSource === 'xhunt') switchTopicSource('xhunt');
         });
     });
 
