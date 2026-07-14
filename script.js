@@ -4505,9 +4505,13 @@ ${article.substring(0, 3000)}
         const direction = opts.direction || 'opinion';
         const sections = opts.sections || 4;
 
-        // 无 API Key 或调用失败时，回退到高保真 mock 文章（演示模式）
+        // 无 API Key 时，直接走演示模式
         if (!settings || !settings.apiKey) {
-            return generateMockArticle(topic, { wordCount, style, direction, sections });
+            return {
+                article: generateMockArticle(topic, { wordCount, style, direction, sections }),
+                isMock: true,
+                mockReason: '未配置 API Key'
+            };
         }
 
         try {
@@ -4515,14 +4519,20 @@ ${article.substring(0, 3000)}
             // 检查返回内容：如果太短（<100字）说明 LLM 返回异常，回退到演示模式
             if (!article || article.trim().length < 100) {
                 console.warn('[generateArticleWithParams] LLM 返回内容过短（' + (article?.length || 0) + '字），回退到演示模式');
-                showToast('LLM 返回内容异常，已切换演示模式');
-                return generateMockArticle(topic, { wordCount, style, direction, sections });
+                return {
+                    article: generateMockArticle(topic, { wordCount, style, direction, sections }),
+                    isMock: true,
+                    mockReason: 'LLM 返回内容过短（' + (article?.length || 0) + '字）'
+                };
             }
-            return article;
+            return { article, isMock: false, mockReason: '' };
         } catch (e) {
             console.warn('[generateArticleWithParams] LLM 调用失败，回退到演示模式：', e.message);
-            showToast('LLM 调用失败，已切换演示模式：' + e.message);
-            return generateMockArticle(topic, { wordCount, style, direction, sections });
+            return {
+                article: generateMockArticle(topic, { wordCount, style, direction, sections }),
+                isMock: true,
+                mockReason: e.message
+            };
         }
     }
 
@@ -4774,13 +4784,14 @@ ${directionMap[direction] || directionMap.opinion}
         setCreateStatus(isDemo ? `演示模式生成中... [模型：${modelLabel}]` : `AI 正在生成文章（含去 AI 化处理）... [模型：${modelLabel}]`, true);
 
         try {
-            const article = await generateArticleWithParams(topic, settings, {
+            const result = await generateArticleWithParams(topic, settings, {
                 wordCount: window.workflowState.wordCount,
                 direction: window.workflowState.direction,
                 style: window.workflowState.style,
                 sections: window.workflowState.sections,
                 newsContext: window.workflowState.newsContext || ''
             });
+            const article = result.article;
             // 显示编辑区
             if (createArticleSection) createArticleSection.style.display = 'block';
             if (createEmptyState) createEmptyState.style.display = 'none';
@@ -4791,10 +4802,22 @@ ${directionMap[direction] || directionMap.opinion}
             if (createRegenerateBtn) { createRegenerateBtn.disabled = false; createRegenerateBtn.style.cursor = 'pointer'; createRegenerateBtn.style.color = '#10B981'; createRegenerateBtn.style.borderColor = '#10B981'; }
             // 存入 workflowState
             window.workflowState.article = article;
-            setCreateStatus(isDemo
-                ? `演示模式文章已生成，约 ${article.length} 字。[模型：${modelLabel}] 配置 API Key 后可用真实 AI`
-                : `文章已生成，约 ${article.length} 字。[模型：${modelLabel}] 可编辑后进入「排版助手」`, true);
-            showToast(isDemo ? '演示模式文章已生成（配置 API Key 后可用真实 AI）' : '文章生成完成！');
+            // 根据是否是 mock 显示不同的状态信息
+            if (result.isMock) {
+                // LLM 调用失败，明确告知用户失败原因
+                const reason = result.mockReason || '未知原因';
+                setCreateStatus(
+                    `⚠️ LLM 调用失败：${reason}。当前为演示模式占位文章（约 ${article.length} 字），内容与话题无关。请检查 AI 设置（API Key、Base URL、模型）后重试。`,
+                    true
+                );
+                showToast(`LLM 调用失败：${reason}，已用演示占位文章替代`);
+            } else {
+                setCreateStatus(
+                    `✓ 文章已生成，约 ${article.length} 字。[模型：${modelLabel}] 可编辑后进入「排版助手」`,
+                    true
+                );
+                showToast('文章生成完成！');
+            }
         } catch (e) {
             console.error(e);
             setCreateStatus('生成失败：' + e.message, true);
@@ -5134,7 +5157,7 @@ ${directionMap[direction] || directionMap.opinion}
     }
 
     // 切换来源（核心函数）
-    async function switchTopicSource(source) {
+    async function switchTopicSource(source, isInitialLoad) {
         if (!source) return;
         topicCenterState.currentSource = source;
 
@@ -5185,7 +5208,10 @@ ${directionMap[direction] || directionMap.opinion}
 
         topicCenterState.currentList = filterByRedline(items);
         renderTopicList();
-        setCreateStatus(`已加载 ${topicCenterState.currentList.length} 条选题，可按分类筛选`, true);
+        // 只在用户主动切换来源时更新状态条，避免覆盖文章生成的状态
+        if (!isInitialLoad) {
+            setCreateStatus(`已加载 ${topicCenterState.currentList.length} 条选题，可按分类筛选`, true);
+        }
     }
 
     // 绑定来源按钮
@@ -5229,7 +5255,7 @@ ${directionMap[direction] || directionMap.opinion}
 
     // 初始化：默认加载推荐选题
     // 默认激活 36 氪（真实 RSS 资讯）
-    setTimeout(() => switchTopicSource('36kr'), 100);
+    setTimeout(() => switchTopicSource('36kr', true), 100);
 
     // 生成按钮
     if (createGenerateBtn) {
