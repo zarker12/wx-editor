@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>公众号文章排版助手</title>
-    <link rel="stylesheet" href="styles.css?v=8">
+    <link rel="stylesheet" href="styles.css?v=9">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -557,8 +557,11 @@
                         <button class="tool-btn" data-action="redo" data-tooltip="重做 · Ctrl+Y">↷</button>
                     </div>
                     <div class="toolbar-spacer"></div>
+                    <button class="tool-btn-action" id="humanizeBtn" data-tooltip="去除 AI 味：先本地规则清洗，再调用 LLM 深度改写">
+                        去AI味
+                    </button>
                     <button class="tool-btn-action" id="autoIllustrateBtn" data-tooltip="一键配图：AI 理解文章 → 生成配图 → 自动插入">
-                        🖼 一键配图
+                        一键配图
                     </button>
                 </div>
                 <div id="editor" class="editor-rich" contenteditable="true" placeholder="在此书写你的文章...
@@ -845,6 +848,6 @@
     <script src="themes/cyber.js"></script>
     <script src="themes/magazine.js"></script>
     <script src="themes/fresh.js"></script>
-    <script src="script.js?v=37"></script>
+    <script src="script.js?v=38"></script>
 </body>
 </html>

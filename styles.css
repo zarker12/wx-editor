@@ -881,6 +881,18 @@ body {
     box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
 }
 
+#humanizeBtn {
+    background: linear-gradient(135deg, #7C3AED, #EC4899);
+}
+#humanizeBtn:hover {
+    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+}
+#humanizeBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
 .tool-text-bold {
     font-weight: 700;
     font-size: 14px;

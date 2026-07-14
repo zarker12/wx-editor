@@ -2463,6 +2463,99 @@ if (autoIllustrateBtn) {
     });
 }
 
+// 去AI味按钮
+const humanizeBtn = document.getElementById('humanizeBtn');
+if (humanizeBtn) {
+    humanizeBtn.addEventListener('mousedown', (e) => e.preventDefault());
+    humanizeBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (typeof window.humanizeArticle !== 'function') {
+            showToast('功能加载中，请稍后重试');
+            return;
+        }
+        // 从编辑框获取文章
+        const editor = document.getElementById('editor');
+        if (!editor || !editor.innerText.trim()) {
+            showToast('编辑框为空，请先输入文章');
+            return;
+        }
+        // 获取 markdown 源文本（优先 workflowState，其次 innerText）
+        let articleText = '';
+        if (window.workflowState && window.workflowState.article) {
+            articleText = window.workflowState.article;
+        } else {
+            articleText = editor.innerText.trim();
+        }
+        if (!articleText || articleText.length < 100) {
+            showToast('文章内容过短，无需去AI味');
+            return;
+        }
+
+        const origText = humanizeBtn.textContent;
+        humanizeBtn.disabled = true;
+        humanizeBtn.textContent = '处理中...';
+
+        // 状态条提示
+        let statusEl = document.getElementById('humanizeStatus');
+        if (!statusEl) {
+            statusEl = document.createElement('div');
+            statusEl.id = 'humanizeStatus';
+            statusEl.style.cssText = 'padding:8px 14px;margin-top:8px;border-radius:6px;font-size:12px;display:none;';
+            editor.parentElement.insertBefore(statusEl, editor);
+        }
+        const settings = (typeof getAISettings === 'function') ? getAISettings() : null;
+        const willUseLLM = settings && settings.apiKey;
+        statusEl.style.display = 'block';
+        statusEl.style.background = '#F3E8FF';
+        statusEl.style.color = '#6B21A8';
+        statusEl.style.border = '1px solid #C4B5FD';
+        statusEl.textContent = willUseLLM
+            ? '⏳ 去AI味处理中：先本地规则清洗，再调用 LLM 深度改写...'
+            : '⏳ 去AI味处理中：本地规则清洗（未配置 API Key，仅做基础清洗）...';
+
+        try {
+            const result = await window.humanizeArticle(articleText, settings);
+            // 更新编辑框
+            if (editor) {
+                // 用 markdown 重新渲染
+                if (typeof marked !== 'undefined') {
+                    editor.innerHTML = marked.parse(result.text);
+                } else {
+                    editor.innerText = result.text;
+                }
+            }
+            // 更新 workflowState
+            if (window.workflowState) {
+                window.workflowState.article = result.text;
+            }
+            // 显示结果
+            const parts = [];
+            parts.push(`本地清洗：${result.localChanges.length > 0 ? result.localChanges.join('、') : '无明显改动'}`);
+            if (willUseLLM) {
+                if (result.usedLLM) {
+                    parts.push('LLM 深度改写：已完成');
+                } else if (result.llmError) {
+                    parts.push(`LLM 改写失败：${result.llmError}（仅本地规则）`);
+                }
+            }
+            statusEl.style.background = '#ECFDF5';
+            statusEl.style.color = '#065F46';
+            statusEl.style.border = '1px solid #6EE7B7';
+            statusEl.textContent = `✓ 去AI味完成 · ${parts.join(' · ')}`;
+            showToast('去AI味处理完成');
+        } catch (e) {
+            statusEl.style.background = '#FEF2F2';
+            statusEl.style.color = '#991B1B';
+            statusEl.style.border = '1px solid #FECACA';
+            statusEl.textContent = '✗ 去AI味失败：' + e.message;
+            showToast('去AI味失败：' + e.message);
+        } finally {
+            humanizeBtn.disabled = false;
+            humanizeBtn.textContent = origText;
+        }
+    });
+}
+
 copyBtn.addEventListener('click', copyToClipboard);
 copyHtmlBtn.addEventListener('click', copyRawHTML);
 clearBtn.addEventListener('click', clearContent);
@@ -3417,6 +3510,220 @@ function formatParagraph(text) {
             return cleanParas.join('\n\n').trim();
         }
         return text;
+    }
+
+    // ===== 去AI味（Humanize）=====
+    // 两级处理：第一级纯前端规则清洗（即时、无成本），第二级 LLM 深度改写（需配置API）
+    // 第一级：前端规则清洗
+    function humanizeLocal(text) {
+        if (!text || typeof text !== 'string') return text;
+        let result = text;
+        const changes = [];
+
+        // 1. 替换破折号（— –）为逗号或句号
+        const before1 = result.length;
+        result = result.replace(/—/g, '，').replace(/–/g, '，');
+        if (result.length !== before1) changes.push('破折号');
+
+        // 2. AI 高频词替换（注意：\b 在中文中不工作，直接匹配）
+        const wordReplacements = [
+            [/此外/g, '另外'],
+            [/值得一提的是/g, ''],
+            [/至关重要/g, '关键'],
+            [/深入探讨/g, '仔细说说'],
+            [/不可或缺/g, '少不了'],
+            [/综上所述/g, '说到底'],
+            [/总而言之/g, '说到底'],
+            [/不可否认/g, '说实话'],
+            [/众所周知/g, '大家都知道'],
+            [/值得注意的是/g, '要注意的是'],
+            [/不难发现/g, '能看出来'],
+            [/引发了广泛关注/g, '引起了不少人注意'],
+            [/掀起了热议/g, '聊得挺热闹'],
+            [/引发了热议/g, '聊得挺热闹'],
+            [/纷纷表示/g, '都说'],
+            [/浓厚兴趣/g, '挺感兴趣'],
+            [/蓬勃发展/g, '发展得不错'],
+            [/方兴未艾/g, '还在往上走'],
+            [/日新月异/g, '变化很快'],
+            [/深刻变革/g, '大变化'],
+            [/深度融合/g, '结合得紧'],
+            [/彰显了/g, '显出了'],
+            [/彰显/g, '显出'],
+            [/交织/g, '交错'],
+            [/精妙/g, '巧妙'],
+            [/格局/g, '局面'],
+            [/见证了/g, '看到了'],
+            [/凸显了/g, '显出了'],
+            [/凸显出/g, '显出'],
+            [/展现了/g, '展示了'],
+            [/展现/g, '展示'],
+            [/凸显/g, '显出'],
+            [/活力/g, '生气'],
+            [/层面/g, '方面'],
+            [/维度/g, '角度'],
+            [/范畴/g, '范围'],
+            [/核心要素/g, '关键点'],
+            [/核心价值/g, '关键价值'],
+            [/核心竞争力/g, '关键优势'],
+            [/核心/g, '关键'],
+            [/生态圈/g, '圈子'],
+            [/生态/g, '圈子'],
+            [/闭环/g, '完整流程'],
+            [/场景/g, '场合'],
+            [/痛点/g, '麻烦'],
+            [/抓手/g, '着力点'],
+            [/赛道/g, '方向'],
+            [/风口/g, '机会'],
+            [/蓝海/g, '新机会'],
+            [/红海/g, '竞争激烈'],
+            [/护城河/g, '优势'],
+            [/降维打击/g, '碾压'],
+            [/赋能/g, '助力'],
+            [/沉淀/g, '积累'],
+            [/迭代/g, '改进'],
+            [/落地/g, '用上'],
+            [/变现/g, '赚钱'],
+            [/裂变/g, '扩散'],
+            [/引爆/g, '带动'],
+            [/出圈/g, '火出圈'],
+            [/内卷/g, '过度竞争'],
+            [/躺平/g, '不折腾'],
+            [/破圈/g, '突破圈层'],
+            [/国潮/g, '国货风潮'],
+            [/新消费/g, '新消费方式'],
+            [/新国货/g, '国产品牌'],
+            [/新锐/g, '新出的'],
+            [/头部/g, '领先'],
+            [/腰部/g, '中等'],
+            [/尾部/g, '小'],
+            [/下沉市场/g, '三四线城市'],
+            [/私域/g, '自有'],
+            [/公域/g, '公共'],
+            [/存量/g, '现有'],
+            [/增量/g, '新增'],
+            [/复用/g, '重复用'],
+            [/触达/g, '到达'],
+            // 平行结构标记词
+            [/不仅是/g, '不只是'],
+            [/更是/g, '而且是'],
+            [/与此同时/g, '同时'],
+            [/然而/g, '但是'],
+            [/尽管如此/g, '虽然这样'],
+            [/即使如此/g, '就算这样'],
+            [/即便如此/g, '就算这样'],
+            [/无论如何/g, '不管怎样'],
+            [/言而总之/g, '说到底'],
+            [/概而言之/g, '说到底'],
+            [/总归/g, '终究'],
+            [/总之/g, '说到底'],
+            [/总的来看/g, '总体看'],
+            [/总的来说/g, '总体看'],
+            [/综合来看/g, '总体看'],
+            [/综合而言/g, '总体看'],
+            // AI 常用句式
+            [/这不禁让我们思考/g, '这让人会想'],
+            [/这提醒我们/g, '这提醒'],
+            [/未来必将/g, '未来会'],
+            [/我们应当认识到/g, '我们得知道'],
+            [/我们必须承认/g, '我们得承认'],
+            [/我们不能否认/g, '我们没法否认'],
+            [/毋庸置疑/g, '确实'],
+            [/诚然/g, '确实'],
+            [/无疑/g, '确实是'],
+            [/确实如此/g, '确实是这样'],
+            [/的确如此/g, '确实是这样'],
+            [/正是如此/g, '就是这样'],
+            [/并非如此/g, '不是这样'],
+            [/并非/g, '并不是'],
+            [/除此之外/g, '另外'],
+            [/在此基础之上/g, '在这个基础上'],
+            [/基于此/g, '基于这个'],
+            [/由此可见/g, '从这里能看出'],
+            [/由此可知/g, '从这里能知道'],
+            [/综上/g, '说到底'],
+            [/在([^，。、]{1,10})的背景下/g, '在$1的时候'],
+            [/随着([^，。、]{1,10})的发展/g, '随着$1发展']
+        ];
+        let wordCount = 0;
+        const replacedWords = [];
+        wordReplacements.forEach(([re, replacement]) => {
+            const matches = result.match(new RegExp(re.source, re.flags));
+            if (matches) {
+                wordCount += matches.length;
+                replacedWords.push(re.source.substring(0, 10));
+            }
+            result = result.replace(re, replacement);
+        });
+        if (wordCount > 0) changes.push(`高频词×${wordCount}`);
+
+        // 3. 清理多余空格（替换后可能产生连续空格）
+        result = result.replace(/  +/g, ' ').replace(/，，/g, '，').replace(/。，/g, '。').replace(/，。/g, '。');
+        // 4. 清理替换后可能产生的"。，"等
+        result = result.replace(/。，/g, '。').replace(/，。/g, '。');
+
+        return { text: result, changes };
+    }
+
+    // 第二级：调用 LLM 深度改写（去AI味）
+    async function humanizeViaLLM(text, settings) {
+        const prompt = `你是一位资深公众号编辑，擅长把 AI 生成的文章改得像真人写的。请对以下文章做"去AI味"改写。
+
+【改写要求】
+1. 保留原文的核心观点、结构、标题，不要改变内容方向
+2. 去掉 AI 痕迹：
+   - 删除所有破折号（— –），用逗号/句号替代
+   - 删除 AI 高频词：此外、值得一提的是、至关重要、深入探讨、增强、培育、彰显、交织、精妙、格局、关键、展示、见证、凸显、活力
+   - 拆解"不仅是…更是…"、"不是…而是…"等平行结构
+   - 拆解"首先/其次/最后"三段论
+   - 去掉"这不禁让我们思考"、"这提醒我们"、"未来必将"等 AI 反思句
+   - 去掉"在XX的背景下"、"随着XX的发展"等 AI 开头
+3. 增加人味：
+   - 句子长短混排，有的句子只有几个字
+   - 加入口语化表达（说实话、坦白讲、老实说、讲真）
+   - 段落长度要有变化，有的段落只有一句话
+4. 不要增加新观点、新数据、新案例
+5. 不要改变文章字数（±10%以内）
+6. 保留 Markdown 格式（# ## > **等）
+7. 直接输出改写后的全文，不要解释
+
+【原文】
+${text}
+
+【改写后】`;
+
+        return await callLLM(prompt, settings);
+    }
+
+    // 去AI味主入口：先本地规则清洗，再决定是否调用 LLM
+    async function humanizeArticle(text, settings) {
+        // 第一级：本地规则清洗（即时）
+        const local = humanizeLocal(text);
+        console.log(`[humanize] 本地清洗完成，改动项：${local.changes.join(', ') || '无'}`);
+
+        // 第二级：如果配置了 API Key，调用 LLM 深度改写
+        if (settings && settings.apiKey) {
+            try {
+                const llmResult = await humanizeViaLLM(local.text, settings);
+                if (llmResult && llmResult.trim().length > 100) {
+                    // 过滤 prompt 泄露
+                    const cleaned = stripPromptLeakage(llmResult);
+                    return {
+                        text: cleaned,
+                        usedLLM: true,
+                        localChanges: local.changes,
+                        llmError: null
+                    };
+                }
+                return { text: local.text, usedLLM: false, localChanges: local.changes, llmError: 'LLM 返回内容过短' };
+            } catch (e) {
+                console.warn('[humanize] LLM 改写失败，仅使用本地规则：', e.message);
+                return { text: local.text, usedLLM: false, localChanges: local.changes, llmError: e.message };
+            }
+        }
+
+        // 无 API Key：仅本地规则
+        return { text: local.text, usedLLM: false, localChanges: local.changes, llmError: null };
     }
 
     // ===== 6. 话题筛选（让 LLM 从热搜中选最适合写文章的话题）=====
@@ -6051,6 +6358,7 @@ ${directionMap[direction] || directionMap.opinion}
 
     // 暴露到全局，供工具栏按钮调用
     window.autoIllustrate = autoIllustrate;
+    window.humanizeArticle = humanizeArticle;
 })();
 
 // ===== 草稿功能（localStorage，无需用户系统/注册登录）=====
