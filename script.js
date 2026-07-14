@@ -4527,12 +4527,14 @@ ${article.substring(0, 3000)}
     }
 
     // 真实 LLM 调用（原 generateArticleWithParams 主体）
+    // 核心改进：基于资讯背景 + 人设视角写有价值分析，而非空泛套话
     async function _generateArticleWithLLM(topic, settings, opts) {
         opts = opts || {};
         const wordCount = opts.wordCount || 1200;
         const style = opts.style || 'deep';
         const direction = opts.direction || 'opinion';
         const sections = opts.sections || 4;
+        const newsContext = opts.newsContext || '';  // 资讯摘要（来自选题列表）
 
         // 字数区间
         const minWords = Math.max(600, wordCount - 200);
@@ -4557,12 +4559,17 @@ ${article.substring(0, 3000)}
             emotion: '情感共鸣型：关注普通人的内心感受，写到读者心里去'
         };
 
-        const prompt = `你是一位资深公众号主笔，擅长用独特的视角和有温度的故事写出10w+爆款文章。
+        // 【核心】资讯背景：如果有资讯摘要，让 LLM 基于真实背景写分析
+        const newsSection = newsContext
+            ? `\n【资讯背景】以下是关于「${topic}」的真实资讯摘要，请基于这些信息写文章，可以引用但不要照抄：\n${newsContext}\n`
+            : `\n【话题背景】请针对「${topic}」这个话题写文章。如果你了解相关的真实事件、案例、趋势，可以引用作为论据。如果不确定具体事实，用"最近看到""有人提到"等泛化表达，不要编造具体数字/人物/公司。\n`;
 
-请基于以下话题写一篇公众号文章：
+        const prompt = `你是一位资深公众号主笔，有人设、有立场、有洞察力，擅长基于真实资讯写出有价值的分析文章，而不是空泛的套话。
+
+请基于以下信息写一篇公众号文章：
 
 话题：${topic}
-
+${newsSection}
 【红线·绝对禁止】以下内容一律不得出现在文章中，违反则整篇作废重写：
 - 宗教（任何宗教教义、信仰争议、宗教冲突、宗教评价）
 - 政治（政党、政策立场、意识形态争论、政治制度比较）
@@ -4578,6 +4585,19 @@ ${article.substring(0, 3000)}
 - 不得编造名人名言或将其归因于具体人物。可以用"有人说过"等泛化表达。
 - 不得编造科学结论、研究结论、专家观点。
 - 概括性、观点性、情感性的内容可以自由发挥；具体性、事实性、可查证的内容必须谨慎，宁可不写也不编造。
+
+【写作核心要求·有价值】
+- 文章必须围绕「${topic}」展开，每一段都要紧扣主题，不要跑题到泛泛的人生哲理
+- 如果有资讯背景，请分析事件背后的原因、影响、对普通人的意义
+- 要有独立观点：不要复述常识，要给出读者想不到的角度
+- 要有信息增量：让读者读完之后获得新认知，而不是"道理我都懂"
+- 要有人设：像一个具体的人在跟读者聊天，有自己的态度和口吻，不是 AI 在做总结
+
+【爆款标题技巧】
+- 用数字、悬念、反差、具体场景制造点击欲
+- 不要用"关于XX的思考"这种平淡标题
+- 好标题示例："为什么90%的人对XX的理解都是错的"、"XX火了，但我发现了3个被忽略的细节"
+- 标题字数 15-25 字，不要用「」号
 
 【去AI化·一次成型】
 - 禁止使用破折号（— –），用句号/逗号/冒号替换
@@ -4600,11 +4620,12 @@ ${directionMap[direction] || directionMap.opinion}
 
 【写作要求】
 1. 文章结构（Markdown 格式）：
-   - 开头用 # 写一个吸引眼球的标题（15-25字，不要用「」号）
+   - 开头用 # 写一个用爆款技巧的标题（15-25字，不要用「」号）
    - 紧接着一段 60-90 字的引言，用 > 引用块格式，点出核心矛盾或悬念
    - 用 ## 划分 ${sections} 个章节，标题要有信息量（观点式标题，不要用"第一章"）
    - 结尾有一个简短的总结段落
    - 不要在文章末尾写自我介绍、签名、引导关注
+   - 【重要】不要在正文末尾添加 "- E N D -" 标记，排版模板会自动处理
 
 2. 内容与段落：
    - 【重要】总字数必须达到 ${wordCount} 字以上，严格控制在 ${minWords}-${maxWords} 字，不要少于 ${wordCount} 字
@@ -4632,6 +4653,16 @@ ${directionMap[direction] || directionMap.opinion}
         const sections = Math.min(Math.max(opts.sections || 4, 3), 5);
         const topicStr = (topic || '生活的另一种可能').trim();
         const shortTopic = topicStr.length > 12 ? topicStr.slice(0, 12) + '…' : topicStr;
+
+        // 爆款标题技巧：数字+悬念+具体场景+情绪点
+        const titleStyles = [
+            `# 为什么90%的人看完${shortTopic}之后，沉默了`,
+            `# ${shortTopic}背后，藏着普通人都忽略的3个真相`,
+            `# 关于${shortTopic}，没人愿意告诉你的那些事`,
+            `# ${shortTopic}火了，但我劝你先冷静下来想一想`,
+            `# 我研究了${shortTopic}一周，发现事情没那么简单`
+        ];
+        const title = titleStyles[Math.floor(Math.random() * titleStyles.length)];
 
         const styleTone = {
             deep: '冷静地讲，这件事比想象中复杂。我们常常以为想清楚了，其实只是把表面那一层揭开了，底下还有褶皱，只是没人愿意多看一眼。',
@@ -4703,7 +4734,8 @@ ${directionMap[direction] || directionMap.opinion}
             return `## ${s.title}\n\n${paras}`;
         }).join('\n\n');
 
-        const article = `# 关于「${shortTopic}」，想跟你聊点不一样的\n\n> 我们以为看懂了一件事，往往只是看懂了自己想看的那一面。\n\n${body}\n\n## 写在最后\n\n生活里大多数事情都没有标准答案，${shortTopic}也是。\n\n能多想一层，就多一层余地，能把节奏放慢一点，就更稳一点。\n\n不是每件事都要立刻有结论，有些事慢慢长出来，反而更结实。\n\n- E N D -`;
+        // 不在正文里放 - E N D - 标记，由排版模板的 data-end-marker 统一处理
+        const article = `${title}\n\n> 我们以为看懂了一件事，往往只是看懂了自己想看的那一面。\n\n${body}\n\n## 写在最后\n\n生活里大多数事情都没有标准答案，${shortTopic}也是。\n\n能多想一层，就多一层余地，能把节奏放慢一点，就更稳一点。\n\n不是每件事都要立刻有结论，有些事慢慢长出来，反而更结实。`;
         return article;
     }
 
@@ -4729,19 +4761,25 @@ ${directionMap[direction] || directionMap.opinion}
         window.workflowState.style = createStyleSel ? createStyleSel.value : 'deep';
         window.workflowState.sections = createSectionsSel ? parseInt(createSectionsSel.value, 10) : 4;
 
+        // 获取当前调用的模型名称（用于状态条显示）
+        const llmConfig = LLM_PROVIDERS[settings.provider] || LLM_PROVIDERS.deepseek;
+        const llmModelName = (llmConfig.editable && settings.model) ? settings.model : llmConfig.model;
+        const modelLabel = isDemo ? '演示模式（未配置 API Key）' : `${llmConfig.name} · ${llmModelName}`;
+
         // 按钮 loading
         const btn = isRegenerate ? createRegenerateBtn : createGenerateBtn;
         const origText = btn ? btn.textContent : '';
         if (btn) { btn.disabled = true; btn.textContent = '⏳ 生成中...'; }
         if (createGenerateBtn) { createGenerateBtn.disabled = true; createGenerateBtn.textContent = '⏳ 生成中...'; }
-        setCreateStatus(isDemo ? '演示模式：未配置 API Key，使用内置示例文章生成...' : 'AI 正在生成文章（含去 AI 化处理）...', true);
+        setCreateStatus(isDemo ? `演示模式生成中... [模型：${modelLabel}]` : `AI 正在生成文章（含去 AI 化处理）... [模型：${modelLabel}]`, true);
 
         try {
             const article = await generateArticleWithParams(topic, settings, {
                 wordCount: window.workflowState.wordCount,
                 direction: window.workflowState.direction,
                 style: window.workflowState.style,
-                sections: window.workflowState.sections
+                sections: window.workflowState.sections,
+                newsContext: window.workflowState.newsContext || ''
             });
             // 显示编辑区
             if (createArticleSection) createArticleSection.style.display = 'block';
@@ -4754,8 +4792,8 @@ ${directionMap[direction] || directionMap.opinion}
             // 存入 workflowState
             window.workflowState.article = article;
             setCreateStatus(isDemo
-                ? `演示模式文章已生成，约 ${article.length} 字。可编辑后进入「排版助手」。配置 API Key 后可生成真实 AI 文章。`
-                : `文章已生成，约 ${article.length} 字。可编辑后进入「排版助手」。`, true);
+                ? `演示模式文章已生成，约 ${article.length} 字。[模型：${modelLabel}] 配置 API Key 后可用真实 AI`
+                : `文章已生成，约 ${article.length} 字。[模型：${modelLabel}] 可编辑后进入「排版助手」`, true);
             showToast(isDemo ? '演示模式文章已生成（配置 API Key 后可用真实 AI）' : '文章生成完成！');
         } catch (e) {
             console.error(e);
@@ -5067,7 +5105,7 @@ ${directionMap[direction] || directionMap.opinion}
                 const safeTitle = (it.title || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
                 const safeDesc = (it.desc || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
                 const itemTime = it.time || timeLabel;
-                return `<div style="padding:10px 12px;margin-bottom:6px;border:1px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;transition:all 0.15s;" data-topic="${safeTitle}" class="topic-item">
+                return `<div style="padding:10px 12px;margin-bottom:6px;border:1px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;transition:all 0.15s;" data-topic="${safeTitle}" data-desc="${safeDesc}" data-source="${it.source || ''}" class="topic-item">
                     <div style="display:flex;align-items:center;margin-bottom:4px;">
                         <span style="color:#9CA3AF;font-size:11px;margin-right:8px;min-width:20px;">${i + 1}.</span>
                         <span style="flex:1;font-size:13px;color:#1F2937;font-weight:500;">${safeTitle}</span>
@@ -5087,7 +5125,10 @@ ${directionMap[direction] || directionMap.opinion}
             el.addEventListener('mouseleave', () => { el.style.background = '#fff'; el.style.borderColor = '#E5E7EB'; });
             el.addEventListener('click', () => {
                 if (createTopicInput) createTopicInput.value = el.dataset.topic;
-                setCreateStatus(`已选择话题：${el.dataset.topic}`, true);
+                // 记录选中资讯的摘要到 workflowState，供文章生成时作为背景信息
+                window.workflowState.newsContext = el.dataset.desc || '';
+                window.workflowState.newsSource = el.dataset.source || '';
+                setCreateStatus(`已选择话题：${el.dataset.topic}${el.dataset.desc ? '（含资讯背景）' : ''}`, true);
             });
         });
     }
@@ -5865,20 +5906,23 @@ ${directionMap[direction] || directionMap.opinion}
             updateAIStatus('正在生成配图...', `共 ${imagePrompts.length} 张 · ${imgApiName}（并行）`);
 
             // 2. 生成图片（data URI）— 并行生成
-            const PLACEHOLDER_IMG = 'data:image/svg+xml,' + encodeURIComponent(
+            // PLACEHOLDER 带序号和场景描述，让每张失败的图都不同
+            const makePlaceholder = (idx, prompt) => 'data:image/svg+xml,' + encodeURIComponent(
                 `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">` +
                 `<rect width="1280" height="720" fill="#F3F4F6"/>` +
-                `<text x="640" y="340" text-anchor="middle" font-family="sans-serif" font-size="32" fill="#9CA3AF">📷 图片加载失败</text>` +
-                `<text x="640" y="400" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#9CA3AF">请手动上传替换</text>` +
+                `<text x="640" y="320" text-anchor="middle" font-family="sans-serif" font-size="32" fill="#9CA3AF">📷 配图${idx + 1} 加载失败</text>` +
+                `<text x="640" y="380" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#D1D5DB">${(prompt || '').substring(0, 60)}...</text>` +
+                `<text x="640" y="430" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#D1D5DB">请手动上传替换</text>` +
                 `</svg>`
             );
 
+            // 超时从 90 秒减到 45 秒，避免卡太久
             const imageTasks = imagePrompts.map((prompt, i) =>
-                generateImage(prompt, 1000 + i * 111, 90000)
+                generateImage(prompt, 1000 + i * 111, 45000)
                     .then(dataUri => ({ ok: true, dataUri, caption: `配图${i + 1}`, index: i, prompt }))
                     .catch(e => {
                         console.error(`图片 ${i + 1} 失败:`, e.message);
-                        return { ok: false, dataUri: PLACEHOLDER_IMG, caption: `配图${i + 1}（加载失败）`, index: i, prompt };
+                        return { ok: false, dataUri: makePlaceholder(i, prompt), caption: `配图${i + 1}（加载失败）`, index: i, prompt };
                     })
             );
 
