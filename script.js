@@ -3561,71 +3561,92 @@ function formatParagraph(text) {
         }
         const msg = data.choices[0].message || {};
         // 兼容多种返回格式：
-        // 1. content 是字符串（标准 OpenAI 格式，含空字符串）
-        // 2. content 是 null（部分模型在 tool_calls 或特定场景下）→ 尝试 reasoning_content
-        // 3. content 是数组（OpenAI vision 格式 [{type:"text", text:"..."}]）→ 拼接文本
+        // 1. content 是字符串（标准 OpenAI 格式）→ 直接用
+        // 2. content 是数组（OpenAI vision 格式 [{type:"text", text:"..."}]）→ 拼接文本
+        // 3. content 是 null（推理模型如 deepseek-r1，只输出 reasoning_content 思考链）→ 不回退，返回空
+        //    原因：reasoning_content 是 CoT 思考过程，不是文章正文，回退会导致 CoT 泄露到前台
         let content = msg.content;
         if (content === null || content === undefined) {
-            // 尝试 reasoning_content（部分模型用此字段）
-            content = msg.reasoning_content || '';
+            // 推理模型只输出思考过程、未输出正文
+            if (msg.reasoning_content) {
+                console.warn('[callLLM] 模型只返回了 reasoning_content（思考过程），未输出正文 content。可能是推理模型（如 deepseek-r1），建议使用非推理模型（如 deepseek-chat）');
+            }
+            content = '';
         }
         if (Array.isArray(content)) {
             // vision 格式：拼接所有 text 段
             content = content.filter(c => c && c.type === 'text').map(c => c.text).join('');
         }
         if (typeof content !== 'string') {
-            // 最后兜底：转字符串
             content = String(content || '');
         }
-        // 过滤 prompt 泄露：某些模型会回显 prompt 内容
+        // 过滤 prompt 泄露：某些模型会回显 prompt 内容（保守过滤，不删正常段落）
         content = stripPromptLeakage(content);
         return content;
     }
 
-    // 检测并过滤 LLM 回显的 prompt 内容
-    // 某些模型（特别是国内部分 API）会把 prompt 的指令部分当作返回内容
+    // 检测并过滤 LLM 回显的 prompt 内容 / CoT 思考链
+    // 设计原则：保守过滤——宁可漏过少量泄露，也不要误删正常文章段落
+    // 因为推理模型的 reasoning_content 已经在 callLLM 中被拦截（不作为正文返回），
+    // 这里只处理 content 字段中偶尔混入的 prompt 回显片段
     function stripPromptLeakage(text) {
         if (!text || typeof text !== 'string') return text;
-        // 1. prompt 特征标记（prompt 原文回显）
-        const promptMarkers = [
-            '事实红线·禁止杜撰', '禁止杜撰', '总字数必须达到', '总字数严格控制在',
-            '风格要求', '内容方向', '每章节必须达到', '不得编造',
-            '不要输出任何解释说明', '现在请开始写', '你是一位资深的公众号',
-            '严格遵循以下要求', '字数要求', '你是一位资深公众号', '【红线', '【事实红线',
-            '【写作核心要求', '【爆款标题技巧', '【去AI化', '【写作要求', '【资讯背景', '【话题背景'
-        ];
-        // 2. CoT 元思考特征（推理模型把思考过程当答案输出）
-        const cotMarkers = [
-            '解构话题', '检查约束', '起草内容', '审查与打磨', '字数计算', '精确计算字数',
-            '结构安排', '结构规划', '结构设计', '让我们', '我需要', '我可以这样写',
-            '我的建议是', '删减策略', '精简', '逐字', '逐步进行', '完美。',
-            '字数：', '（字数：', '(字数：', '字左右', '字，符合', '字，稍微',
-            '引言：', '章节1：', '章节2：', '章节3：', '章节4：', '章节5：', '结尾：',
-            '标题：', '1. 引言', '2. 章节', '3. 章节', '4. 章节', '5. 章节',
-            '符合。', '可以。', '-> 可以', '-> 删减', '不要编造', '触碰红线'
-        ];
-        const allMarkers = [...promptMarkers, ...cotMarkers];
-        // 检测是否包含任一标记
-        const hasLeakage = allMarkers.some(m => text.includes(m));
-        if (!hasLeakage) return text;
-        console.warn('[callLLM] 检测到 prompt/CoT 泄露，尝试截取正文');
 
-        // 策略1：找到最后一个 markdown 标题（# 开头），从那里截取（CoT 通常在正文之前）
+        // === prompt 原文回显标记 ===（这些只出现在 prompt 里，不会出现在正常文章里）
+        const promptMarkers = [
+            // 旧版标记
+            '事实红线·禁止杜撰', '禁止杜撰', '总字数必须达到', '总字数严格控制在',
+            '风格要求', '内容方向', '每章节必须达到',
+            '不要输出任何解释说明', '现在请开始写', '你是一位资深的公众号',
+            '严格遵循以下要求', '字数要求',
+            '【红线', '【事实红线', '【写作核心要求', '【爆款标题技巧',
+            '【去AI化', '【写作要求', '【资讯背景', '【话题背景',
+            // v41 新增标记
+            '【字数·硬性', '【风格·硬性', '【格式·硬性', '【内容要求',
+            '【事实红线】', '【话题红线】', '【去AI化】', '【爆款标题技巧】',
+            '【字数·硬性】', '【风格·硬性】', '【格式·硬性】',
+            // v42 自然语言式标记
+            '字数·硬性', '风格·硬性', '格式·硬性'
+        ];
+
+        // === CoT 元思考标记 ===（只保留明确的元思考特征，去掉正常文章常见词）
+        // 重要：不要加"让我们"、"我需要"、"可以。"、"精简"等正常文章里也常见的词
+        const cotMarkers = [
+            // 明确的思考步骤标记
+            '解构话题', '检查约束', '起草内容', '审查与打磨', '字数计算', '精确计算字数',
+            '结构安排', '结构规划', '结构设计',
+            '我可以这样写', '删减策略', '逐步进行',
+            // 元注释格式（带括号的字数统计，如"（字数：260字左右，3-4段）"）
+            '（字数：', '(字数：',
+            // 提纲式标记
+            '引言：', '章节1：', '章节2：', '章节3：', '章节4：', '章节5：', '结尾：',
+            '1. 引言', '2. 章节', '3. 章节', '4. 章节', '5. 章节',
+            // CoT 特有的箭头标记
+            '-> 可以', '-> 删减', '-> 精简',
+            // 思考过程标记
+            '等等，提示词', '由于我不能', '我必须基于', '触碰红线'
+        ];
+
+        const hasLeakage = promptMarkers.some(m => text.includes(m))
+            || cotMarkers.some(m => text.includes(m));
+        if (!hasLeakage) return text;
+        console.warn('[stripPromptLeakage] 检测到 prompt/CoT 泄露，尝试截取正文');
+
+        // 策略1（首选）：找最后一个 markdown # 标题，从那里截取
+        // CoT 思考过程在正文之前，真正的文章从 # 标题开始
         const titleMatches = [...text.matchAll(/^#\s+[^\n]+/gm)];
         if (titleMatches.length > 0) {
-            // 取最后一个 # 标题的位置（真正的文章标题，CoT 里的"标题："不算）
             const lastTitle = titleMatches[titleMatches.length - 1];
-            const idx = lastTitle.index;
-            if (idx > 0) {
-                const candidate = text.substring(idx).trim();
-                // 截取后必须够长（避免截到 CoT 里的假标题）
-                if (candidate.length > 200) {
-                    return candidate;
-                }
+            const candidate = text.substring(lastTitle.index).trim();
+            if (candidate.length > 200) {
+                // 验证截取的内容不像 CoT（不含元思考标记）
+                const hasCoTInCandidate = cotMarkers.some(m => candidate.includes(m));
+                if (!hasCoTInCandidate) return candidate;
             }
         }
-        // 策略2：找"直接输出"或"以下是"之后的内容
-        const outputMarkers = ['直接输出', '以下是文章', '以下是正文', '文章如下', '正文开始'];
+
+        // 策略2：找"直接输出""以下是文章"等分隔标记之后的内容
+        const outputMarkers = ['直接输出', '以下是文章', '以下是正文', '文章如下', '正文开始', '改写后'];
         for (const marker of outputMarkers) {
             const idx = text.lastIndexOf(marker);
             if (idx >= 0) {
@@ -3633,23 +3654,26 @@ function formatParagraph(text) {
                 if (after.length > 200) return after;
             }
         }
-        // 策略3：按双换行分段，丢弃所有包含 CoT 特征的段落，保留看起来像文章的段落
+
+        // 策略3（保守）：只丢弃明确含 prompt 标记的段，保留其余所有段
+        // 不再用 cotMarkers 做段级过滤（避免误删含"让我们"等正常词的段）
         const paras = text.split(/\n\s*\n/);
         const cleanParas = paras.filter(p => {
             const t = p.trim();
             if (!t) return false;
-            // 丢弃含 CoT 标记的段
-            if (allMarkers.some(m => t.includes(m))) return false;
-            // 丢弃"数字. "开头的提纲式段
+            // 只丢弃含 prompt 原文标记的段（这些不可能出现在正常文章里）
+            if (promptMarkers.some(m => t.includes(m))) return false;
+            // 丢弃纯提纲式段（如"1. 引言：60-90字"）
             if (/^\d+[\.\、]\s*(引言|章节|标题|结尾|结构)/.test(t)) return false;
-            // 丢弃括号注释（如"(字数：260字左右，3-4段，无禁用词)"）
-            if (/^\(字数|^（字数/.test(t)) return false;
+            // 丢弃纯字数注释段（如"（字数：260字左右）"）
+            if (/^[（(]字数/.test(t)) return false;
             return true;
         });
-        if (cleanParas.length >= 3) {
+        if (cleanParas.length >= 2 && cleanParas.join('\n\n').length > 50) {
             return cleanParas.join('\n\n');
         }
-        // 都失败，返回原文（让用户看到问题）
+
+        // 都失败，返回原文（让用户看到问题，而不是丢失内容）
         return text;
     }
 
@@ -3931,52 +3955,33 @@ function formatParagraph(text) {
         const reportLines = [];
         if (analysis) {
             if (analysis.critical.length > 0) {
-                reportLines.push('【关键问题·必须处理】');
+                reportLines.push('关键问题（必须处理）：');
                 analysis.critical.forEach(c => reportLines.push(`- ${c.pattern}（${c.count}次）：${c.suggestion}`));
             }
             if (analysis.important.length > 0) {
-                reportLines.push('【重要问题·优先处理】');
+                reportLines.push('重要问题（优先处理）：');
                 analysis.important.forEach(c => reportLines.push(`- ${c.pattern}（${c.count}次）：${c.suggestion}`));
             }
             if (analysis.minor.length > 0) {
-                reportLines.push('【细节问题·酌情处理】');
+                reportLines.push('细节问题（酌情处理）：');
                 analysis.minor.forEach(c => reportLines.push(`- ${c.pattern}（${c.count}次）：${c.suggestion}`));
             }
             if (analysis.stats.sentCount >= 4) {
-                reportLines.push(`【统计信号】句子数 ${analysis.stats.sentCount}，平均句长 ${analysis.stats.avgLen.toFixed(0)} 字，节奏 CoV=${analysis.stats.burstiness.toFixed(2)}`);
+                reportLines.push(`统计信号：句子数 ${analysis.stats.sentCount}，平均句长 ${analysis.stats.avgLen.toFixed(0)} 字，节奏 CoV=${analysis.stats.burstiness.toFixed(2)}`);
             }
         }
         const reportBlock = reportLines.length > 0
-            ? `\n\n${reportLines.join('\n')}\n`
+            ? `\n${reportLines.join('\n')}\n`
             : '';
 
-        const prompt = `你是一位资深公众号编辑，擅长把 AI 生成的文章改得像真人写的。请对以下文章做"去AI味"改写。
-
-【改写原则】
-1. 保留原文的核心观点、结构、标题层级（# ## ###），不要改变内容方向
-2. 不要新增观点、数据、案例、引语；不要删除核心事实
-3. 文章字数控制在原文 ±10% 以内
-
-【AI 痕迹清除清单】
-- 删除所有破折号（— –），用逗号或句号替代
-- 拆解"不仅是…更是…"、"不是…而是…"等平行结构
-- 拆解"首先/其次/最后"三段论，改为自然过渡
-- 去掉"这不禁让我们思考"、"这提醒我们"、"未来必将"等 AI 反思句
-- 去掉"在 XX 的背景下"、"随着 XX 的发展"等 AI 开头
-- 替换 AI 高频词：此外/值得一提的是/至关重要/深入探讨/赋能/沉淀/迭代/落地/变现/裂变/触达/闭环/抓手/赛道/风口/护城河/降维打击/内卷/躺平/破圈/国潮/新消费/下沉市场
-- 移除"以下是"、"希望对你有帮助"、"以上就是"等 chatbot 痕迹
-- 移除"未来可期"、"前景广阔"、"让我们拭目以待"等套话结尾
-
-【人味增加】
-- 句子长短混排：有的句子只有 3-10 字，有的 30+ 字
-- 加入口语化表达（说实话、坦白讲、老实说、讲真、其实、话说回来）
-- 段落长度有变化：有的段落只有一句话
-- 可以保留 Markdown 格式（# ## > ** - \`\`\`）
+        const prompt = `你是资深公众号编辑，擅长把 AI 生成的文章改得像真人写的。请对以下文章做去AI味改写。
+改写原则：保留原文的核心观点、结构、标题层级，不要改变内容方向。不要新增观点、数据、案例、引语，不要删除核心事实。文章字数控制在原文 ±10% 以内。
+AI 痕迹清除：删除所有破折号，用逗号或句号替代。拆解"不仅是…更是…"、"不是…而是…"等平行结构。拆解"首先/其次/最后"三段论，改为自然过渡。去掉"这不禁让我们思考"、"这提醒我们"、"未来必将"等 AI 反思句。去掉"在 XX 的背景下"、"随着 XX 的发展"等 AI 开头。替换 AI 高频词：此外、值得一提的是、至关重要、深入探讨、赋能、沉淀、迭代、落地、变现、裂变、触达、闭环、抓手、赛道、风口、护城河、降维打击、内卷、躺平、破圈、国潮、新消费、下沉市场。移除"以下是"、"希望对你有帮助"、"以上就是"等 chatbot 痕迹。移除"未来可期"、"前景广阔"、"让我们拭目以待"等套话结尾。
+人味增加：句子长短混排，有的句子只有 3-10 字，有的 30+ 字。加入口语化表达（说实话、坦白讲、老实说、讲真、其实、话说回来）。段落长度有变化，有的段落只有一句话。保留 Markdown 格式。
 ${reportBlock}
-【输出要求】
-直接输出改写后的全文，不要任何解释、不要前后缀。
+请直接输出改写后的全文，从 # 标题开始，不要任何解释、思考过程、前后缀。
 
-【原文】
+原文：
 ${text}`;
 
         return await callLLM(prompt, settings);
@@ -4056,43 +4061,12 @@ ${text}`;
     }
 
     async function formatViaLLM(text, settings) {
-        const prompt = `你是一位资深公众号排版编辑。请对以下 Markdown 文章做"排版优化"，不要改写文字内容，只调整结构和格式。
+        const prompt = `你是资深公众号排版编辑。请对以下 Markdown 文章做排版优化，不要改写文字内容，只调整结构和格式。
+排版优化：标题层级识别，文章大标题用 #，一级章节用 ##，二级小节用 ###，不要跳级，标题末尾不要加句号冒号。引用名人名言、重点金句、他人观点时用 > 引用语法，引用块前后空一行，不要把普通段落误标为引用。代码片段用三反引号包裹并标注语言，行内代码用反引号包裹。段落松散化，每段 2-3 句最佳，最多 4 句，长段落拆分为多个短段落，段落之间用空行分隔。并列要点用无序列表，步骤用有序列表，列表前后空一行。段落开头不能是标点符号（句号逗号分号感叹号问号冒号顿号），如果有就删掉。
+保留原文所有文字内容，不增删观点、不替换词语。保留图片语法、链接语法、加粗和斜体。
+请直接输出排版优化后的完整 Markdown 文本，从 # 标题开始，不要任何解释、思考过程、前后缀。
 
-【排版优化清单】
-1. 标题层级识别：
-   - 文章大标题用 # (H1)
-   - 一级章节标题用 ## (H2)
-   - 二级小节标题用 ### (H3)
-   - 不要跳级（如 H1 直接跳到 H3）
-   - 标题末尾不要加句号、冒号
-2. 引用块规范：
-   - 引用名人名言、重点金句、他人观点时用 > 引用语法
-   - 引用块前后要空一行
-   - 不要把普通段落误标为引用
-3. 代码块规范：
-   - 代码片段用 \`\`\` 包裹，并标注语言（\`\`\`js / \`\`\`python 等）
-   - 行内代码用 \`反引号\` 包裹
-4. 段落松散化：
-   - 每段 2-3 句最佳，最多 4 句
-   - 长段落拆分为多个短段落
-   - 段落之间用空行分隔
-5. 列表规范：
-   - 并列要点用 - 无序列表
-   - 步骤用 1. 2. 3. 有序列表
-   - 列表前后空一行
-6. 段落首字符修正：
-   - 段落开头不能是标点符号（。，；！？：、）
-   - 如果有，删掉该标点
-7. 保留原文的：
-   - 所有文字内容（不增删观点、不替换词语）
-   - 图片语法 ![](url)
-   - 链接语法 [文字](url)
-   - 加粗 **重点** 和斜体 *强调*
-
-【输出要求】
-直接输出排版优化后的完整 Markdown 文本，不要任何解释、不要前后缀。
-
-【原文】
+原文：
 ${text}`;
 
         return await callLLM(prompt, settings);
@@ -5310,35 +5284,20 @@ ${article.substring(0, 3000)}
             ? `\n资讯参考（可引用事实，不要照抄）：${newsContext}\n`
             : '';
 
-        // 平衡版 prompt：保留字数/章节/风格/去AI化/红线等核心约束，
-        // 但用扁平化条目代替过度结构化的【红线】【事实红线】【写作要求】7大块，
-        // 避免触发推理模型的 CoT 思考链。
+        // 自然语言式 prompt：不用【】标记（避免 LLM 回显标记），
+        // 用段落式描述代替结构化条目，减少触发推理模型 CoT 的概率
         const minWords = Math.max(600, wordCount - 100);
         const maxWords = wordCount + 200;
         const sectionWords = Math.floor(wordCount / sections);
 
-        const prompt = `你是公众号主笔，有人设、有立场、有洞察力，擅长把复杂话题写成普通读者能看懂、有获得感的文章。
-
-基于「${topic}」写一篇文章。${bgLine}
-【字数·硬性】总字数 ${minWords}-${maxWords} 字（目标 ${wordCount} 字），每章 ${sectionWords} 字以上，不少于 ${sections} 个章节。
-【风格·硬性】${styleMap[style] || styleMap.deep}；${directionMap[direction] || directionMap.opinion}；第一人称，加入口语化表达（说实话、坦白讲、老实说），句子长短混排。
-【格式·硬性】Markdown 格式：# 大标题（15-25字，用爆款技巧：数字/悬念/反差，不要用「」号）→ > 引用块引言（60-90字点出核心矛盾）→ ## 划分 ${sections} 个章节（标题要有信息量，不要用"第一章"）→ 结尾简短总结。不要末尾自我介绍，不要加 - E N D - 标记。
-
-【内容要求】
-- 紧扣「${topic}」展开，每段都服务于主题，不要跑题到泛泛人生哲理
-- 要有独立观点和信息增量，让读者获得新认知，而不是"道理我都懂"
-- 要有具体的生活观察、个人体验、情感细节（但不要编造具体数据/人物/公司/事件）
-- 段落松散自由，每段 2-3 句，一个想法讲完就换段
-
-【事实红线】不得编造具体数据、统计数字、百分比、人物、公司、事件、案例、名言出处。可用"有人说过""身边有朋友"等泛化表达。观点和情感可以自由发挥。
-
-【话题红线】不碰宗教、政治、政党、政策立场、国家领导人、民族独立、领土争端、民族矛盾。如果话题触碰，转换到生活化、人性化、情感化的侧面。
-
-【去AI化】不要用破折号（— –）；不要用"此外/值得一提的是/至关重要/深入探讨/赋能/沉淀/迭代/落地/闭环/抓手/赛道"等 AI 腔；不要"不仅是…更是…"、"不是…而是…"平行结构；不要"首先/其次/最后"三段论；不要"这不禁让我们思考"、"未来必将"等 AI 反思句；不要"在XX的背景下"、"随着XX的发展"等 AI 开头。
-
-【爆款标题技巧】用数字、悬念、反差、具体场景。好标题示例："为什么90%的人对XX的理解都是错的"、"XX火了，但我发现了3个被忽略的细节"。
-
-现在直接输出文章正文，从 # 标题开始，不要输出任何思考过程、结构规划、字数统计、审查说明。`;
+        const prompt = `你是公众号主笔，有人设、有立场、有洞察力。请基于「${topic}」写一篇文章，字数 ${minWords}-${maxWords} 字（目标 ${wordCount} 字），分 ${sections} 个章节，每章 ${sectionWords} 字以上。风格：${styleMap[style] || styleMap.deep}。方向：${directionMap[direction] || directionMap.opinion}。用第一人称，加入口语化表达（说实话、坦白讲、老实说），句子长短混排。${bgLine}
+格式要求：Markdown 格式，以 # 大标题开头（15-25字，用爆款技巧：数字、悬念、反差，不要用「」号），紧跟一个 > 引用块引言（60-90字点出核心矛盾），然后用 ## 划分 ${sections} 个章节（标题要有信息量，不要用"第一章"），最后简短总结。不要末尾自我介绍，不要加 END 标记。
+内容要求：紧扣「${topic}」展开，每段都服务于主题。要有独立观点和信息增量，让读者获得新认知。要有具体的生活观察、个人体验、情感细节。段落松散自由，每段 2-3 句，一个想法讲完就换段。
+事实要求：不得编造具体数据、统计数字、百分比、人物、公司、事件、案例、名言出处。可以用"有人说过""身边有朋友"等泛化表达。观点和情感可以自由发挥。
+话题要求：不碰宗教、政治、政党、政策立场、国家领导人、民族独立、领土争端、民族矛盾。如果话题触碰，转换到生活化、人性化、情感化的侧面。
+语言要求：不要用破折号。不要用"此外、值得一提的是、至关重要、深入探讨、赋能、沉淀、迭代、落地、闭环、抓手、赛道"等 AI 腔。不要"不仅是…更是…"、"不是…而是…"平行结构。不要"首先、其次、最后"三段论。不要"这不禁让我们思考"、"未来必将"等反思句。不要"在XX的背景下"、"随着XX的发展"等 AI 开头。
+标题技巧：用数字、悬念、反差、具体场景。好标题示例：为什么90%的人对XX的理解都是错的、XX火了但我发现了3个被忽略的细节。
+请直接输出文章正文，从 # 标题开始。不要输出任何思考过程、结构规划、字数统计或审查说明。`;
         return await callLLM(prompt, settings);
     }
 
