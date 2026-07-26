@@ -1,73 +1,110 @@
 window.styleThemes = window.styleThemes || {};
 
+// 04 杂志风：宋体大字 · 上下线引用 · 编辑美学 · 罗马数字
 window.styleThemes.magazine = {
     name: '杂志风',
-    canvasBg: '#FFFFFF',
+    canvasBg: '#FDFCFA',
     textColor: '#1A1A1A',
-    metaColor: '#666666',
+    metaColor: '#6B7280',
+    ink: '#1A1A1A',
+    inkSoft: '#374151',
+    line: '#1A1A1A',
+    lineSoft: '#D1D5DB',
+    serifFont: "'Noto Serif SC', 'Songti SC', 'SimSun', 'STSong', Georgia, serif",
 
     bodyStyle(c, s, sp, t, font) {
-        return `font-family:${font};font-weight:${getFontWeight()};font-size:15px;line-height:2.15;color:${this.textColor};background-color:${this.canvasBg};padding:40px 24px 60px;text-align:justify;letter-spacing:${t.letterSpacing};word-break:break-word;`;
+        // 杂志风强制衬线宋体
+        return `font-family:${this.serifFont};font-weight:400;font-size:${s.fontSize};line-height:1.95;color:${this.textColor};background-color:${this.canvasBg};padding:48px 28px 56px;text-align:justify;letter-spacing:0.5px;word-break:break-word;`;
     },
     pStyle(c, sp) {
+        // 首段缩进 2 字符
         return `margin:0 0 ${sp.pMargin} 0;color:${this.textColor};text-indent:2em;`;
     },
     h1Style(c, s, sp, t) {
-        return `font-size:${s.h1Size + 4}px;font-weight:700;margin:${sp.h2MarginTop + 10} 0 ${sp.h2MarginBottom + 5} 0;text-align:center;color:${c.accentDark};letter-spacing:6px;line-height:1.3;`;
+        // 居中宋体大字 + 上下双细线
+        return `font-size:${s.h1Size};font-weight:700;margin:${parseInt(sp.h2MarginTop) + 12}px 0 ${parseInt(sp.h2MarginBottom) + 8}px 0;padding:18px 0;line-height:1.4;text-align:center;color:${this.ink};border-top:2px solid ${this.ink};border-bottom:1px solid ${this.ink};letter-spacing:4px;font-family:${this.serifFont};text-indent:0;`;
     },
     h2Style(c, s, sp, t) {
-        return `font-size:${s.h2Size + 2}px;font-weight:700;margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0;text-align:center;color:${c.accentDark};letter-spacing:3px;line-height:1.4;`;
+        // 宋体大字 + 左侧粗竖线（编辑栏式）
+        return `font-size:${s.h2Size};font-weight:700;margin:${parseInt(sp.h2MarginTop) + 8}px 0 ${parseInt(sp.h2MarginBottom) + 4}px 0;padding:6px 0 6px 18px;line-height:1.5;color:${this.ink};border-left:5px solid ${this.ink};letter-spacing:2px;font-family:${this.serifFont};text-indent:0;`;
     },
-    // 大数字居中样式变体：当 h2 以数字开头（如 "01 章节标题"）时，数字部分的渲染样式
-    // 杂志风采用更大的字号与字间距，强化视觉层次
-    h2NumberStyle(c, s, sp, t) {
-        return `display:block;text-align:center;font-size:56px;font-weight:700;color:${c.accent};line-height:1.2;letter-spacing:4px;margin:0 0 12px 0;`;
+    h2Decor(c) {
+        // 标题下方居中圆点装饰（编辑美学）
+        return `<span style="display:block;text-align:center;margin-top:8px;color:${this.ink};font-size:10px;letter-spacing:6px;opacity:0.4;">· · ·</span>`;
     },
     blockquoteStyle(c) {
-        return `border-top:1px solid ${c.accent}40;border-bottom:1px solid ${c.accent}40;padding:28px 48px;margin:36px 0;text-align:center;color:${this.metaColor};font-style:italic;font-size:15px;line-height:1.9;`;
+        // 上下双线 + 居中 + 斜体
+        return `border-top:1px solid ${this.ink};border-bottom:1px solid ${this.ink};padding:20px 32px;margin:32px 0;text-align:center;color:${this.inkSoft};font-style:italic;font-size:15px;line-height:1.9;font-family:${this.serifFont};`;
     },
-    ulStyle(c) { return `margin:20px 0;padding-left:28px;list-style:none;text-indent:0;`; },
-    olStyle(c) { return `margin:20px 0;padding-left:28px;list-style:none;text-indent:0;`; },
+    ulStyle(c) { return `margin:18px 0;padding-left:0;list-style:none;`; },
+    olStyle(c) { return `margin:18px 0;padding-left:0;list-style:none;`; },
     liStyle(c) {
-        return `margin-bottom:12px;color:${this.textColor};font-size:15px;position:relative;padding-left:16px;text-indent:0;`;
+        return `margin-bottom:12px;color:${this.textColor};padding-left:28px;position:relative;font-size:15px;font-family:${this.serifFont};text-indent:0;`;
     },
     liIcon(c) {
-        return `<span style="position:absolute;left:0;top:8px;color:${c.accent};font-size:6px;">●</span>`;
+        // 编辑式短横线
+        return `<span style="position:absolute;left:0;top:11px;width:16px;height:1px;background:${this.ink};"></span>`;
     },
     olIcon(c, idx) {
-        return `<span style="position:absolute;left:0;top:0;color:${c.accent};font-weight:600;font-size:13px;">${idx}.</span>`;
+        // 罗马数字
+        return `<span style="position:absolute;left:0;top:0;color:${this.ink};font-weight:600;font-size:13px;font-family:${this.serifFont};letter-spacing:1px;">${toRoman(idx)}.</span>`;
     },
     hrStyle(c) {
-        return `border:none;text-align:center;margin:48px 0;height:auto;color:${c.accent}80;font-size:18px;letter-spacing:12px;`;
-    },
-    hrDecor(c) {
-        return `· · ·`;
+        // 居中细线（编辑美学）
+        return `border:none;border-top:1px solid ${this.ink};margin:48px auto;width:120px;`;
     },
     codeStyle(c) {
-        return `color:${c.accentDark};background:${c.accentSoft};padding:2px 8px;border-radius:2px;font-size:13px;font-family:${fontFamilies.mono};`;
+        return `color:${this.ink};background:#F3EFE8;padding:2px 8px;border-radius:0;font-size:12px;font-family:${fontFamilies.mono};border:1px solid ${this.lineSoft};`;
     },
     preStyle(c) {
-        return `background:#FAFAFA;padding:24px;margin:28px 0 8px 0;border-radius:2px;border:1px solid #EFEFEF;overflow:hidden;font-size:14px;line-height:1.8;position:relative;`;
+        return `background:#F3EFE8;padding:24px 28px;margin:28px 0 8px 0;border:1px solid ${this.lineSoft};border-left:3px solid ${this.ink};border-radius:0;overflow:hidden;font-size:13px;line-height:1.8;position:relative;`;
     },
     preCodeStyle(c) {
-        return `display:block;color:#333;font-family:${fontFamilies.mono};font-size:14px;white-space:pre;overflow-x:auto;`;
+        return `display:block;color:${this.ink};font-family:${fontFamilies.mono};font-size:13px;white-space:pre;overflow-x:auto;`;
     },
     codeCopyBtnStyle(c) {
-        return `position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.95);border:1px solid #E5E5E5;border-radius:2px;padding:4px 12px;font-size:11px;color:#666;cursor:pointer;line-height:1.4;`;
+        return `position:absolute;top:10px;right:10px;background:${this.ink};color:#FFFFFF;border:0;border-radius:0;padding:4px 12px;font-size:11px;font-weight:500;cursor:pointer;line-height:1.4;font-family:${fontFamilies.mono};`;
     },
     scrollHintStyle(c) {
-        return `text-align:center;font-size:11px;color:#CCC;margin:8px 0 0 0;padding:0;letter-spacing:2px;font-style:italic;`;
+        return `text-align:center;font-size:11px;color:${this.metaColor};margin:8px 0 0 0;padding:0;letter-spacing:2px;font-family:${this.serifFont};font-style:italic;`;
     },
     aStyle(c) {
-        return `color:${c.accentDark};text-decoration:none;border-bottom:2px solid ${c.accent};`;
+        return `color:${this.ink};text-decoration:none;border-bottom:1px solid ${this.ink};font-weight:500;`;
     },
     strongStyle(c) {
-        return `color:${c.accentDark};font-weight:700;`;
+        return `color:${this.ink};font-weight:700;`;
     },
     emStyle(c) {
-        return `color:${this.metaColor};font-style:italic;`;
+        return `color:${this.inkSoft};font-style:italic;`;
     },
     metaLineStyle(c) {
-        return `font-size:13px;color:${this.metaColor};text-align:center;margin:0 0 36px 0;letter-spacing:6px;font-style:italic;`;
+        return `font-size:13px;color:${this.metaColor};text-align:center;margin:0 0 32px 0;letter-spacing:2px;font-family:${this.serifFont};font-style:italic;`;
+    },
+    // "01 章节标题"格式中数字部分样式：墨黑大号粗体居中 + 宋体
+    h2NumberStyle(c, s, sp, t) {
+        return `display:block;text-align:center;font-size:48px;font-weight:700;color:${this.ink};line-height:1.2;letter-spacing:2px;margin:0 0 10px 0;font-family:${this.serifFont};`;
+    },
+    // h3 小标题：比 h2 小一号、字重稍轻，左侧粗竖线更细，沿用宋体语言
+    h3Style(c, s, sp, t) {
+        return `font-size:${parseInt(s.h2Size) - 2}px;font-weight:600;margin:${parseInt(sp.h2MarginTop) + 6}px 0 ${parseInt(sp.h2MarginBottom) + 2}px 0;padding:4px 0 4px 14px;line-height:1.5;color:${this.ink};border-left:3px solid ${this.ink};letter-spacing:1px;font-family:${this.serifFont};text-indent:0;`;
+    },
+    // hr 分割线后装饰：圆点（纯文本，script.js 自动包 span）
+    hrDecor(c) {
+        return `· · ·`;
     }
 };
+
+// 罗马数字转换（1-3999）
+function toRoman(num) {
+    if (num < 1 || num > 3999) return num;
+    const map = [
+        [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'],
+        [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'],
+        [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']
+    ];
+    let result = '';
+    for (const [v, s] of map) {
+        while (num >= v) { result += s; num -= v; }
+    }
+    return result;
+}

@@ -1,28 +1,37 @@
 window.styleThemes = window.styleThemes || {};
 
+// 02 黑金奢：金色点缀 · 居中斜体引用 · 深色底 · 菱形符号
 window.styleThemes.luxury = {
     name: '黑金奢',
-    canvasBg: '#FEFDFB',
-    textColor: '#3D3D3D',
-    metaColor: '#999999',
+    canvasBg: '#FEFDFB',         // 米白主底，保证阅读舒适
+    textColor: '#2A2A2A',
+    metaColor: '#9A8A6A',
+    // 主题固定主色（金色），不再跟随用户主题色
+    gold: '#C9A961',
+    goldDeep: '#A88A48',
+    ink: '#1A1A1D',               // 墨黑
 
     bodyStyle(c, s, sp, t, font) {
-        return `font-family:${font};font-weight:${getFontWeight()};font-size:${s.fontSize};line-height:2.0;color:${this.textColor};background-color:${this.canvasBg};padding:32px 20px 52px;text-align:justify;letter-spacing:${t.letterSpacing};word-break:break-word;`;
+        return `font-family:${font};font-weight:${getFontWeight()};font-size:${s.fontSize};line-height:2.0;color:${this.textColor};background-color:${this.canvasBg};padding:40px 24px 56px;text-align:justify;letter-spacing:${t.letterSpacing};word-break:break-word;`;
     },
     pStyle(c, sp) {
         return `margin:0 0 ${sp.pMargin} 0;color:${this.textColor};`;
     },
     h1Style(c, s, sp, t) {
-        return `font-size:${s.h1Size};font-weight:500;margin:${sp.h2MarginTop + 10} 0 ${sp.h2MarginBottom + 5} 0;text-align:center;color:${c.accentDark};letter-spacing:4px;`;
+        // 深色色块 + 金色大字 + 居中
+        return `font-size:${s.h1Size};font-weight:500;margin:${parseInt(sp.h2MarginTop) + 10}px auto ${parseInt(sp.h2MarginBottom) + 8}px auto;padding:18px 24px;line-height:1.4;text-align:center;color:${this.gold};background:${this.ink};letter-spacing:6px;max-width:80%;`;
     },
     h2Style(c, s, sp, t) {
-        return `font-size:${s.h2Size};font-weight:500;margin:0;color:${c.accentDark};letter-spacing:2px;padding:0 20px;display:inline-block;`;
+        // 居中金色字 + 上下双金线
+        return `font-size:${s.h2Size};font-weight:500;margin:${parseInt(sp.h2MarginTop) + 6}px 0 ${parseInt(sp.h2MarginBottom) + 4}px 0;padding:12px 0;line-height:1.5;text-align:center;color:${this.goldDeep};border-top:1px solid ${this.gold};border-bottom:1px solid ${this.gold};letter-spacing:3px;`;
     },
     h2Decor(c) {
-        return `<span style="display:block;text-align:center;margin-top:8px;"><span style="display:inline-block;color:${c.accent};font-size:10px;letter-spacing:8px;">· · ·</span></span>`;
+        // 标题下方居中菱形装饰
+        return `<span style="display:block;text-align:center;margin-top:10px;color:${this.gold};font-size:9px;letter-spacing:8px;">◆ ◆ ◆</span>`;
     },
     blockquoteStyle(c) {
-        return `border-top:1px solid ${c.accent}40;border-bottom:1px solid ${c.accent}40;padding:24px 40px;margin:32px 0;text-align:center;color:#888;font-style:italic;font-size:14px;line-height:1.9;`;
+        // 深色底 + 金字 + 居中斜体
+        return `background:${this.ink};color:${this.gold};padding:24px 32px;margin:32px 0;text-align:center;font-style:italic;font-size:14px;line-height:1.9;border-left:3px solid ${this.gold};border-right:3px solid ${this.gold};`;
     },
     ulStyle(c) { return `margin:20px 0;padding-left:0;list-style:none;`; },
     olStyle(c) { return `margin:20px 0;padding-left:0;list-style:none;`; },
@@ -30,39 +39,54 @@ window.styleThemes.luxury = {
         return `margin-bottom:12px;color:${this.textColor};padding-left:24px;position:relative;font-size:15px;`;
     },
     liIcon(c) {
-        return `<span style="position:absolute;left:0;top:3px;color:${c.accent};font-size:9px;">◆</span>`;
+        // 金色菱形
+        return `<span style="position:absolute;left:0;top:8px;color:${this.gold};font-size:9px;">◆</span>`;
     },
     olIcon(c, idx) {
-        return `<span style="position:absolute;left:0;top:3px;color:${c.accent};font-size:10px;font-weight:500;">${idx}</span>`;
+        // 金色编号 + 菱形点
+        return `<span style="position:absolute;left:0;top:2px;color:${this.goldDeep};font-size:12px;font-weight:500;letter-spacing:1px;">${idx}<span style="color:${this.gold};margin-left:4px;">◆</span></span>`;
     },
     hrStyle(c) {
-        return `border:none;height:1px;background:${c.accent}50;width:80px;margin:48px auto;`;
+        // 金色细线 + 居中
+        return `border:none;height:1px;background:${this.gold};width:60px;margin:48px auto;`;
     },
     codeStyle(c) {
-        return `color:${c.accentDark};background:${c.accentSoft};border:1px solid ${c.accentBorder};padding:2px 8px;border-radius:2px;font-size:12px;font-family:${fontFamilies.mono};`;
+        return `color:${this.goldDeep};background:#FAF5E8;border:1px solid ${this.gold}40;padding:2px 8px;border-radius:2px;font-size:12px;font-family:${fontFamilies.mono};`;
     },
     preStyle(c) {
-        return `background:#FFFDF8;padding:24px;margin:28px 0 8px 0;border:1px solid ${c.accent}25;border-radius:2px;overflow:hidden;font-size:13px;line-height:1.8;position:relative;`;
+        return `background:#FFFDF6;padding:24px;margin:28px 0 8px 0;border:1px solid ${this.gold}30;border-top:2px solid ${this.gold};border-radius:2px;overflow:hidden;font-size:13px;line-height:1.8;position:relative;`;
     },
     preCodeStyle(c) {
-        return `display:block;color:#555;font-family:${fontFamilies.mono};font-size:13px;white-space:pre;overflow-x:auto;`;
+        return `display:block;color:#3D3D3D;font-family:${fontFamilies.mono};font-size:13px;white-space:pre;overflow-x:auto;`;
     },
     codeCopyBtnStyle(c) {
-        return `position:absolute;top:10px;right:10px;background:rgba(255,253,248,0.95);border:1px solid ${c.accent}30;border-radius:2px;padding:4px 12px;font-size:11px;color:${c.accentDark};cursor:pointer;line-height:1.4;`;
+        return `position:absolute;top:10px;right:10px;background:${this.gold};color:${this.ink};border:0;border-radius:2px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer;line-height:1.4;`;
     },
     scrollHintStyle(c) {
-        return `text-align:center;font-size:11px;color:${c.accent}90;margin:8px 0 0 0;padding:0;letter-spacing:2px;font-style:italic;`;
+        return `text-align:center;font-size:11px;color:${this.gold}90;margin:8px 0 0 0;padding:0;letter-spacing:2px;font-style:italic;`;
     },
     aStyle(c) {
-        return `color:${c.accentDark};text-decoration:none;border-bottom:1px solid ${c.accent}60;`;
+        return `color:${this.goldDeep};text-decoration:none;border-bottom:1px solid ${this.gold};`;
     },
     strongStyle(c) {
-        return `color:${c.accentDark};font-weight:600;`;
+        return `color:${this.ink};font-weight:600;`;
     },
     emStyle(c) {
-        return `color:${c.accent};font-style:italic;`;
+        return `color:${this.goldDeep};font-style:italic;`;
     },
     metaLineStyle(c) {
         return `font-size:13px;color:${this.metaColor};text-align:center;margin:0 0 32px 0;letter-spacing:3px;font-style:italic;`;
+    },
+    // "01 章节标题"格式中数字部分样式：金色大号粗体居中
+    h2NumberStyle(c, s, sp, t) {
+        return `display:block;text-align:center;font-size:48px;font-weight:700;color:${this.gold};line-height:1.2;letter-spacing:2px;margin:0 0 10px 0;`;
+    },
+    // h3 小标题：比 h2 小一号、字重稍轻，沿用金线语言但只保留下线
+    h3Style(c, s, sp, t) {
+        return `font-size:${parseInt(s.h2Size) - 2}px;font-weight:400;margin:${parseInt(sp.h2MarginTop) + 4}px 0 ${parseInt(sp.h2MarginBottom) + 2}px 0;padding:6px 0;line-height:1.5;text-align:center;color:${this.goldDeep};border-bottom:1px solid ${this.gold};letter-spacing:2px;`;
+    },
+    // hr 分割线后装饰：菱形（纯文本，script.js 自动包 span）
+    hrDecor(c) {
+        return `◆ ◆ ◆`;
     }
 };

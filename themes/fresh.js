@@ -1,65 +1,93 @@
 window.styleThemes = window.styleThemes || {};
 
+// 05 清新绿：浅绿底 · 绿色圆点 · 自然清新 · 圆角卡片
 window.styleThemes.fresh = {
     name: '清新绿',
-    canvasBg: '#F8FFFE',
-    textColor: '#374151',
-    metaColor: '#6B7280',
+    canvasBg: '#F0FDF4',
+    textColor: '#1F2937',
+    metaColor: '#15803D',
+    green: '#15803D',
+    greenDeep: '#166534',
+    greenLight: '#22C55E',
+    greenSoft: '#DCFCE7',
+    greenBorder: '#BBF7D0',
 
     bodyStyle(c, s, sp, t, font) {
-        return `font-family:${font};font-weight:${getFontWeight()};font-size:${s.fontSize};line-height:2.0;color:${this.textColor};background-color:${this.canvasBg};padding:30px 18px 48px;letter-spacing:${t.letterSpacing};word-break:break-word;`;
+        return `font-family:${font};font-weight:${getFontWeight()};font-size:${s.fontSize};line-height:${sp.lineHeight};color:${this.textColor};background-color:${this.canvasBg};padding:32px 24px 48px;letter-spacing:${t.letterSpacing};word-break:break-word;`;
     },
     pStyle(c, sp) {
         return `margin:0 0 ${sp.pMargin} 0;color:${this.textColor};`;
     },
     h1Style(c, s, sp, t) {
-        return `font-size:${s.h1Size};font-weight:600;margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0;color:${c.accentDark};padding-bottom:12px;border-bottom:3px solid ${c.accent}30;letter-spacing:${t.letterSpacing};`;
+        // 居中深绿大字
+        return `font-size:${s.h1Size};font-weight:700;margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0;padding:8px 0;line-height:1.4;text-align:center;color:${this.greenDeep};letter-spacing:2px;`;
     },
     h2Style(c, s, sp, t) {
-        return `font-size:${s.h2Size};font-weight:600;margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0;color:${c.accentDark};padding-bottom:8px;border-bottom:2px solid ${c.accent}25;letter-spacing:${t.letterSpacing};`;
+        // 浅绿底圆角卡片 + 绿色字
+        return `font-size:${s.h2Size};font-weight:600;margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0;padding:10px 18px;line-height:1.5;color:${this.greenDeep};background:${this.greenSoft};border-radius:10px;letter-spacing:1px;`;
+    },
+    h2Decor(c) {
+        // 标题下方圆点装饰
+        return `<span style="display:block;text-align:center;margin-top:8px;color:${this.greenLight};font-size:8px;letter-spacing:6px;">● ● ●</span>`;
     },
     blockquoteStyle(c) {
-        return `background:${c.accentSoft};border-left:4px solid ${c.accent};padding:16px 20px;margin:24px 0;border-radius:0 8px 8px 0;color:${c.accentDark};font-size:14px;`;
+        // 浅绿底圆角卡片 + 左绿色边
+        return `background:${this.greenSoft};border-left:4px solid ${this.green};border-radius:8px;padding:14px 18px;margin:24px 0;color:${this.greenDeep};font-size:14px;line-height:1.8;`;
     },
-    ulStyle(c) { return `margin:16px 0;padding-left:0;list-style:none;`; },
-    olStyle(c) { return `margin:16px 0;padding-left:0;list-style:none;`; },
+    ulStyle(c) { return `margin:18px 0;padding-left:0;list-style:none;`; },
+    olStyle(c) { return `margin:18px 0;padding-left:0;list-style:none;`; },
     liStyle(c) {
-        return `margin-bottom:10px;color:${this.textColor};padding-left:24px;position:relative;`;
+        return `margin-bottom:12px;color:${this.textColor};padding-left:24px;position:relative;font-size:15px;`;
     },
     liIcon(c) {
-        return `<span style="position:absolute;left:0;top:2px;color:${c.accent};font-size:9px;">●</span>`;
+        // 绿色实心圆点
+        return `<span style="position:absolute;left:0;top:9px;width:8px;height:8px;background:${this.green};border-radius:50%;"></span>`;
     },
     olIcon(c, idx) {
-        return `<span style="position:absolute;left:0;top:0;color:${c.accent};font-weight:600;font-size:11px;">${idx}.</span>`;
+        // 绿色圆形数字（圆形背景）
+        return `<span style="position:absolute;left:0;top:1px;display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;background:${this.green};color:#FFFFFF;font-size:11px;font-weight:600;border-radius:50%;">${idx}</span>`;
     },
     hrStyle(c) {
-        return `border:none;height:2px;background:linear-gradient(90deg,transparent,${c.accent}50,transparent);margin:40px 0;border-radius:1px;`;
+        // 渐变绿色细线
+        return `border:none;height:2px;background:linear-gradient(90deg,transparent,${this.greenLight},transparent);margin:36px auto;width:50%;border-radius:1px;`;
     },
     codeStyle(c) {
-        return `color:${c.accentDark};background:${c.accentSoft};padding:2px 8px;border-radius:4px;font-size:12px;font-family:${fontFamilies.mono};`;
+        return `color:${this.greenDeep};background:${this.greenSoft};padding:2px 8px;border-radius:6px;font-size:12px;font-family:${fontFamilies.mono};`;
     },
     preStyle(c) {
-        return `background:${c.accentSoft};padding:20px 24px;margin:24px 0 8px 0;border-radius:10px;border:1px solid ${c.accent}20;overflow:hidden;font-size:13px;line-height:1.7;position:relative;`;
+        return `background:${this.greenSoft};padding:20px 24px;margin:24px 0 8px 0;border-radius:10px;border:1px solid ${this.greenBorder};overflow:hidden;font-size:13px;line-height:1.7;position:relative;`;
     },
     preCodeStyle(c) {
-        return `display:block;color:${c.accentDark};font-family:${fontFamilies.mono};font-size:13px;white-space:pre;overflow-x:auto;`;
+        return `display:block;color:${this.textColor};font-family:${fontFamilies.mono};font-size:13px;white-space:pre;overflow-x:auto;`;
     },
     codeCopyBtnStyle(c) {
-        return `position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.9);border:1px solid ${c.accent}30;border-radius:6px;padding:4px 12px;font-size:11px;color:${c.accentDark};cursor:pointer;line-height:1.4;`;
+        return `position:absolute;top:10px;right:10px;background:${this.green};color:#FFFFFF;border:0;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:500;cursor:pointer;line-height:1.4;`;
     },
     scrollHintStyle(c) {
-        return `text-align:center;font-size:11px;color:${c.accent}70;margin:8px 0 0 0;padding:0;letter-spacing:1px;`;
+        return `text-align:center;font-size:11px;color:${this.metaColor};margin:8px 0 0 0;padding:0;letter-spacing:1px;`;
     },
     aStyle(c) {
-        return `color:${c.accentDark};text-decoration:none;border-bottom:1px solid ${c.accent}40;`;
+        return `color:${this.greenDeep};text-decoration:none;border-bottom:1px solid ${this.greenLight};`;
     },
     strongStyle(c) {
-        return `color:${c.accentDark};font-weight:600;`;
+        return `color:${this.greenDeep};font-weight:600;`;
     },
     emStyle(c) {
-        return `color:${c.accent};font-style:italic;`;
+        return `color:${this.green};font-style:italic;`;
     },
     metaLineStyle(c) {
-        return `font-size:13px;color:${this.metaColor};text-align:center;margin:0 0 28px 0;letter-spacing:1px;`;
+        return `font-size:13px;color:${this.metaColor};text-align:center;margin:0 0 24px 0;letter-spacing:1px;`;
+    },
+    // "01 章节标题"格式中数字部分样式：绿色大号粗体居中
+    h2NumberStyle(c, s, sp, t) {
+        return `display:block;text-align:center;font-size:48px;font-weight:700;color:${this.green};line-height:1.2;letter-spacing:2px;margin:0 0 10px 0;`;
+    },
+    // h3 小标题：比 h2 小一号、字重稍轻，去掉卡片底色更克制，仅保留下边线
+    h3Style(c, s, sp, t) {
+        return `font-size:${parseInt(s.h2Size) - 2}px;font-weight:500;margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0;padding:4px 0 8px 0;line-height:1.5;color:${this.greenDeep};border-bottom:2px solid ${this.greenBorder};letter-spacing:1px;`;
+    },
+    // hr 分割线后装饰：实心圆点（纯文本，script.js 自动包 span）
+    hrDecor(c) {
+        return `● ● ●`;
     }
 };

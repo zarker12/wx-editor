@@ -492,6 +492,21 @@ body {
     background: var(--accent-soft);
     border-left-color: var(--accent-500);
 }
+.style-thumb[data-theme="vibrant"] {
+    background: linear-gradient(180deg, #FFF7ED, #FFE8D6);
+}
+.style-thumb[data-theme="vibrant"] .thumb-h2 {
+    color: #E85D04;
+    background: linear-gradient(135deg, #FF6B35, #FF8C42);
+    width: 65%;
+}
+.style-thumb[data-theme="vibrant"] .thumb-quote {
+    background: #FFE8D6;
+    border-left-color: #FF6B35;
+}
+.style-thumb[data-theme="vibrant"] .thumb-line {
+    background: #FED7AA;
+}
 
 .color-dot {
     width: 18px;
