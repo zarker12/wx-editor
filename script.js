@@ -178,12 +178,39 @@ function markdownToHTML(text) {
             html = html.replace(/(<h[1-6])[^>]*>/g, '$1>');
 
             // 安全转义：marked 已经做了，这里无需重复
+            html = cleanResidualMarkdown(html);
             return html;
         } catch (e) {
             console.warn('marked 解析失败，降级到正则方案:', e);
         }
     }
-    return _markdownToHTMLLegacy(text);
+    return cleanResidualMarkdown(_markdownToHTMLLegacy(text));
+}
+
+// 清理未解析的 Markdown 符号（防止预览界面残留 ** ` _ 等）
+// 仅清理 HTML 文本节点中的残留，不影响已正确解析的标签
+function cleanResidualMarkdown(html) {
+    // 1. 清理成对但未在标签内的 **xxx**（marked 已转 strong 的不会受影响，因为已变成 <strong>）
+    //    只匹配文本节点中残留的 **...**
+    // 2. 清理单残留的 ** 或 *（未成对）
+    // 3. 清理残留的下划线斜体 ___ _（非单词内的）
+    // 4. 清理残留的反引号 `code`
+    // 注意：必须避免破坏 HTML 属性中的 =、"、' 等
+
+    // 清理成对的 **xxx** （文本中残留的加粗符号）
+    html = html.replace(/\*\*([^*<\n]+?)\*\*/g, '<strong>$1</strong>');
+    // 清理成对的 *xxx* （残留的斜体符号，但要避免匹配列表项的 *
+    html = html.replace(/(?<![a-zA-Z0-9])\*([^*<\n]+?)\*(?![a-zA-Z0-9])/g, '<em>$1</em>');
+    // 清理残留的单个 ** 或 *（未成对闭合的，直接删除符号保留内容）
+    html = html.replace(/(?<!\*)\*\*(?!\*)/g, '');
+    html = html.replace(/(?<![*\w])\*(?!\*)/g, '');
+    // 清理残留的行内代码反引号 `xxx`
+    html = html.replace(/`([^`<\n]+?)`/g, '<code>$1</code>');
+    html = html.replace(/(?<!`)`(?!`)/g, '');
+    // 清理残留的下划线强调
+    html = html.replace(/(?<![a-zA-Z0-9])__([^_<\n]+?)__(?![a-zA-Z0-9])/g, '<strong>$1</strong>');
+    html = html.replace(/(?<![a-zA-Z0-9])_([^_<\n]+?)_(?![a-zA-Z0-9])/g, '<em>$1</em>');
+    return html;
 }
 
 // 旧版正则方案（作为 marked 不可用时的兜底）
@@ -825,12 +852,9 @@ function generateExportHTML() {
     const styledContent = renderStyledHTML(normalizedContent);
     const introHTML = getIntroCardHTML();
 
-    const fullHTML = `<section id="articleContent" style="max-width:677px;margin:0 auto;background:${theme.canvasBg};word-break:break-word;">
-        <section style="${bodyStyle}">
-            ${styledContent}
-            ${introHTML}
-        </section>
-    </section>`;
+    // 关键修复：导出 HTML 不留缩进和换行（公众号粘贴时会保留空白文本节点，
+    // 转成 <br> 或空格，导致间距异常变大）。所有内容紧贴拼接。
+    const fullHTML = `<section id="articleContent" style="max-width:677px;margin:0 auto;background:${theme.canvasBg};word-break:break-word;"><section style="${bodyStyle}">${styledContent}${introHTML}</section></section>`;
 
     return fullHTML;
 }
