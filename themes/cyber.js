@@ -95,5 +95,46 @@ window.styleThemes.cyber = {
     // hr 分割线后装饰：代码注释风格横线（纯文本，script.js 自动包 span）
     hrDecor(c) {
         return `// ─ ─ ─`;
+    },
+    // 底部名片：终端深底 · mac 三圆点 · 等宽字 · // 注释装饰 · 青色虚线分隔
+    introCardHTML(data, ctx) {
+        const sp = ctx.sp, s = ctx.s;
+        const mono = fontFamilies.mono;
+        const cardStyle = `margin-top:${sp.pMargin};padding:36px 20px 20px 20px;background:${this.terminalBg};border-radius:4px;border:1px solid ${this.cyan};font-family:${mono};font-size:${s.fontSize};line-height:${sp.lineHeight};color:${this.cyan};position:relative;`;
+        const dotsStyle = `position:absolute;top:14px;left:16px;font-size:0;`;
+        const dot = (color) => `display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-right:6px;`;
+        const commentStyle = `color:${this.cyan};font-size:11px;letter-spacing:1px;margin:0 0 6px 0;opacity:0.7;`;
+        const rowStyle = `display:flex;align-items:center;gap:6px;margin-bottom:6px;`;
+        const iconStyle = `flex-shrink:0;width:20px;text-align:center;font-size:15px;`;
+        const textStyle = `flex:1;color:${this.cyan};`;
+        const sepStyle = `color:${this.cyan};flex-shrink:0;`;
+        const labelStyle = `color:${this.cyanDeep};flex-shrink:0;font-size:13px;`;
+        const sloganStyle = `margin:10px 0;padding:8px 12px;border-left:2px solid ${this.cyan};color:${this.cyan};font-size:${s.fontSize};background:rgba(8,145,178,0.08);`;
+        const dividerStyle = `border-top:1px dashed ${this.cyan};opacity:0.3;margin:12px 0;height:0;`;
+        const disclaimerStyle = `display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;font-size:12px;color:${this.cyanDeep};line-height:1.6;`;
+        let html = `<div style="${cardStyle}">`;
+        html += `<span style="${dotsStyle}"><span style="${dot('#FF5F56')}"></span><span style="${dot('#FFBD2E')}"></span><span style="${dot('#27C93F')}"></span></span>`;
+        html += `<div style="${commentStyle}">// author info</div>`;
+        if (data.name || data.title) {
+            html += `<div style="${rowStyle}"><span style="${iconStyle}">🧔</span><span style="${textStyle}"><strong>${data.name}</strong> <span style="${sepStyle}">|</span> ${data.title}</span></div>`;
+        }
+        if (data.focus) {
+            html += `<div style="${rowStyle}"><span style="${iconStyle}">🔭</span><span style="${labelStyle}">关注：</span><span style="${textStyle}">${data.focus}</span></div>`;
+        }
+        if (data.output) {
+            html += `<div style="${rowStyle}"><span style="${iconStyle}">📦</span><span style="${labelStyle}">产出：</span><span style="${textStyle}">${data.output}</span></div>`;
+        }
+        if (data.slogan) {
+            html += `<div style="${sloganStyle}">${data.slogan}</div>`;
+        }
+        html += `<div style="${dividerStyle}"></div>`;
+        if (data.disclaimer1) {
+            html += `<div style="${disclaimerStyle}"><span style="${iconStyle};font-size:13px;">⚠️</span><span>${data.disclaimer1}</span></div>`;
+        }
+        if (data.disclaimer2) {
+            html += `<div style="${disclaimerStyle}"><span style="${iconStyle};font-size:13px;">📋</span><span>${data.disclaimer2}</span></div>`;
+        }
+        html += '</div>';
+        return html;
     }
 };

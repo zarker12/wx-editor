@@ -653,137 +653,86 @@ function normalizeEditorHTML(html) {
     return result.join('\n');
 }
 
+// ===== HTML 转义（防止名片字段含尖角号破坏结构）=====
+function escapeHTML(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // ===== 底部名片渲染 =====
 function getIntroCardHTML() {
     const enabledEl = document.getElementById('introEnabled');
     if (enabledEl && !enabledEl.checked) return '';
 
-    const name = document.getElementById('introName')?.value || '';
-    const title = document.getElementById('introTitle')?.value || '';
-    const focus = document.getElementById('introFocus')?.value || '';
-    const output = document.getElementById('introOutput')?.value || '';
-    const slogan = document.getElementById('introSlogan')?.value || '';
-    const disclaimer1 = document.getElementById('introDisclaimer1')?.value || '';
-    const disclaimer2 = document.getElementById('introDisclaimer2')?.value || '';
+    // 收集名片字段（已转义，防止破坏 HTML 结构）
+    const data = {
+        name: escapeHTML(document.getElementById('introName')?.value || ''),
+        title: escapeHTML(document.getElementById('introTitle')?.value || ''),
+        focus: escapeHTML(document.getElementById('introFocus')?.value || ''),
+        output: escapeHTML(document.getElementById('introOutput')?.value || ''),
+        slogan: escapeHTML(document.getElementById('introSlogan')?.value || ''),
+        disclaimer1: escapeHTML(document.getElementById('introDisclaimer1')?.value || ''),
+        disclaimer2: escapeHTML(document.getElementById('introDisclaimer2')?.value || ''),
+    };
 
-    const c = getColorConfig();
-    const s = getSizeConfig();
-    const sp = getSpacingConfig();
-    const font = getFontFamily();
+    // 主题色 / 字号 / 间距配置（兼容老主题用）
+    const ctx = {
+        c: getColorConfig(),
+        s: getSizeConfig(),
+        sp: getSpacingConfig(),
+        t: getTrackingConfig(),
+        font: getFontFamily(),
+        fontWeight: getFontWeight(),
+    };
 
-    const cardStyle = `
-        margin-top: ${sp.pMargin};
-        padding: 20px 18px;
-        background: ${c.accentSoft};
-        border-radius: 12px;
-        border: 1px solid ${c.accentSoft};
-        font-family: ${font};
-        font-size: ${s.fontSize};
-        line-height: ${sp.lineHeight};
-        color: var(--text-article);
-    `;
+    // 优先调用主题自定义的 introCardHTML，让名片跟随主题风格
+    const theme = getStyleTheme();
+    if (typeof theme.introCardHTML === 'function') {
+        return theme.introCardHTML(data, ctx);
+    }
 
-    const rowStyle = `
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        margin-bottom: 6px;
-        font-size: ${s.fontSize};
-    `;
+    // 兜底：默认名片样式（浅色卡片 + 主题色强调）
+    return defaultIntroCardHTML(data, ctx);
+}
 
-    const iconStyle = `
-        flex-shrink: 0;
-        width: 20px;
-        text-align: center;
-        font-size: 15px;
-    `;
-
-    const textStyle = `
-        flex: 1;
-        color: var(--text-article);
-    `;
-
-    const sepStyle = `
-        color: ${c.accent};
-        flex-shrink: 0;
-    `;
-
-    const labelStyle = `
-        color: var(--text-tertiary);
-        flex-shrink: 0;
-        font-size: 13px;
-    `;
-
-    const sloganStyle = `
-        margin: 10px 0 10px 26px;
-        font-weight: 500;
-        color: var(--text-secondary);
-        font-size: ${s.fontSize};
-    `;
-
-    const dividerStyle = `
-        height: 1px;
-        background: var(--border-light);
-        margin: 10px 0;
-    `;
-
-    const disclaimerStyle = `
-        display: flex;
-        align-items: flex-start;
-        gap: 6px;
-        margin-bottom: 4px;
-        font-size: 12px;
-        color: var(--text-tertiary);
-        line-height: 1.6;
-    `;
+// 默认名片渲染（兜底，老主题未实现 introCardHTML 时使用）
+function defaultIntroCardHTML(data, ctx) {
+    const { c, s, sp, font } = ctx;
+    const cardStyle = `margin-top:${sp.pMargin};padding:20px 18px;background:${c.accentSoft};border-radius:12px;border:1px solid ${c.accentSoft};font-family:${font};font-size:${s.fontSize};line-height:${sp.lineHeight};color:#3D3D3D;`;
+    const rowStyle = `display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:${s.fontSize};`;
+    const iconStyle = `flex-shrink:0;width:20px;text-align:center;font-size:15px;`;
+    const textStyle = `flex:1;color:#3D3D3D;`;
+    const sepStyle = `color:${c.accent};flex-shrink:0;`;
+    const labelStyle = `color:#8A8A8A;flex-shrink:0;font-size:13px;`;
+    const sloganStyle = `margin:10px 0 10px 26px;font-weight:500;color:#6B7280;font-size:${s.fontSize};`;
+    const dividerStyle = `height:1px;background:rgba(0,0,0,0.08);margin:10px 0;`;
+    const disclaimerStyle = `display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;font-size:12px;color:#8A8A8A;line-height:1.6;`;
 
     let html = `<div style="${cardStyle}">`;
-
-    if (name || title) {
-        html += `<div style="${rowStyle}">
-            <span style="${iconStyle}">🧔</span>
-            <span style="${textStyle}"><strong>${name}</strong> <span style="${sepStyle}">｜</span> ${title}</span>
-        </div>`;
+    if (data.name || data.title) {
+        html += `<div style="${rowStyle}"><span style="${iconStyle}">🧔</span><span style="${textStyle}"><strong>${data.name}</strong> <span style="${sepStyle}">｜</span> ${data.title}</span></div>`;
     }
-
-    if (focus) {
-        html += `<div style="${rowStyle}">
-            <span style="${iconStyle}">🔭</span>
-            <span style="${labelStyle}">关注：</span>
-            <span style="${textStyle}">${focus}</span>
-        </div>`;
+    if (data.focus) {
+        html += `<div style="${rowStyle}"><span style="${iconStyle}">🔭</span><span style="${labelStyle}">关注：</span><span style="${textStyle}">${data.focus}</span></div>`;
     }
-
-    if (output) {
-        html += `<div style="${rowStyle}">
-            <span style="${iconStyle}">📦</span>
-            <span style="${labelStyle}">产出：</span>
-            <span style="${textStyle}">${output}</span>
-        </div>`;
+    if (data.output) {
+        html += `<div style="${rowStyle}"><span style="${iconStyle}">📦</span><span style="${labelStyle}">产出：</span><span style="${textStyle}">${data.output}</span></div>`;
     }
-
-    if (slogan) {
-        html += `<div style="${sloganStyle}">${slogan}</div>`;
+    if (data.slogan) {
+        html += `<div style="${sloganStyle}">${data.slogan}</div>`;
     }
-
     html += `<div style="${dividerStyle}"></div>`;
-
-    if (disclaimer1) {
-        html += `<div style="${disclaimerStyle}">
-            <span style="${iconStyle};font-size:13px;">⚠️</span>
-            <span>${disclaimer1}</span>
-        </div>`;
+    if (data.disclaimer1) {
+        html += `<div style="${disclaimerStyle}"><span style="${iconStyle};font-size:13px;">⚠️</span><span>${data.disclaimer1}</span></div>`;
     }
-
-    if (disclaimer2) {
-        html += `<div style="${disclaimerStyle}">
-            <span style="${iconStyle};font-size:13px;">📋</span>
-            <span>${disclaimer2}</span>
-        </div>`;
+    if (data.disclaimer2) {
+        html += `<div style="${disclaimerStyle}"><span style="${iconStyle};font-size:13px;">📋</span><span>${data.disclaimer2}</span></div>`;
     }
-
     html += '</div>';
-
     return html;
 }
 

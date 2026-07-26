@@ -91,6 +91,45 @@ window.styleThemes.magazine = {
     // hr 分割线后装饰：圆点（纯文本，script.js 自动包 span）
     hrDecor(c) {
         return `· · ·`;
+    },
+    // 底部名片：米白底 · 上下双线边框 · 宋体 · 罗马数字分节 · 居中斜体 slogan
+    introCardHTML(data, ctx) {
+        const sp = ctx.sp, s = ctx.s;
+        const cardStyle = `margin-top:${sp.pMargin};padding:24px;background:${this.canvasBg};border-top:3px double ${this.ink};border-bottom:3px double ${this.ink};font-family:${this.serifFont};font-size:${s.fontSize};line-height:${sp.lineHeight};color:${this.ink};`;
+        const sectionTag = (roman, label) => `<div style="font-size:11px;color:#525252;letter-spacing:3px;margin:10px 0 4px 0;font-style:italic;">§ ${roman} · ${label}</div>`;
+        const rowStyle = `display:flex;align-items:center;gap:6px;margin-bottom:6px;`;
+        const iconStyle = `flex-shrink:0;width:20px;text-align:center;font-size:15px;`;
+        const textStyle = `flex:1;color:${this.ink};`;
+        const sepStyle = `color:${this.ink};flex-shrink:0;`;
+        const labelStyle = `color:#525252;flex-shrink:0;font-size:13px;`;
+        const sloganStyle = `margin:16px 0;text-align:center;font-style:italic;color:${this.ink};font-size:${parseInt(s.fontSize) + 2}px;letter-spacing:1px;`;
+        const dividerStyle = `border-top:3px double ${this.ink};margin:14px 0;height:0;`;
+        const disclaimerStyle = `display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;font-size:12px;color:#525252;line-height:1.6;`;
+        let html = `<div style="${cardStyle}">`;
+        if (data.name || data.title) {
+            html += sectionTag('I', '作者');
+            html += `<div style="${rowStyle}"><span style="${iconStyle}">🧔</span><span style="${textStyle}"><strong>${data.name}</strong> <span style="${sepStyle}">｜</span> ${data.title}</span></div>`;
+        }
+        if (data.focus) {
+            html += sectionTag('II', '关注');
+            html += `<div style="${rowStyle}"><span style="${iconStyle}">🔭</span><span style="${labelStyle}">关注：</span><span style="${textStyle}">${data.focus}</span></div>`;
+        }
+        if (data.output) {
+            html += sectionTag('III', '产出');
+            html += `<div style="${rowStyle}"><span style="${iconStyle}">📦</span><span style="${labelStyle}">产出：</span><span style="${textStyle}">${data.output}</span></div>`;
+        }
+        if (data.slogan) {
+            html += `<div style="${sloganStyle}">${data.slogan}</div>`;
+        }
+        html += `<div style="${dividerStyle}"></div>`;
+        if (data.disclaimer1) {
+            html += `<div style="${disclaimerStyle}"><span style="${iconStyle};font-size:13px;">⚠️</span><span>${data.disclaimer1}</span></div>`;
+        }
+        if (data.disclaimer2) {
+            html += `<div style="${disclaimerStyle}"><span style="${iconStyle};font-size:13px;">📋</span><span>${data.disclaimer2}</span></div>`;
+        }
+        html += '</div>';
+        return html;
     }
 };
 

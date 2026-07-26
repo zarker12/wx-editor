@@ -88,5 +88,40 @@ window.styleThemes.luxury = {
     // hr 分割线后装饰：菱形（纯文本，script.js 自动包 span）
     hrDecor(c) {
         return `◆ ◆ ◆`;
+    },
+    // 底部名片：深色底金边 · 金字菱形分隔 · 居中斜体 slogan
+    introCardHTML(data, ctx) {
+        const sp = ctx.sp, s = ctx.s;
+        const cardStyle = `margin-top:${sp.pMargin};padding:24px 22px;background:${this.ink};border-radius:8px;border:1px solid ${this.gold};font-family:${ctx.font};font-size:${s.fontSize};line-height:${sp.lineHeight};color:${this.gold};`;
+        const rowStyle = `display:flex;align-items:center;gap:6px;margin-bottom:8px;`;
+        const iconStyle = `flex-shrink:0;width:20px;text-align:center;font-size:15px;`;
+        const textStyle = `flex:1;color:${this.gold};`;
+        const sepStyle = `color:${this.gold};flex-shrink:0;`;
+        const labelStyle = `color:#8B7355;flex-shrink:0;font-size:13px;letter-spacing:1px;`;
+        const sloganStyle = `margin:14px 0;text-align:center;font-style:italic;color:${this.gold};font-size:${s.fontSize};letter-spacing:2px;`;
+        const dividerStyle = `text-align:center;color:${this.gold};font-size:9px;letter-spacing:8px;margin:14px 0;opacity:0.7;`;
+        const disclaimerStyle = `display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;font-size:12px;color:#8B7355;line-height:1.6;`;
+        let html = `<div style="${cardStyle}">`;
+        if (data.name || data.title) {
+            html += `<div style="${rowStyle}"><span style="${iconStyle}">🧔</span><span style="${textStyle}"><strong>${data.name}</strong> <span style="${sepStyle}">◆</span> ${data.title}</span></div>`;
+        }
+        if (data.focus) {
+            html += `<div style="${rowStyle}"><span style="${iconStyle}">🔭</span><span style="${labelStyle}">关注：</span><span style="${textStyle}">${data.focus}</span></div>`;
+        }
+        if (data.output) {
+            html += `<div style="${rowStyle}"><span style="${iconStyle}">📦</span><span style="${labelStyle}">产出：</span><span style="${textStyle}">${data.output}</span></div>`;
+        }
+        if (data.slogan) {
+            html += `<div style="${sloganStyle}">${data.slogan}</div>`;
+        }
+        html += `<div style="${dividerStyle}">◆ ◆ ◆</div>`;
+        if (data.disclaimer1) {
+            html += `<div style="${disclaimerStyle}"><span style="${iconStyle};font-size:13px;">⚠️</span><span>${data.disclaimer1}</span></div>`;
+        }
+        if (data.disclaimer2) {
+            html += `<div style="${disclaimerStyle}"><span style="${iconStyle};font-size:13px;">📋</span><span>${data.disclaimer2}</span></div>`;
+        }
+        html += '</div>';
+        return html;
     }
 };

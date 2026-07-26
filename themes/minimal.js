@@ -82,5 +82,40 @@ window.styleThemes.minimal = {
     // hr 分割线后装饰：圆点（纯文本，script.js 自动包 span）
     hrDecor(c) {
         return `· · ·`;
+    },
+    // 底部名片：白底浅灰边框 · 炭灰文字 · 极简留白
+    introCardHTML(data, ctx) {
+        const sp = ctx.sp, s = ctx.s;
+        const cardStyle = `margin-top:${sp.pMargin};padding:20px 18px;background:#FFFFFF;border-radius:8px;border:1px solid #E5E7EB;font-family:${ctx.font};font-size:${s.fontSize};line-height:${sp.lineHeight};color:#1F2937;`;
+        const rowStyle = `display:flex;align-items:center;gap:6px;margin-bottom:6px;`;
+        const iconStyle = `flex-shrink:0;width:20px;text-align:center;font-size:15px;`;
+        const textStyle = `flex:1;color:#1F2937;`;
+        const sepStyle = `color:#1F2937;flex-shrink:0;`;
+        const labelStyle = `color:#8A8A8A;flex-shrink:0;font-size:13px;`;
+        const sloganStyle = `margin:10px 0 10px 26px;font-weight:500;color:#1F2937;font-size:${s.fontSize};`;
+        const dividerStyle = `height:1px;background:rgba(0,0,0,0.08);margin:10px 0;`;
+        const disclaimerStyle = `display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;font-size:12px;color:#8A8A8A;line-height:1.6;`;
+        let html = `<div style="${cardStyle}">`;
+        if (data.name || data.title) {
+            html += `<div style="${rowStyle}"><span style="${iconStyle}">🧔</span><span style="${textStyle}"><strong>${data.name}</strong> <span style="${sepStyle}">｜</span> ${data.title}</span></div>`;
+        }
+        if (data.focus) {
+            html += `<div style="${rowStyle}"><span style="${iconStyle}">🔭</span><span style="${labelStyle}">关注：</span><span style="${textStyle}">${data.focus}</span></div>`;
+        }
+        if (data.output) {
+            html += `<div style="${rowStyle}"><span style="${iconStyle}">📦</span><span style="${labelStyle}">产出：</span><span style="${textStyle}">${data.output}</span></div>`;
+        }
+        if (data.slogan) {
+            html += `<div style="${sloganStyle}">${data.slogan}</div>`;
+        }
+        html += `<div style="${dividerStyle}"></div>`;
+        if (data.disclaimer1) {
+            html += `<div style="${disclaimerStyle}"><span style="${iconStyle};font-size:13px;">⚠️</span><span>${data.disclaimer1}</span></div>`;
+        }
+        if (data.disclaimer2) {
+            html += `<div style="${disclaimerStyle}"><span style="${iconStyle};font-size:13px;">📋</span><span>${data.disclaimer2}</span></div>`;
+        }
+        html += '</div>';
+        return html;
     }
 };
