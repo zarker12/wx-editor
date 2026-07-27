@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>公众号排版模板 · 六主题对比总览</title>
+<style>
+  *{box-sizing:border-box;}
+  body{margin:0;background:#F4F4F5;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;-webkit-text-size-adjust:100%;}
+  .topbar{position:fixed;top:0;left:0;right:0;background:#FFFFFF;box-shadow:0 1px 10px rgba(0,0,0,.06);padding:14px 20px;z-index:99;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+  .topbar h1{margin:0;font-size:16px;font-weight:800;color:#111827;}
+  .topbar .sub{font-size:12px;color:#6B7280;margin-top:2px;}
+  .nav{display:flex;gap:6px;flex-wrap:wrap;}
+  .nav a{display:inline-block;padding:6px 12px;font-size:12px;font-weight:600;border-radius:6px;text-decoration:none;background:#F3F4F6;color:#374151;transition:all .15s;}
+  .nav a:hover{background:#E5E7EB;}
+  .nav a.t1{color:#1F2937;} .nav a.t1:hover{background:#E5E7EB;}
+  .nav a.t2{color:#C9A961;background:#1A1A1D;} .nav a.t2:hover{background:#2A2A2D;}
+  .nav a.t3{color:#0891B2;background:#ECFEFF;} .nav a.t3:hover{background:#CFFAFE;}
+  .nav a.t4{color:#1A1A1A;background:#FDFCFA;border:1px solid #1A1A1A;} .nav a.t4:hover{background:#F5F5F5;}
+  .nav a.t5{color:#15803D;background:#F0FDF4;} .nav a.t5:hover{background:#DCFCE7;}
+  .nav a.t6{color:#E85D04;background:#FFF7ED;} .nav a.t6:hover{background:#FFE8D6;}
+  .stage{max-width:720px;margin:90px auto 64px;padding:0 8px;}
+  .theme-block{margin-bottom:48px;}
+  .theme-label{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:12px 16px;border-radius:10px;}
+  .theme-label .num{font-size:20px;font-weight:900;}
+  .theme-label .name{font-size:18px;font-weight:800;}
+  .theme-label .desc{font-size:12px;opacity:.8;}
+  .theme-label.t1{background:#FFFFFF;border:1px solid #E5E7EB;color:#1F2937;}
+  .theme-label.t2{background:#0E0E10;color:#F5E6C8;border:1px solid #C9A961;}
+  .theme-label.t3{background:#F8FAFC;color:#0891B2;border:1px solid #E2E8F0;border-left:3px solid #0891B2;}
+  .theme-label.t4{background:#FDFCFA;color:#1A1A1A;border:1px solid #1A1A1A;}
+  .theme-label.t5{background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0;}
+  .theme-label.t6{background:#FFF7ED;color:#E85D04;border:1px solid #FED7AA;}
+  .theme-frame{border-radius:8px;overflow:hidden;box-shadow:0 4px 24px -8px rgba(0,0,0,.12);}
+  .copy-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;font-size:13px;font-weight:700;border-radius:8px;border:0;cursor:pointer;color:#fff;transition:transform .08s;}
+  .copy-btn:active{transform:translateY(1px);}
+  .copy-btn.c1{background:#1F2937;} .copy-btn.c2{background:#C9A961;color:#0E0E10;} .copy-btn.c3{background:#0891B2;} .copy-btn.c4{background:#1A1A1A;} .copy-btn.c5{background:#22C55E;} .copy-btn.c6{background:linear-gradient(135deg,#FF6B35 0%,#FF8C42 100%);}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+  .toast{position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .25s;z-index:100;box-shadow:0 6px 20px rgba(0,0,0,.25);}
+  .toast.show{opacity:1;}
+  .footer-note{max-width:720px;margin:0 auto 40px;padding:20px;background:#FFFFFF;border-radius:10px;font-size:13px;color:#6B7280;line-height:1.8;}
+  .footer-note b{color:#111827;}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div>
+    <h1>公众号排版模板 · 六主题对比总览</h1>
+    <div class="sub">每套主题独立设计语言 · 微信编辑器兼容 · 点按钮复制对应主题</div>
+  </div>
+  <div class="nav">
+    <a href="#t1" class="t1">极简白</a>
+    <a href="#t2" class="t2">黑金奢</a>
+    <a href="#t3" class="t3">科技感</a>
+    <a href="#t4" class="t4">杂志风</a>
+    <a href="#t5" class="t5">清新绿</a>
+    <a href="#t6" class="t6">活力橙</a>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<div class="stage">
+
+  <!-- 极简白 -->
+  <div class="theme-block" id="t1">
+    <div class="theme-label t1">
+      <span class="num">01</span>
+      <div>
+        <div class="name">极简白</div>
+        <div class="desc">渐变标题 · 清爽留白 · 炭灰主色 · 圆点列表</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="copy-btn c1" onclick="copyTheme('content1')">📋 复制极简白</button>
+      <a href="01_极简白_预览.html" target="_blank" style="font-size:12px;color:#6B7280;text-decoration:underline;align-self:center;">单独预览 →</a>
+    </div>
+    <div class="theme-frame" id="content1"></div>
+  </div>
+
+  <!-- 黑金奢 -->
+  <div class="theme-block" id="t2">
+    <div class="theme-label t2">
+      <span class="num">02</span>
+      <div>
+        <div class="name">黑金奢</div>
+        <div class="desc">金色点缀 · 居中斜体引用 · 深色底 · 菱形符号</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="copy-btn c2" onclick="copyTheme('content2')">📋 复制黑金奢</button>
+      <a href="02_黑金奢_预览.html" target="_blank" style="font-size:12px;color:#6B7280;text-decoration:underline;align-self:center;">单独预览 →</a>
+    </div>
+    <div class="theme-frame" id="content2"></div>
+  </div>
+
+  <!-- 科技感 -->
+  <div class="theme-block" id="t3">
+    <div class="theme-label t3">
+      <span class="num">03</span>
+      <div>
+        <div class="name">科技感</div>
+        <div class="desc">青色线条 · 等宽字体 · 终端式 · 方块编号</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="copy-btn c3" onclick="copyTheme('content3')">📋 复制科技感</button>
+      <a href="03_科技感_预览.html" target="_blank" style="font-size:12px;color:#6B7280;text-decoration:underline;align-self:center;">单独预览 →</a>
+    </div>
+    <div class="theme-frame" id="content3"></div>
+  </div>
+
+  <!-- 杂志风 -->
+  <div class="theme-block" id="t4">
+    <div class="theme-label t4">
+      <span class="num">04</span>
+      <div>
+        <div class="name">杂志风</div>
+        <div class="desc">宋体大字 · 上下线引用 · 编辑美学 · 罗马数字</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="copy-btn c4" onclick="copyTheme('content4')">📋 复制杂志风</button>
+      <a href="04_杂志风_预览.html" target="_blank" style="font-size:12px;color:#6B7280;text-decoration:underline;align-self:center;">单独预览 →</a>
+    </div>
+    <div class="theme-frame" id="content4"></div>
+  </div>
+
+  <!-- 清新绿 -->
+  <div class="theme-block" id="t5">
+    <div class="theme-label t5">
+      <span class="num">05</span>
+      <div>
+        <div class="name">清新绿</div>
+        <div class="desc">浅绿底 · 绿色圆点 · 自然清新 · 圆角卡片</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="copy-btn c5" onclick="copyTheme('content5')">📋 复制清新绿</button>
+      <a href="05_清新绿_预览.html" target="_blank" style="font-size:12px;color:#6B7280;text-decoration:underline;align-self:center;">单独预览 →</a>
+    </div>
+    <div class="theme-frame" id="content5"></div>
+  </div>
+
+  <!-- 活力橙 -->
+  <div class="theme-block" id="t6">
+    <div class="theme-label t6">
+      <span class="num">06</span>
+      <div>
+        <div class="name">活力橙</div>
+        <div class="desc">暖橙渐变 · 温暖明快 · 圆角卡片 · 橙色下划线</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="copy-btn c6" onclick="copyTheme('content6')">📋 复制活力橙</button>
+      <a href="06_活力橙_预览.html" target="_blank" style="font-size:12px;color:#6B7280;text-decoration:underline;align-self:center;">单独预览 →</a>
+    </div>
+    <div class="theme-frame" id="content6"></div>
+  </div>
+
+</div>
+
+<div class="footer-note">
+  <b>使用方法：</b>点击对应主题的「复制」按钮，再到公众号编辑器 Ctrl/⌘+V 粘贴即可，样式会完整保留。<br>
+  <b>设计要点：</b>所有主题均采用内联样式 + <code>&lt;span leaf&gt;</code> 包裹，符合微信编辑器规范；标题、引用、列表、代码块、分割线、签名区各有独立设计语言；尾部签名区参考了你提供的 intro 卡片结构（头像 + 姓名 + 简介 + 关注产出 + 免责声明）。<br>
+  <b>占位说明：</b>文中 <code>{{作者名}}</code> / <code>{{一句话简介...}}</code> 为占位符，替换成你自己的信息即可；图片为占位图，粘贴后会显示占位，需在公众号编辑器里替换为真实图片。
+</div>
+
+<script>
+function showToast(msg){
+  var t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer=setTimeout(function(){t.classList.remove('show');},2600);
+}
+function copyTheme(id){
+  var el=document.getElementById(id);
+  var range=document.createRange();
+  range.selectNodeContents(el);
+  var sel=window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  var ok=false;
+  try{ok=document.execCommand('copy');}catch(e){ok=false;}
+  sel.removeAllRanges();
+  if(ok){showToast('✅ 已复制该主题！去公众号编辑器按 Ctrl/⌘+V 粘贴');}
+  else{showToast('⚠ 自动复制失败，请手动全选再复制');}
+}
+// 加载各主题内容
+var themes=['01_极简白','02_黑金奢','03_科技感','04_杂志风','05_清新绿','06_活力橙'];
+themes.forEach(function(name,i){
+  fetch(name+'.html').then(function(r){return r.text();}).then(function(html){
+    document.getElementById('content'+(i+1)).innerHTML=html;
+  }).catch(function(e){
+    document.getElementById('content'+(i+1)).innerHTML='<p style="padding:20px;color:#999;text-align:center;">加载失败，请直接打开 '+name+'_预览.html 查看</p>';
+  });
+});
+</script>
+</body>
+</html>

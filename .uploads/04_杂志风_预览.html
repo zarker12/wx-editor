@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04_杂志风 · 公众号排版预览</title>
+<style>
+  body{margin:0;background:#eef0f2;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;-webkit-text-size-adjust:100%;}
+  .gzh-toolbar{position:fixed;top:0;left:0;right:0;height:54px;background:#ffffff;box-shadow:0 1px 10px rgba(0,0,0,.08);display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:99;}
+  .gzh-hint{font-size:13px;color:#6b7280;line-height:1.4;}
+  .gzh-hint b{color:#111827;}
+  .gzh-copy{background:#059669;color:#fff;border:0;border-radius:9px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(5,150,105,.28);white-space:nowrap;transition:transform .08s,background .15s;}
+  .gzh-copy:hover{background:#047857;}
+  .gzh-copy:active{transform:translateY(1px);}
+  .gzh-toast{position:fixed;top:66px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:11px 20px;border-radius:10px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .25s;z-index:100;box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:88vw;text-align:center;}
+  .gzh-toast.show{opacity:1;}
+  .gzh-stage{max-width:700px;margin:78px auto 64px;padding:0 8px;}
+  @media(max-width:520px){.gzh-hint{max-width:150px;}}
+</style>
+</head>
+<body>
+<div class="gzh-toolbar">
+  <span class="gzh-hint">👇 下方是排版效果 · 点右侧 <b>复制</b> 直接粘到公众号</span>
+  <button class="gzh-copy" id="gzhCopyBtn" onclick="gzhCopy()">📋 复制到公众号</button>
+</div>
+<div class="gzh-toast" id="gzhToast"></div>
+<div class="gzh-stage">
+  <div id="gzh-content">
+<section style="max-width:677px;margin:0 auto;background:#FDFCFA;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;color:#3D3D3D;line-height:1.9;letter-spacing:0.3px;overflow-x:hidden;padding:20px 16px 40px;">
+
+  <!-- 开头标题卡（杂志刊头式） -->
+  <section style="margin:24px 0 40px;padding:40px 20px 32px;border-top:3px solid #1A1A1A;border-bottom:1px solid #1A1A1A;text-align:center;background:#FFFFFF;">
+    <p style="font-size:10px;color:#1A1A1A;letter-spacing:6px;margin:0 0 20px;font-weight:700;">
+      <span leaf="">VOL.01 · FEATURE</span>
+    </p>
+    <p style="font-family:'Noto Serif SC',Georgia,'Times New Roman',serif;font-size:24px;font-weight:900;color:#1A1A1A;margin:0 0 14px;line-height:1.35;letter-spacing:1px;">
+      <span leaf="">公众号文章标题</span>
+    </p>
+    <section style="display:flex;align-items:center;justify-content:center;margin:12px 0 0;">
+      <span style="height:2px;width:40px;background:#1A1A1A;margin-right:12px;"><span leaf=""><br></span></span>
+      <span style="font-size:11px;color:#1A1A1A;letter-spacing:3px;font-style:italic;font-family:'Noto Serif SC',Georgia,serif;"><span leaf="">杂志风 · 宋体大字 · 编辑美学</span></span>
+      <span style="height:2px;width:40px;background:#1A1A1A;margin-left:12px;"><span leaf=""><br></span></span>
+    </section>
+  </section>
+
+  <!-- 正文段落 -->
+  <p style="margin:0 0 26px;font-size:15px;line-height:1.9;text-align:justify;color:#3D3D3D;padding:0 4px;">
+    <span leaf="">这是一段正文内容，可以在这里输入你的文章内容。支持</span>
+    <strong style="color:#1A1A1A;"><span leaf="">加粗重点</span></strong>
+    <span leaf="">和</span>
+    <em style="color:#8B0000;font-style:italic;"><span leaf="">斜体强调</span></em>
+    <span leaf="">，让文章更有层次感。</span>
+  </p>
+
+  <!-- 章节标题（杂志栏目式：大编号 + 衬线大标题 + 上下线） -->
+  <section style="margin:44px 0 24px;text-align:center;">
+    <section style="height:1px;background:#1A1A1A;margin-bottom:16px;"><span leaf=""><br></span></section>
+    <p style="font-family:'Noto Serif SC',Georgia,'Times New Roman',serif;font-size:36px;font-weight:900;color:#E8E8E8;margin:0 0 6px;line-height:1;letter-spacing:-1px;">
+      <span leaf="">01</span>
+    </p>
+    <p style="font-size:10px;color:#8B0000;letter-spacing:4px;margin:0 0 10px;font-weight:700;font-style:italic;">
+      <span leaf="">CHAPTER ONE</span>
+    </p>
+    <p style="font-family:'Noto Serif SC',Georgia,'Times New Roman',serif;font-size:21px;font-weight:900;color:#1A1A1A;margin:0 0 14px;line-height:1.4;letter-spacing:1px;">
+      <span leaf="">小标题示例</span>
+    </p>
+    <section style="height:1px;background:#1A1A1A;margin-top:16px;"><span leaf=""><br></span></section>
+  </section>
+
+  <!-- 正文 + 关键词下划线（深红色衬线下划线） -->
+  <p style="margin:0 0 24px;font-size:15px;line-height:1.9;text-align:justify;color:#3D3D3D;padding:0 4px;">
+    <span leaf="">五种主题风格，每种都有独立的设计语言：</span>
+    <span style="border-bottom:2px solid #8B0000;font-weight:600;color:#1A1A1A;"><span leaf="">画布背景</span></span>
+    <span leaf="">、</span>
+    <span style="border-bottom:2px solid #8B0000;font-weight:600;color:#1A1A1A;"><span leaf="">标题样式</span></span>
+    <span leaf="">、引用框、列表符号、代码块、分割线各不相同。</span>
+    <span style="border-bottom:2px solid #8B0000;font-weight:600;color:#1A1A1A;"><span leaf="">主题色会贯穿全文</span></span>
+    <span leaf="">。</span>
+  </p>
+
+  <!-- 无序列表（衬线编号 + 短线） -->
+  <section style="margin:0 4px 30px;">
+    <section style="display:flex;align-items:baseline;padding:14px 0;border-bottom:1px solid #E5E5E5;">
+      <p style="font-family:'Noto Serif SC',Georgia,serif;font-size:18px;font-weight:900;color:#8B0000;margin:0 16px 0 0;min-width:24px;line-height:1;"><span leaf="">Ⅰ</span></p>
+      <p style="font-size:15px;color:#3D3D3D;margin:0;line-height:1.8;flex:1;"><span leaf="">极简白——渐变标题，清爽留白</span></p>
+    </section>
+    <section style="display:flex;align-items:baseline;padding:14px 0;border-bottom:1px solid #E5E5E5;">
+      <p style="font-family:'Noto Serif SC',Georgia,serif;font-size:18px;font-weight:900;color:#8B0000;margin:0 16px 0 0;min-width:24px;line-height:1;"><span leaf="">Ⅱ</span></p>
+      <p style="font-size:15px;color:#3D3D3D;margin:0;line-height:1.8;flex:1;"><span leaf="">黑金奢——金色点缀，居中斜体引用</span></p>
+    </section>
+    <section style="display:flex;align-items:baseline;padding:14px 0;border-bottom:1px solid #E5E5E5;">
+      <p style="font-family:'Noto Serif SC',Georgia,serif;font-size:18px;font-weight:900;color:#8B0000;margin:0 16px 0 0;min-width:24px;line-height:1;"><span leaf="">Ⅲ</span></p>
+      <p style="font-size:15px;color:#3D3D3D;margin:0;line-height:1.8;flex:1;"><span leaf="">科技感——青色线条，等宽字体，简洁有力</span></p>
+    </section>
+    <section style="display:flex;align-items:baseline;padding:14px 0;border-bottom:1px solid #E5E5E5;">
+      <p style="font-family:'Noto Serif SC',Georgia,serif;font-size:18px;font-weight:900;color:#8B0000;margin:0 16px 0 0;min-width:24px;line-height:1;"><span leaf="">Ⅳ</span></p>
+      <p style="font-size:15px;color:#3D3D3D;margin:0;line-height:1.8;flex:1;"><span leaf="">杂志风——</span><span style="border-bottom:2px solid #8B0000;font-weight:600;color:#1A1A1A;"><span leaf="">宋体大字</span></span><span leaf="">，上下线引用，编辑美学</span></p>
+    </section>
+    <section style="display:flex;align-items:baseline;padding:14px 0;border-bottom:1px solid #E5E5E5;">
+      <p style="font-family:'Noto Serif SC',Georgia,serif;font-size:18px;font-weight:900;color:#8B0000;margin:0 16px 0 0;min-width:24px;line-height:1;"><span leaf="">Ⅴ</span></p>
+      <p style="font-size:15px;color:#3D3D3D;margin:0;line-height:1.8;flex:1;"><span leaf="">清新绿——浅绿底，绿色圆点，自然清新</span></p>
+    </section>
+  </section>
+
+  <!-- 引用块（上下双线 + 居中衬线大字） -->
+  <section style="margin:40px 0;padding:36px 20px;border-top:2px solid #1A1A1A;border-bottom:2px solid #1A1A1A;text-align:center;background:#FFFFFF;">
+    <p style="font-family:'Noto Serif SC',Georgia,'Times New Roman',serif;font-size:18px;font-weight:700;color:#1A1A1A;margin:0;line-height:1.85;letter-spacing:1px;">
+      <span leaf="">「这里是一段引用内容，可以用来强调重要观点、名人名言，或者金句摘录。不同主题对引用框的处理方式完全不同。」</span>
+    </p>
+  </section>
+
+  <!-- 代码块标题 -->
+  <p style="margin:36px 4px 14px;font-size:15px;font-weight:700;color:#1A1A1A;line-height:1.5;">
+    <span style="display:inline-block;background:#1A1A1A;color:#FFFFFF;font-family:'Noto Serif SC',Georgia,serif;font-size:11px;font-weight:700;padding:2px 12px;border-radius:0;margin-right:8px;letter-spacing:2px;"><span leaf="">CODE</span></span>
+    <span leaf="">代码示例</span>
+  </p>
+
+  <!-- 代码块（浅色衬线边） -->
+  <section style="margin:0 4px 24px;background:#FFFFFF;border:1px solid #1A1A1A;">
+    <section style="padding:8px 14px;border-bottom:1px solid #1A1A1A;background:#F5F5F5;">
+      <span style="font-size:12px;color:#1A1A1A;font-family:Consolas,Monaco,monospace;letter-spacing:1px;font-weight:600;"><span leaf="">javascript</span></span>
+    </section>
+    <section style="padding:14px 16px;">
+      <p style="margin:0;font-family:'SF Mono',Consolas,Monaco,monospace;font-size:13px;line-height:1.7;color:#1A1A1A;"><span leaf="">function hello(name) {</span></p>
+      <p style="margin:0;font-family:'SF Mono',Consolas,Monaco,monospace;font-size:13px;line-height:1.7;color:#1A1A1A;"><span leaf="">　　console.log("Hello, " + name + "!");</span></p>
+      <p style="margin:0;font-family:'SF Mono',Consolas,Monaco,monospace;font-size:13px;line-height:1.7;color:#1A1A1A;"><span leaf="">　　return true;</span></p>
+      <p style="margin:0;font-family:'SF Mono',Consolas,Monaco,monospace;font-size:13px;line-height:1.7;color:#1A1A1A;"><span leaf="">}</span></p>
+    </section>
+  </section>
+
+  <!-- 行内代码 + 链接 -->
+  <p style="margin:0 4px 26px;font-size:15px;line-height:1.9;text-align:justify;color:#3D3D3D;">
+    <span leaf="">行内代码也支持，比如定义一个变量</span>
+    <span style="background:#F5F5F5;color:#1A1A1A;padding:1px 6px;border:1px solid #E5E5E5;font-family:'SF Mono',Consolas,Monaco,monospace;font-size:14px;"><span leaf="">const count = 42</span></span>
+    <span leaf="">这样的形式。</span>
+  </p>
+
+  <p style="margin:0 4px 30px;font-size:15px;line-height:1.9;text-align:justify;color:#3D3D3D;">
+    <span style="color:#8B0000;font-weight:600;border-bottom:1px solid #8B0000;"><span leaf="">点击这里</span></span>
+    <span leaf="">是一个链接示例，可以跳转到指定页面。</span>
+  </p>
+
+  <!-- 分割线（双线杂志式） -->
+  <section style="margin:40px 4px;">
+    <section style="height:1px;background:#1A1A1A;margin-bottom:3px;"><span leaf=""><br></span></section>
+    <section style="height:1px;background:#1A1A1A;"><span leaf=""><br></span></section>
+  </section>
+
+  <!-- 分割线后内容 -->
+  <p style="margin:24px 4px 0;font-size:15px;line-height:1.9;text-align:justify;color:#3D3D3D;">
+    <span leaf="">这是分割线后的内容。</span>
+    <span style="border-bottom:2px solid #8B0000;font-weight:600;color:#1A1A1A;"><span leaf="">段落间距</span></span>
+    <span leaf="">、</span>
+    <span style="border-bottom:2px solid #8B0000;font-weight:600;color:#1A1A1A;"><span leaf="">字间距</span></span>
+    <span leaf="">、正文字号、字体族（衬线／无衬线／等宽）均可独立调节。</span>
+  </p>
+
+  <!-- 图片标题 -->
+  <p style="margin:32px 4px 14px;font-size:15px;font-weight:700;color:#1A1A1A;line-height:1.5;">
+    <span style="display:inline-block;background:#1A1A1A;color:#FFFFFF;font-family:'Noto Serif SC',Georgia,serif;font-size:11px;font-weight:700;padding:2px 12px;border-radius:0;margin-right:8px;letter-spacing:2px;"><span leaf="">IMAGE</span></span>
+    <span leaf="">示例图片</span>
+  </p>
+
+  <!-- 图片占位 -->
+  <section style="background:#FFFFFF;border:1px solid #1A1A1A;padding:4px;margin:0 4px 8px;">
+    <section style="margin:0;overflow:hidden;">
+      <span leaf=""><img src="https://placehold.orence.net/600x360/fdfcfa/1a1a1a?text=示例图片&font=cn" alt="示例图片占位" style="max-width:100%;height:auto;display:block;margin:0 auto;"></span>
+    </section>
+  </section>
+  <p style="font-family:'Noto Serif SC',Georgia,serif;font-size:12px;color:#8B0000;text-align:center;margin:0 4px 36px;font-style:italic;letter-spacing:0.5px;">
+    <span leaf="">— 图片支持粘贴和拖拽上传，会自动转换为 base64 嵌入文档中</span>
+  </p>
+
+  <!-- END 分割线（杂志收尾） -->
+  <section style="text-align:center;margin:44px 0 36px;">
+    <section style="display:flex;align-items:center;justify-content:center;">
+      <span style="height:1px;width:60px;background:#1A1A1A;margin-right:18px;"><span leaf=""><br></span></span>
+      <span style="font-family:'Noto Serif SC',Georgia,serif;font-size:12px;color:#1A1A1A;letter-spacing:6px;font-weight:700;font-style:italic;"><span leaf="">END</span></span>
+      <span style="height:1px;width:60px;background:#1A1A1A;margin-left:18px;"><span leaf=""><br></span></span>
+    </section>
+  </section>
+
+  <!-- 尾部签名区（杂志风卡片，结构与活力橙一致，黑白衬线配色） -->
+  <section style="margin:0 0 8px;padding:32px 22px 26px;background:#FFFFFF;border-top:3px solid #1A1A1A;border-bottom:1px solid #1A1A1A;border-radius:0;text-align:center;">
+    <p style="font-size:10px;color:#1A1A1A;letter-spacing:6px;margin:0 0 16px;font-weight:700;">
+      <span leaf="">EDITOR</span>
+    </p>
+    <section style="display:inline-block;width:56px;height:56px;border-radius:50%;background:#1A1A1A;margin:0 0 14px;line-height:56px;text-align:center;">
+      <span style="font-family:'Noto Serif SC',Georgia,serif;font-size:22px;font-weight:900;color:#FFFFFF;font-style:italic;"><span leaf="">T</span></span>
+    </section>
+    <p style="font-family:'Noto Serif SC',Georgia,'Times New Roman',serif;font-size:19px;font-weight:900;color:#1A1A1A;margin:0 0 8px;letter-spacing:1.5px;">
+      <span leaf="">{{作者名}}</span>
+    </p>
+    <p style="font-size:13px;color:#8B0000;margin:0 0 16px;letter-spacing:1px;font-style:italic;font-family:'Noto Serif SC',Georgia,serif;">
+      <span leaf="">{{一句话简介，如：10年互联网老炮 · 大厂运营}}</span>
+    </p>
+    <section style="display:flex;align-items:center;justify-content:center;margin:0 0 16px;">
+      <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#1A1A1A;margin-right:6px;"><span leaf=""><br></span></span>
+      <span style="height:1.5px;width:28px;background:#1A1A1A;margin:0 6px;"><span leaf=""><br></span></span>
+      <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#1A1A1A;margin-left:6px;"><span leaf=""><br></span></span>
+    </section>
+    <p style="font-size:13px;color:#3D3D3D;margin:0 0 6px;line-height:1.8;">
+      <span style="color:#1A1A1A;font-weight:700;"><span leaf="">关注</span></span>
+      <span leaf=""> ｜ 互联网风向 ｜ AI落地实操 ｜ 副业玩法</span>
+    </p>
+    <p style="font-size:13px;color:#3D3D3D;margin:0 0 16px;line-height:1.8;">
+      <span style="color:#1A1A1A;font-weight:700;"><span leaf="">产出</span></span>
+      <span leaf=""> ｜ 资讯速递 ＋ 干货拆解 ＋ 心得笔记</span>
+    </p>
+    <p style="font-family:'Noto Serif SC',Georgia,serif;font-size:12px;color:#8B0000;margin:0 0 4px;line-height:1.8;font-style:italic;font-weight:500;">
+      <span leaf="">如果你觉得今天这篇有收获，欢迎点赞、在看、转发三连，我们下篇见</span>
+    </p>
+    <p style="font-size:11px;color:#999999;margin:0;line-height:1.7;opacity:0.75;">
+      <span leaf="">个人观点，仅供参考 · 素材及资讯来源网络，如有错误或侵权请及时联系删除</span>
+    </p>
+  </section>
+
+</section>
+  </div>
+</div>
+<script>
+  function gzhShowToast(msg){
+    var t=document.getElementById('gzhToast');
+    t.textContent=msg;t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer=setTimeout(function(){t.classList.remove('show');},2800);
+  }
+  function gzhCopy(){
+    var el=document.getElementById('gzh-content');
+    // 选中渲染后的富文本节点并复制（等价于手动 Ctrl+A / Ctrl+C，保留全部样式）
+    var range=document.createRange();
+    range.selectNodeContents(el);
+    var sel=window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    var ok=false;
+    try{ok=document.execCommand('copy');}catch(e){ok=false;}
+    sel.removeAllRanges();
+    var btn=document.getElementById('gzhCopyBtn');
+    if(ok){
+      gzhShowToast('✅ 已复制！去公众号编辑器按 Ctrl/⌘+V 粘贴即可');
+      var old=btn.textContent;btn.textContent='✅ 已复制';
+      setTimeout(function(){btn.textContent=old;},2200);
+    }else{
+      gzhShowToast('⚠ 自动复制失败，请手动全选(Ctrl/⌘+A)再复制(Ctrl/⌘+C)');
+    }
+  }
+</script>
+</body>
+</html>
