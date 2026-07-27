@@ -3,136 +3,170 @@ window.styleThemes = window.styleThemes || {};
 // 02 黑金奢：金色点缀 · 居中斜体引用 · 深色底 · 菱形符号
 window.styleThemes.luxury = {
     name: '黑金奢',
-    canvasBg: '#FEFDFB',         // 米白主底，保证阅读舒适
-    textColor: '#2A2A2A',
-    metaColor: '#9A8A6A',
-    // 主题固定主色（金色），不再跟随用户主题色
+    canvasBg: '#0E0E10',
+    textColor: '#E5E5E5',
+    metaColor: '#9A9A9D',
+    // 主题固定主色：金色（不跟随用户主题色）
     gold: '#C9A961',
     goldDeep: '#A88A48',
-    ink: '#1A1A1D',               // 墨黑
+    goldLight: '#F5E6C8',
+    ink: '#0E0E10',
+    inkDeep: '#1A1A1D',
+    inkBorder: '#3A3A3D',
 
     bodyStyle(c, s, sp, t, font) {
-        return `font-family:${font};font-weight:${getFontWeight()};font-size:${s.fontSize};line-height:2.0;color:${this.textColor};background-color:${this.canvasBg};padding:40px 24px 56px;text-align:justify;letter-spacing:${t.letterSpacing};word-break:break-word;`;
+        return `font-family:${font};font-weight:${getFontWeight()};font-size:${s.fontSize};line-height:${sp.lineHeight};color:${this.textColor};background-color:${this.canvasBg};padding:20px 16px 40px;letter-spacing:${t.letterSpacing};word-break:break-word;`;
     },
     pStyle(c, sp) {
-        return `margin:0 0 ${sp.pMargin} 0;color:${this.textColor};`;
+        return `margin:0 0 ${sp.pMargin};font-size:15px;line-height:${sp.lineHeight};text-align:justify;color:${this.textColor};`;
     },
     h1Style(c, s, sp, t) {
-        // 主题色渐变色块 + 白字 + 居中（保持深色卡片语言）
-        return `font-size:${s.h1Size};font-weight:500;margin:${parseInt(sp.h2MarginTop) + 10}px auto ${parseInt(sp.h2MarginBottom) + 8}px auto;padding:18px 24px;line-height:1.4;text-align:center;color:#FFFFFF;background:${c.gradient};letter-spacing:6px;max-width:80%;`;
+        // 金色渐变标题居中（按 UI：金色渐变 #C9A961 → #F5E6C8 → #C9A961）
+        return `font-size:${s.h1Size};font-weight:800;margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom};line-height:1.4;letter-spacing:1px;text-align:center;background:linear-gradient(90deg,${this.gold} 0%,${this.goldLight} 50%,${this.gold} 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;`;
     },
     h2Style(c, s, sp, t) {
-        // 居中金字 + 上下双主题色线（保持金色文字身份）
-        return `font-size:${s.h2Size};font-weight:500;margin:${parseInt(sp.h2MarginTop) + 6}px 0 ${parseInt(sp.h2MarginBottom) + 4}px 0;padding:12px 0;line-height:1.5;text-align:center;color:${this.goldDeep};border-top:1px solid ${c.accent};border-bottom:1px solid ${c.accent};letter-spacing:3px;`;
+        // 居中金色 + 上下双金线（按 UI）
+        return `margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom};padding:12px 0;line-height:1.5;text-align:center;font-size:${s.h2Size};font-weight:800;color:${this.goldLight};border-top:1px solid ${this.gold};border-bottom:1px solid ${this.gold};letter-spacing:1.5px;`;
     },
     h2Decor(c) {
-        // 标题下方居中菱形装饰
-        return `<span style="display:block;text-align:center;margin-top:10px;color:${this.gold};font-size:9px;letter-spacing:8px;">◆ ◆ ◆</span>`;
+        // 标题下方居中菱形装饰（按 UI）
+        return `<section style="display:flex;align-items:center;justify-content:center;margin-top:10px;"><span style="height:1px;width:24px;background:${this.gold};margin-right:8px;"><span leaf=""><br></span></span><span style="font-size:10px;color:${this.gold};letter-spacing:2px;"><span leaf="">◆</span></span><span style="height:1px;width:24px;background:${this.gold};margin-left:8px;"><span leaf=""><br></span></span></section>`;
     },
     blockquoteStyle(c) {
-        // 深色底 + 金字 + 居中斜体（边框跟随主题色）
-        return `background:${this.ink};color:${this.gold};padding:24px 32px;margin:32px 0;text-align:center;font-style:italic;font-size:14px;line-height:1.9;border-left:3px solid ${c.accent};border-right:3px solid ${c.accent};`;
+        // 居中斜体 + 金色上下双线（按 UI）
+        return `margin:28px 16px;padding:28px 20px;border-top:1px solid ${this.gold};border-bottom:1px solid ${this.gold};text-align:center;font-style:italic;font-weight:500;color:${this.goldLight};font-size:15px;line-height:1.9;letter-spacing:1px;`;
     },
-    ulStyle(c) { return `margin:20px 0;padding-left:0;list-style:none;`; },
-    olStyle(c) { return `margin:20px 0;padding-left:0;list-style:none;`; },
+    ulStyle(c) { return `margin:0 0 24px;padding:0 4px;`; },
+    olStyle(c) { return `margin:0 0 24px;padding:0 4px;`; },
     liStyle(c) {
-        return `margin-bottom:12px;color:${this.textColor};padding-left:24px;position:relative;font-size:15px;`;
+        return `display:flex;align-items:flex-start;margin-bottom:12px;`;
     },
     liIcon(c) {
-        // 主题色菱形
-        return `<span style="position:absolute;left:0;top:8px;color:${c.accent};font-size:9px;">◆</span>`;
+        // 金色菱形（按 UI）
+        return `<span style="display:inline-block;color:${this.gold};font-size:12px;margin:9px 12px 0 0;flex-shrink:0;"><span leaf="">◆</span></span>`;
     },
     olIcon(c, idx) {
-        // 主题色编号 + 菱形点
-        return `<span style="position:absolute;left:0;top:2px;color:${c.accent};font-size:12px;font-weight:500;letter-spacing:1px;">${idx}<span style="color:${c.accent};margin-left:4px;">◆</span></span>`;
+        return `<span style="display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;background:${this.gold};color:${this.ink};border-radius:50%;margin-right:10px;font-size:11px;font-weight:700;flex-shrink:0;">${idx}</span>`;
+    },
+    liTextStyle(c) {
+        return `margin:0;font-size:15px;line-height:1.9;color:${this.textColor};flex:1;`;
     },
     hrStyle(c) {
-        // 金色细线 + 居中
-        return `border:none;height:1px;background:${this.gold};width:60px;margin:48px auto;`;
+        return `text-align:center;margin:32px 0;`;
+    },
+    hrDecor(c) {
+        // 金色菱形分隔线（按 UI）
+        return `<section style="display:flex;align-items:center;justify-content:center;"><span style="height:1px;width:60px;background:${this.inkBorder};margin-right:14px;"><span leaf=""><br></span></span><span style="font-size:12px;color:${this.gold};letter-spacing:2px;"><span leaf="">◆</span></span><span style="height:1px;width:60px;background:${this.inkBorder};margin-left:14px;"><span leaf=""><br></span></span></section>`;
     },
     codeStyle(c) {
-        return `color:${c.accent};background:${c.accentSoft};border:1px solid ${c.accentBorder};padding:2px 8px;border-radius:2px;font-size:12px;font-family:${fontFamilies.mono};`;
+        // 行内代码：深底金字 + 金色边（按 UI）
+        return `background:${this.inkDeep};color:${this.gold};padding:1px 6px;border-radius:3px;font-family:${fontFamilies.mono};font-size:14px;border:1px solid ${this.inkBorder};`;
     },
     preStyle(c) {
-        return `background:#FFFDF6;padding:24px;margin:28px 0 8px 0;border:1px solid ${this.gold}30;border-top:2px solid ${this.gold};border-radius:2px;overflow:hidden;font-size:13px;line-height:1.8;position:relative;`;
+        // 深色金边代码块（按 UI）
+        return `margin:0 0 22px;border-radius:6px;overflow:hidden;background:${this.inkDeep};border:1px solid ${this.inkBorder};`;
+    },
+    preHeaderCodeStyle(c) {
+        return `padding:9px 14px;border-bottom:1px solid ${this.inkBorder};font-size:12px;color:${this.gold};font-family:${fontFamilies.mono};letter-spacing:1px;`;
     },
     preCodeStyle(c) {
-        return `display:block;color:#3D3D3D;font-family:${fontFamilies.mono};font-size:13px;white-space:pre;overflow-x:auto;`;
+        return `padding:11px 14px;font-family:${fontFamilies.mono};font-size:13px;line-height:1.6;color:${this.textColor};white-space:pre;overflow-x:auto;`;
     },
     codeCopyBtnStyle(c) {
         return `position:absolute;top:10px;right:10px;background:${this.gold};color:${this.ink};border:0;border-radius:2px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer;line-height:1.4;`;
     },
     scrollHintStyle(c) {
-        return `text-align:center;font-size:11px;color:${this.gold}90;margin:8px 0 0 0;padding:0;letter-spacing:2px;font-style:italic;`;
+        return `text-align:center;font-size:11px;color:${this.gold};margin:8px 0 0 0;padding:0;letter-spacing:2px;font-style:italic;opacity:0.8;`;
     },
     aStyle(c) {
-        return `color:${c.accent};text-decoration:none;border-bottom:1px solid ${c.accent};`;
+        // 链接：金色 + 金色下划线（按 UI）
+        return `color:${this.gold};font-weight:600;border-bottom:1px solid ${this.gold};`;
     },
     strongStyle(c) {
-        return `color:${c.accent};font-weight:600;`;
+        // 加粗：浅金色（按 UI）
+        return `color:${this.goldLight};font-weight:600;`;
     },
     emStyle(c) {
-        return `color:${this.goldDeep};font-style:italic;`;
+        // 斜体：金色（按 UI）
+        return `color:${this.gold};font-style:italic;`;
     },
     metaLineStyle(c) {
-        return `font-size:13px;color:${this.metaColor};text-align:center;margin:0 0 32px 0;letter-spacing:3px;font-style:italic;`;
+        return `font-size:12px;color:${this.metaColor};text-align:center;margin:0 0 24px 0;letter-spacing:3px;font-style:italic;`;
     },
-    // "01 章节标题"格式中数字部分样式：主题色大号粗体居中
-    h2NumberStyle(c, s, sp, t) {
-        return `display:block;text-align:center;font-size:48px;font-weight:700;color:${c.accent};line-height:1.2;letter-spacing:2px;margin:0 0 10px 0;`;
+    // 正文关键词下划线：金色细线 + 浅金字（按 UI）
+    keywordStyle(c) {
+        return `border-bottom:1.5px solid ${this.gold};font-weight:600;color:${this.goldLight};`;
     },
-    // h3 小标题：比 h2 小一号、字重稍轻，沿用金线语言但只保留下线（主题色）
+    sectionTagStyle(c) {
+        // 标签：金底深字（按 UI）
+        return `display:inline-block;background:${this.gold};color:${this.ink};font-size:11px;font-weight:700;padding:2px 12px;border-radius:2px;margin-right:8px;letter-spacing:2px;`;
+    },
     h3Style(c, s, sp, t) {
-        return `font-size:${parseInt(s.h2Size) - 2}px;font-weight:400;margin:${parseInt(sp.h2MarginTop) + 4}px 0 ${parseInt(sp.h2MarginBottom) + 2}px 0;padding:6px 0;line-height:1.5;text-align:center;color:${this.goldDeep};border-bottom:1px solid ${c.accent};letter-spacing:2px;`;
+        return `margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom};padding:6px 0;line-height:1.5;text-align:center;font-size:${parseInt(s.h2Size) - 1}px;font-weight:500;color:${this.goldLight};border-bottom:1px solid ${this.gold};letter-spacing:2px;`;
     },
-    // hr 分割线后装饰：菱形（纯文本，script.js 自动包 span）
-    hrDecor(c) {
-        return `◆ ◆ ◆`;
+    imageCaptionStyle(c) {
+        return `margin:24px 0 14px;font-size:15px;font-weight:700;color:${this.goldLight};line-height:1.5;text-align:center;`;
     },
-    // 底部名片：深底金字 · 主题色竖线 name · 英文小标签 FOCUS/OUTPUT · 极简留白
+    imageWrapperStyle(c) {
+        return `background:${this.inkDeep};border-radius:6px;padding:4px;border:1px solid ${this.inkBorder};margin-bottom:8px;`;
+    },
+    imageCaptionTextStyle(c) {
+        return `font-size:12px;color:${this.metaColor};text-align:center;margin:0 0 28px 0;letter-spacing:0.5px;`;
+    },
+    endDecorStyle(c) {
+        // END 分割：金色双线 + END 文字（按 UI）
+        return `<section style="display:flex;align-items:center;justify-content:center;"><span style="height:1px;width:48px;background:${this.gold};margin-right:16px;"><span leaf=""><br></span></span><span style="font-size:10px;color:${this.gold};letter-spacing:4px;font-weight:500;"><span leaf="">END</span></span><span style="height:1px;width:48px;background:${this.gold};margin-left:16px;"><span leaf=""><br></span></span></section>`;
+    },
+    // 尾部名片（黑金奢卡片）—— 严格按 UI 设计
     introCardHTML(data, ctx) {
         const sp = ctx.sp, s = ctx.s, c = ctx.c;
-        const cardStyle = `margin-top:${sp.pMargin};padding:22px 20px;background:${this.ink};border-radius:8px;border:1px solid ${c.accentBorder};font-family:${ctx.font};font-size:${s.fontSize};line-height:${sp.lineHeight};color:#F5E6C8;`;
-        // name 行：左侧主题色竖线 + 粗体 + 稍大字号
-        const nameRowStyle = `border-left:3px solid ${c.accent};padding-left:12px;margin-bottom:6px;`;
-        const nameStyle = `font-size:${parseInt(s.fontSize) + 2}px;font-weight:600;color:${c.accent};`;
-        const titleStyle = `font-size:${parseInt(s.fontSize) - 1}px;color:#8A8A8A;margin-left:8px;`;
-        // 关注/产出行：英文小标签 + 字母间距
-        const metaRowStyle = `display:flex;align-items:baseline;gap:8px;margin:4px 0 4px 15px;`;
-        const labelStyle = `flex-shrink:0;color:${c.accent};font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;`;
-        const metaTextStyle = `flex:1;color:#4B5563;font-size:${parseInt(s.fontSize) - 1}px;`;
-        // slogan 居中 + 主题色 + 斜体
-        const sloganStyle = `margin:14px 0 6px 0;text-align:center;font-style:italic;color:${c.accent};font-size:${s.fontSize};font-weight:500;letter-spacing:0.5px;`;
-        const dividerStyle = `height:1px;background:${c.accentBorder};margin:12px 0 8px 0;`;
-        // 免责声明：最小字号 + 浅灰 + 主题色竖线
-        const disclaimerStyle = `display:flex;align-items:flex-start;gap:8px;margin:3px 0;font-size:11px;color:#9CA3AF;line-height:1.6;`;
-        const disclaimerMarkStyle = `flex-shrink:0;color:${c.accent};font-size:10px;line-height:1.6;`;
-        let html = `<div style="${cardStyle}">`;
-        if (data.name || data.title) {
-            html += `<div style="${nameRowStyle}">`;
-            if (data.name) html += `<span style="${nameStyle}">${data.name}</span>`;
-            if (data.title) html += `<span style="${titleStyle}">${data.title}</span>`;
-            html += `</div>`;
+        const font = ctx.font;
+        const cardStyle = `margin:${sp.pMargin} 0 8px;padding:32px 22px 26px;background:linear-gradient(135deg,${this.ink} 0%,${this.inkDeep} 100%);border:1px solid ${this.gold};border-radius:16px;box-shadow:0 6px 20px -6px rgba(201,169,97,0.25);text-align:center;font-family:${font};`;
+        // 圆头像：黑底金边 + 金 T
+        const avatarStyle = `display:inline-block;width:56px;height:56px;border-radius:50%;background:${this.ink};border:1.5px solid ${this.gold};margin:0 0 14px;line-height:56px;text-align:center;box-shadow:0 6px 16px -2px rgba(201,169,97,0.3);`;
+        const avatarTextStyle = `font-size:22px;font-weight:800;color:${this.gold};font-family:Georgia,serif;`;
+        // 作者名（浅金）
+        const nameStyle = `font-size:17px;font-weight:800;color:${this.goldLight};margin:0 0 8px;letter-spacing:1.5px;`;
+        // 一句话简介（金色斜体，按 UI）
+        const titleStyle = `font-size:13px;color:${this.gold};margin:0 0 16px;letter-spacing:1px;font-style:italic;`;
+        // 三点分隔（金色双圆点 + 灰线）
+        const decoStyle = `display:flex;align-items:center;justify-content:center;margin:0 0 16px;`;
+        const decoDotStyle = `display:inline-block;width:6px;height:6px;border-radius:50%;background:${this.gold};margin:0 6px;`;
+        const decoLineStyle = `height:1.5px;width:28px;background:${this.inkBorder};`;
+        // 关注行
+        const focusStyle = `font-size:13px;color:${this.textColor};margin:0 0 6px;line-height:1.8;`;
+        const focusLabelStyle = `color:${this.gold};font-weight:700;`;
+        // 产出行
+        const outputStyle = `font-size:13px;color:${this.textColor};margin:0 0 16px;line-height:1.8;`;
+        const outputLabelStyle = `color:${this.gold};font-weight:700;`;
+        // 互动文案（斜体，按 UI）
+        const sloganStyle = `font-size:12px;color:${this.metaColor};margin:0 0 4px;line-height:1.8;font-style:italic;font-weight:500;`;
+        // 免责声明
+        const disclaimerStyle = `font-size:11px;color:#7A7A7D;margin:0;line-height:1.7;opacity:0.75;`;
+
+        let html = `<section style="${cardStyle}">`;
+        html += `<section style="${avatarStyle}"><span style="${avatarTextStyle}"><span leaf="">${(data.name || 'T').charAt(0).toUpperCase()}</span></span></section>`;
+        if (data.name) {
+            html += `<p style="${nameStyle}"><span leaf="">${data.name}</span></p>`;
         }
+        if (data.title) {
+            html += `<p style="${titleStyle}"><span leaf="">${data.title}</span></p>`;
+        }
+        html += `<section style="${decoStyle}"><span style="${decoDotStyle}"><span leaf=""><br></span></span><span style="${decoLineStyle}"><span leaf=""><br></span></span><span style="${decoDotStyle}"><span leaf=""><br></span></span></section>`;
         if (data.focus) {
-            html += `<div style="${metaRowStyle}"><span style="${labelStyle}">FOCUS</span><span style="${metaTextStyle}">${data.focus}</span></div>`;
+            html += `<p style="${focusStyle}"><span style="${focusLabelStyle}"><span leaf="">关注</span></span><span leaf=""> ｜ ${data.focus}</span></p>`;
         }
         if (data.output) {
-            html += `<div style="${metaRowStyle}"><span style="${labelStyle}">OUTPUT</span><span style="${metaTextStyle}">${data.output}</span></div>`;
+            html += `<p style="${outputStyle}"><span style="${outputLabelStyle}"><span leaf="">产出</span></span><span leaf=""> ｜ ${data.output}</span></p>`;
         }
         if (data.slogan) {
-            html += `<div style="${sloganStyle}">${data.slogan}</div>`;
+            html += `<p style="${sloganStyle}"><span leaf="">${data.slogan}</span></p>`;
         }
         if (data.disclaimer1 || data.disclaimer2) {
-            html += `<div style="${dividerStyle}"></div>`;
+            const disclaimers = [data.disclaimer1, data.disclaimer2].filter(Boolean).join(' · ');
+            html += `<p style="${disclaimerStyle}"><span leaf="">${disclaimers}</span></p>`;
         }
-        if (data.disclaimer1) {
-            html += `<div style="${disclaimerStyle}"><span style="${disclaimerMarkStyle}">|</span><span>${data.disclaimer1}</span></div>`;
-        }
-        if (data.disclaimer2) {
-            html += `<div style="${disclaimerStyle}"><span style="${disclaimerMarkStyle}">|</span><span>${data.disclaimer2}</span></div>`;
-        }
-        html += '</div>';
+        html += '</section>';
         return html;
     }
 };
