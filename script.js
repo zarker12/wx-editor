@@ -1421,23 +1421,24 @@ function handleFileUpload(e) {
 
 // ===== 智能排版 =====
 function smartFormat() {
-    // ⚠ 不能用 editor.innerText —— 它会丢弃 <img> 的 src（data URI）
-    // 改为从 innerHTML 提取：保留图片语法 ![alt](src) 和文本
     const html = editor.innerHTML;
     if (!html.trim()) { showToast('请先输入内容'); return; }
 
-    // 将 <img alt="x" src="y"> 转为 Markdown 图片语法，保留 data URI
-    let text = html
-        .replace(/<img[^>]*alt="([^"]*)"[^>]*src="([^"]*)"[^>]*>/gi, '![[$1]]($2)')
-        .replace(/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*>/gi, '![[$2]]($1)')
-        .replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, '![]($1)');
+    let text = html;
+    // 将 <img> 转为 Markdown 图片语法（兼容各种属性顺序和单双引号）
+    text = text.replace(/<img[^>]*?src=(["'])(.*?)\1[^>]*?>/gi, (match, quote, src) => {
+        // 提取 alt 属性
+        const altMatch = match.match(/alt=(["'])(.*?)\1/i);
+        const alt = altMatch ? altMatch[2] : '';
+        return `![${alt}](${src})`;
+    });
     // 移除其他 HTML 标签，只留文本
     text = text.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n\n').replace(/<\/div>/gi, '\n');
     text = text.replace(/<[^>]+>/g, '');
     // 解码 HTML 实体
     text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
-    // 还原我们用的特殊图片占位符
-    text = text.replace(/!\[\[([^\]]*)\]\]/g, '![$1]');
+    // 修复编码问题：替换全角空格和其他不可见字符
+    text = text.replace(/\u3000/g, ' ').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
 
     if (!text.trim()) { showToast('请先输入内容'); return; }
 
@@ -1577,6 +1578,15 @@ function smartFormatText(text) {
                 result.push(paraBuffer.join(''));
                 paraBuffer = [];
             }
+            result.push('');
+            continue;
+        }
+
+        // === Markdown 图片语法处理（保留图片，不参与智能识别）===
+        const imgMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+        if (imgMatch) {
+            flushAll();
+            result.push(trimmed);
             result.push('');
             continue;
         }
@@ -2588,7 +2598,7 @@ if (autoFormatBtn) {
             return;
         }
         const editor = document.getElementById('editor');
-        if (!editor || !editor.innerText.trim()) {
+        if (!editor || !editor.innerHTML.trim()) {
             showToast('编辑框为空，请先输入文章');
             return;
         }
@@ -2597,17 +2607,29 @@ if (autoFormatBtn) {
         if (window.workflowState && window.workflowState.article) {
             articleText = window.workflowState.article;
         } else {
-            // 从 innerHTML 提取 markdown 文本（保留图片语法）
+            // 从 innerHTML 提取 markdown 文本（保留图片语法，兼容各种属性顺序和单双引号）
             const html = editor.innerHTML;
             articleText = html
-                .replace(/<img[^>]*alt="([^"]*)"[^>]*src="([^"]*)"[^>]*>/gi, '![$1]($2)')
-                .replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, '![]($1)')
+                .replace(/<img[^>]*?src=(["'])(.*?)\1[^>]*?>/gi, (match, quote, src) => {
+                    const altMatch = match.match(/alt=(["'])(.*?)\1/i);
+                    const alt = altMatch ? altMatch[2] : '';
+                    return `![${alt}](${src})`;
+                })
                 .replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n\n').replace(/<\/div>/gi, '\n')
                 .replace(/<[^>]+>/g, '')
-                .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+                .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+                .replace(/\u3000/g, ' ').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
         }
-        if (!articleText || articleText.length < 100) {
-            showToast('文章内容过短，无需排版');
+        // 检查内容是否足够（至少有文字或图片）
+        const hasText = articleText.trim().length > 0;
+        const hasImages = html.includes('<img');
+        if (!hasText && !hasImages) {
+            showToast('编辑框为空，请先输入文章');
+            return;
+        }
+        // 纯图片内容不需要排版
+        if (!hasText && hasImages) {
+            showToast('仅图片内容，无需排版');
             return;
         }
 
