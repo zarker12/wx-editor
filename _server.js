@@ -59,7 +59,7 @@ const server = http.createServer((req, res) => {
 });
 
 (async () => {
-    const port = await findAvailablePort(18080, 20);
+    const port = await findAvailablePort(18090, 20);
     server.listen(port, '0.0.0.0', () => {
         console.log(`Server running at http://localhost:${port}/`);
     });
