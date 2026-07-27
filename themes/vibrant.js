@@ -4,16 +4,27 @@ window.styleThemes = window.styleThemes || {};
 // 注：按用户要求 canvasBg 改为 #FFFFFF（与极简白一致），主题色只影响其他元素
 window.styleThemes.vibrant = {
     name: '活力橙',
+    defaultColor: 'orange',
+    defaultFont: 'sans',
     canvasBg: '#FFFFFF',
     textColor: '#4A3829',
     metaColor: '#E85D04',
     orange: '#FF6B35',
-    orangeLight: '#FF8C42',
-    orangeDeep: '#E85D04',
-    orangeSofter: '#9D2C00',
+    orangeLight: '#FFB088',
+    orangeDeep: '#9D2C00',
     orangeSoft: '#FFF1E6',
     orangeBorder: '#FFD8B8',
-    orangeGradient: 'linear-gradient(135deg,#FF6B35 0%,#FF8C42 100%)',
+    orangeGradient: 'linear-gradient(135deg,#FF6B35 0%,#FFB088 100%)',
+
+    defaultIntro: {
+        name: '作者名',
+        title: '一句话简介，如：斜杠青年 · 创业玩家',
+        focus: '创业成长 ｜ 效率提升 ｜ 生活方式',
+        output: '成长干货 ＋ 效率工具 ＋ 生活分享',
+        slogan: '人生就是一场冒险，永远年轻，永远热泪盈眶。关注我，一起野蛮生长',
+        disclaimer1: '经验分享，个人观点',
+        disclaimer2: '请结合自身情况，理性参考'
+    },
 
     bodyStyle(c, s, sp, t, font) {
         return `font-family:${font};font-weight:${getFontWeight()};font-size:${s.fontSize};line-height:${sp.lineHeight};color:${this.textColor};background-color:${this.canvasBg};padding:20px 16px 40px;letter-spacing:${t.letterSpacing};word-break:break-word;`;
@@ -22,19 +33,21 @@ window.styleThemes.vibrant = {
         return `margin:0 0 ${sp.pMargin};font-size:15px;line-height:${sp.lineHeight};text-align:justify;color:${this.textColor};`;
     },
     h1Style(c, s, sp, t) {
-        // 主题色渐变标题居中（按 UI）
         return `font-size:${s.h1Size};font-weight:800;margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom};line-height:1.4;letter-spacing:0.5px;text-align:center;background:${c.gradient};-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;`;
     },
     h2Style(c, s, sp, t) {
-        // 橙色药丸 + 左竖条 + 深字（按 UI）
-        return `margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom};padding:14px 18px;line-height:1.4;font-size:${s.h2Size};font-weight:800;color:${c.accentDark};background:${c.accentSoft};border-left:4px solid ${c.accent};border-radius:0 12px 12px 0;letter-spacing:0.5px;`;
+        return `margin:36px 0 18px;padding:14px 18px;background:${c.accentSoft};border-left:4px solid ${c.accent};border-radius:0 12px 12px 0;`;
     },
     h2Decor(c) {
-        // 标题前的橙色药丸编号 + SECTION 标签（按 UI）
-        return `<section style="display:flex;align-items:center;margin-bottom:6px;"><span style="display:inline-block;background:${c.accent};color:#FFFFFF;font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px;margin-right:10px;letter-spacing:1px;"><span leaf="">01</span></span><span style="font-size:11px;color:${c.accentDark};letter-spacing:2px;font-weight:600;"><span leaf="">SECTION</span></span></section>`;
+        return `<section style="display:flex;align-items:center;margin-bottom:6px;"><span style="${this.h2NumberStyle(c)}"><span leaf="">01</span></span><span style="font-size:11px;color:#E85D04;letter-spacing:2px;font-weight:600;"><span leaf="">SECTION</span></span></section>`;
+    },
+    h2NumberStyle(c) {
+        return `display:inline-block;background:${c.accent};color:#FFFFFF;font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px;margin-right:10px;letter-spacing:1px;`;
+    },
+    h2TitleStyle(c, s, sp, t) {
+        return `font-size:19px;font-weight:800;color:${c.accentDark};line-height:1.4;letter-spacing:0.5px;margin:0;`;
     },
     blockquoteStyle(c) {
-        // 暖橙底 + 左竖条 + 引号装饰（按 UI）
         return `margin:0 0 24px;padding:18px 22px;border-left:4px solid ${c.accent};background:${c.accentSoft};border-radius:0 14px 14px 0;font-size:15px;line-height:1.9;color:${this.textColor};`;
     },
     ulStyle(c) { return `margin:0 0 24px;padding:18px 20px;background:#FFFFFF;border-radius:14px;box-shadow:0 4px 14px -4px rgba(255,107,53,0.12);`; },
@@ -43,7 +56,6 @@ window.styleThemes.vibrant = {
         return `display:flex;align-items:flex-start;margin-bottom:12px;`;
     },
     liIcon(c) {
-        // 橙色圆角方块 + 渐变背景（按 UI）
         return `<span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${c.gradient};margin:8px 12px 0 0;flex-shrink:0;"><span leaf=""><br></span></span>`;
     },
     olIcon(c, idx) {
@@ -56,15 +68,12 @@ window.styleThemes.vibrant = {
         return `text-align:center;margin:32px 0;`;
     },
     hrDecor(c) {
-        // 橙色渐变波浪感分隔（按 UI）
         return `<section style="display:flex;align-items:center;justify-content:center;"><span style="height:2px;width:40px;background:linear-gradient(90deg,transparent,${c.accentBorder});margin-right:10px;"><span leaf=""><br></span></span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c.accent};margin:0 3px;"><span leaf=""><br></span></span><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${c.accentLight};margin:0 3px;"><span leaf=""><br></span></span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c.accent};margin:0 3px;"><span leaf=""><br></span></span><span style="height:2px;width:40px;background:linear-gradient(90deg,${c.accentBorder},transparent);margin-left:10px;"><span leaf=""><br></span></span></section>`;
     },
     codeStyle(c) {
-        // 行内代码：暖白底 + 主题色深字 + 边框（按 UI）
         return `background:${c.accentSoft};color:${c.accentDark};padding:2px 7px;border-radius:5px;font-family:${fontFamilies.mono};font-size:14px;border:1px solid ${c.accentBorder};`;
     },
     preStyle(c) {
-        // 暖白底 + 橙色左竖条（按 UI）
         return `margin:0 0 22px;border-radius:10px;overflow:hidden;background:#FFFFFF;border:1px solid ${c.accentBorder};box-shadow:0 4px 12px -4px rgba(255,107,53,0.1);`;
     },
     preHeaderCodeStyle(c) {
@@ -80,26 +89,21 @@ window.styleThemes.vibrant = {
         return `text-align:center;font-size:11px;color:${c.accentDark};margin:8px 0 0 0;padding:0;letter-spacing:1px;`;
     },
     aStyle(c) {
-        // 链接：主题色 + 主题色下划线（按 UI）
         return `color:${c.accent};font-weight:600;border-bottom:1.5px solid ${c.accent};padding-bottom:1px;`;
     },
     strongStyle(c) {
-        // 加粗：主题色深字（按 UI）
         return `color:${c.accentDark};font-weight:600;`;
     },
     emStyle(c) {
-        // 斜体：主题色（按 UI）
         return `color:${c.accent};font-style:italic;`;
     },
     metaLineStyle(c) {
         return `font-size:12px;color:${c.accentDark};text-align:center;margin:0 0 24px 0;letter-spacing:1px;`;
     },
-    // 正文关键词下划线：主题色浅色下划线 + 主题色深字（按 UI）
     keywordStyle(c) {
         return `border-bottom:2px solid ${c.accentLight};font-weight:600;color:${c.accentDark};`;
     },
     sectionTagStyle(c) {
-        // 主题色渐变药丸标签（按 UI）
         return `display:inline-block;background:${c.gradient};color:#FFFFFF;font-size:11px;font-weight:700;padding:3px 12px;border-radius:10px;margin-right:8px;letter-spacing:1px;`;
     },
     h3Style(c, s, sp, t) {
@@ -111,42 +115,36 @@ window.styleThemes.vibrant = {
     imageWrapperStyle(c) {
         return `background:#FFFFFF;border-radius:14px;padding:6px;border:1px solid ${c.accentBorder};box-shadow:0 6px 18px -4px rgba(255,107,53,0.15);margin-bottom:8px;`;
     },
+    imageStyle(c) {
+        return `max-width:100%;height:auto;display:block;border-radius:10px;`;
+    },
     imageCaptionTextStyle(c) {
-        return `font-size:12px;color:${c.accentDark};text-align:center;margin:0 0 24px 0;`;
+        return `font-size:12px;color:#E85D04;text-align:center;margin:0 0 24px 0;`;
     },
     endDecorStyle(c) {
-        // END 橙色暖意收尾（按 UI）
         return `<section style="display:flex;align-items:center;justify-content:center;"><span style="height:2px;width:48px;background:linear-gradient(90deg,transparent,${c.accent});margin-right:16px;"><span leaf=""><br></span></span><span style="font-size:11px;color:${c.accentDark};letter-spacing:4px;font-weight:700;"><span leaf="">END</span></span><span style="height:2px;width:48px;background:linear-gradient(90deg,${c.accent},transparent);margin-left:16px;"><span leaf=""><br></span></span></section>`;
     },
-    // 尾部名片（活力橙卡片）—— 严格按 UI 设计
     introCardHTML(data, ctx) {
         const sp = ctx.sp, s = ctx.s, c = ctx.c;
         const font = ctx.font;
-        // 卡片背景用主题色浅色渐变（按 UI 设计）
-        const cardStyle = `margin:${sp.pMargin} 0 8px;padding:32px 22px 26px;background:linear-gradient(135deg,${c.accentSoft} 0%,${c.accentBorder} 100%);border-radius:16px;box-shadow:0 6px 20px -6px rgba(255,107,53,0.2);text-align:center;font-family:${font};`;
-        // 圆头像：主题色渐变背景 + 白 T（按 UI）
+        const cardStyle = `margin:${sp.pMargin} 0 8px;padding:32px 22px 26px;background:#FFFFFF;border:2px solid transparent;border-radius:16px;box-shadow:0 6px 20px -6px rgba(255,107,53,0.2);text-align:center;font-family:${font};position:relative;`;
+        const cardBorderStyle = `position:absolute;inset:0;border-radius:16px;padding:2px;background:${c.gradient};-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;`;
         const avatarStyle = `display:inline-block;width:56px;height:56px;border-radius:50%;background:${c.gradient};margin:0 0 14px;line-height:56px;text-align:center;box-shadow:0 6px 16px -2px rgba(255,107,53,0.4);`;
         const avatarTextStyle = `font-size:22px;font-weight:800;color:#FFFFFF;font-family:Georgia,serif;`;
-        // 作者名（主题色深字）
         const nameStyle = `font-size:17px;font-weight:800;color:${c.accentDark};margin:0 0 8px;letter-spacing:1px;`;
-        // 一句话简介（主题色）
-        const titleStyle = `font-size:13px;color:${c.accentDark};margin:0 0 16px;letter-spacing:0.5px;font-weight:500;`;
-        // 三点分隔（主题色双圆点 + 浅色线）
+        const titleStyle = `font-size:13px;color:#E85D04;margin:0 0 16px;letter-spacing:0.5px;`;
         const decoStyle = `display:flex;align-items:center;justify-content:center;margin:0 0 16px;`;
         const decoDotStyle = `display:inline-block;width:6px;height:6px;border-radius:50%;background:${c.accent};margin:0 6px;`;
         const decoLineStyle = `height:1.5px;width:28px;background:${c.accentBorder};`;
-        // 关注行
         const focusStyle = `font-size:13px;color:${this.textColor};margin:0 0 6px;line-height:1.8;`;
-        const focusLabelStyle = `color:${c.accentDark};font-weight:700;`;
-        // 产出行
+        const focusLabelStyle = `color:${c.accent};font-weight:700;`;
         const outputStyle = `font-size:13px;color:${this.textColor};margin:0 0 16px;line-height:1.8;`;
-        const outputLabelStyle = `color:${c.accentDark};font-weight:700;`;
-        // 互动文案
+        const outputLabelStyle = `color:${c.accent};font-weight:700;`;
         const sloganStyle = `font-size:12px;color:${c.accentDark};margin:0 0 4px;line-height:1.8;font-weight:500;`;
-        // 免责声明
         const disclaimerStyle = `font-size:11px;color:${c.accentLight};margin:0;line-height:1.7;opacity:0.75;`;
 
         let html = `<section style="${cardStyle}">`;
+        html += `<section style="${cardBorderStyle}"><span leaf=""><br></span></section>`;
         html += `<section style="${avatarStyle}"><span style="${avatarTextStyle}"><span leaf="">${(data.name || 'T').charAt(0).toUpperCase()}</span></span></section>`;
         if (data.name) {
             html += `<p style="${nameStyle}"><span leaf="">${data.name}</span></p>`;

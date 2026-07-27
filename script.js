@@ -383,6 +383,14 @@ function renderStyledHTML(editorHTML) {
                 let style = theme.h2Style(c, s, sp, t);
                 style = addBaseTextStyles(style);
                 const h2Decor = theme.h2Decor ? theme.h2Decor(c) : '';
+                const hasH2TitleStyle = typeof theme.h2TitleStyle === 'function';
+
+                // 卡片式 h2：如果主题有 h2TitleStyle 方法，使用外层容器 + 内部标题结构
+                if (hasH2TitleStyle) {
+                    let titleStyle = theme.h2TitleStyle(c, s, sp, t);
+                    titleStyle = addBaseTextStyles(titleStyle);
+                    return `<div style="margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0;"><div style="${style}">${h2Decor}<h2 style="${titleStyle}">${children}</h2></div></div>`;
+                }
 
                 // 大数字居中样式：检测 h2 内容是否以数字开头（如 "01 章节标题"）
                 // 若匹配，将开头的数字提取为大号居中粗体显示，下方显示章节标题
@@ -523,8 +531,14 @@ function renderStyledHTML(editorHTML) {
             case 'img': {
                 const src = node.getAttribute('src') || '';
                 const alt = node.getAttribute('alt') || '';
-                const imgStyle = 'max-width:100%;height:auto;border-radius:8px;margin:16px 0;display:block;';
-                return `<img src="${src}" alt="${alt}" style="${imgStyle}">`;
+                const imgStyle = theme.imageStyle
+                    ? theme.imageStyle(c)
+                    : 'max-width:100%;height:auto;border-radius:8px;display:block;';
+                const wrapperStyle = theme.imageWrapperStyle
+                    ? theme.imageWrapperStyle(c)
+                    : 'margin:16px 0;';
+                const innerWrapperStyle = 'margin:0;overflow:hidden;';
+                return `<section style="${wrapperStyle}margin-bottom:8px;"><section style="${innerWrapperStyle}"><img src="${src}" alt="${alt}" style="${imgStyle}"></section></section>`;
             }
             case 'br':
                 return '<br>';
@@ -838,6 +852,14 @@ function debouncedUpdatePreview() {
 }
 
 // ===== 导出 =====
+function compressForWechat(html) {
+    let result = html;
+    result = result.replace(/>\s+</g, '><');
+    result = result.replace(/\s+/g, (match) => match.includes('\n') ? ' ' : match);
+    result = result.replace(/\s{2,}/g, ' ');
+    return result.trim();
+}
+
 function generateExportHTML() {
     const c = getColorConfig();
     const s = getSizeConfig();
@@ -852,11 +874,9 @@ function generateExportHTML() {
     const styledContent = renderStyledHTML(normalizedContent);
     const introHTML = getIntroCardHTML();
 
-    // 关键修复：导出 HTML 不留缩进和换行（公众号粘贴时会保留空白文本节点，
-    // 转成 <br> 或空格，导致间距异常变大）。所有内容紧贴拼接。
     const fullHTML = `<section id="articleContent" style="max-width:677px;margin:0 auto;background:${theme.canvasBg};word-break:break-word;"><section style="${bodyStyle}">${styledContent}${introHTML}</section></section>`;
 
-    return fullHTML;
+    return compressForWechat(fullHTML);
 }
 
 function generateRawHTML() {
@@ -1056,9 +1076,40 @@ function syncEditorContentStyles() {
     styleTag.textContent = cssText;
 }
 
+function fillIntroDefaults() {
+    const theme = getStyleTheme();
+    if (!theme.defaultIntro) return;
+
+    const defaults = theme.defaultIntro;
+    const fields = ['name', 'title', 'focus', 'output', 'slogan', 'disclaimer1', 'disclaimer2'];
+
+    fields.forEach(field => {
+        const el = document.getElementById('intro' + field.charAt(0).toUpperCase() + field.slice(1));
+        if (el && defaults[field] !== undefined) {
+            el.value = defaults[field];
+        }
+    });
+}
+
 function setStyle(style) {
     currentStyle = style;
     styleButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.style === style));
+
+    const theme = getStyleTheme();
+
+    if (theme.defaultColor) {
+        document.body.classList.remove(`theme-${currentColor}`);
+        currentColor = theme.defaultColor;
+        document.body.classList.add(`theme-${currentColor}`);
+        colorButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.color === currentColor));
+    }
+
+    if (theme.defaultFont) {
+        currentFont = theme.defaultFont;
+        fontButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.font === currentFont));
+    }
+
+    fillIntroDefaults();
     syncEditorToTheme();
     updatePreview();
 }
@@ -2726,6 +2777,7 @@ document.addEventListener('keydown', e => {
 
 document.body.classList.add(`theme-${currentColor}`);
 setFont(currentFont);
+fillIntroDefaults();
 
 // 示例内容
 editor.innerHTML = `<h1>公众号文章标题</h1>

@@ -3,6 +3,17 @@ window.styleThemes = window.styleThemes || {};
 // 02 黑金奢：金色点缀 · 居中斜体引用 · 深色底 · 菱形符号
 window.styleThemes.luxury = {
     name: '黑金奢',
+    defaultColor: 'brown',
+    defaultFont: 'sans',
+    defaultIntro: {
+        name: '作者名',
+        title: '一句话简介，如：商业观察者 · 财经博主',
+        focus: '商业洞察 ｜ 财富增长 ｜ 品质生活',
+        output: '深度分析 ＋ 案例拆解 ＋ 趋势解读',
+        slogan: '认知决定高度，格局决定结局。关注我，一起看见更大的世界',
+        disclaimer1: '个人观点，仅供参考',
+        disclaimer2: '投资有风险，入市需谨慎'
+    },
     canvasBg: '#0E0E10',
     textColor: '#E5E5E5',
     metaColor: '#9A9A9D',

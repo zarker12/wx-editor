@@ -1,8 +1,10 @@
 window.styleThemes = window.styleThemes || {};
 
-// 04 杂志风：宋体大字 · 上下线引用 · 编辑美学 · 黑白衬线
+// 04 杂志风：宋体大字 · 上下线引用 · 编辑美学 · 深红点缀
 window.styleThemes.magazine = {
     name: '杂志风',
+    defaultColor: 'brown',
+    defaultFont: 'serif',
     canvasBg: '#FDFCFA',
     textColor: '#3D3D3D',
     metaColor: '#999999',
@@ -14,6 +16,18 @@ window.styleThemes.magazine = {
     crimson: '#8B0000',
     // 罗马数字列表符号
     romanNumerals: ['Ⅰ', 'Ⅱ', 'Ⅲ', 'Ⅳ', 'Ⅴ', 'Ⅵ', 'Ⅶ', 'Ⅷ', 'Ⅸ', 'Ⅹ', 'Ⅺ', 'Ⅻ'],
+    // 英文数字对应
+    englishNumbers: ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN', 'ELEVEN', 'TWELVE'],
+
+    defaultIntro: {
+        name: '作者名',
+        title: '一句话简介，如：资深编辑 · 文字工作者',
+        focus: '深度观察 ｜ 人物访谈 ｜ 生活美学',
+        output: '深度长文 ＋ 专访报道 ＋ 散文随笔',
+        slogan: '每一篇文字都是一次与世界的对话。关注我，一起看见更多可能',
+        disclaimer1: '个人观点，文责自负',
+        disclaimer2: '转载请注明出处，侵权必究'
+    },
 
     bodyStyle(c, s, sp, t, font) {
         return `font-family:${font};font-weight:${getFontWeight()};font-size:${s.fontSize};line-height:${sp.lineHeight};color:${this.textColor};background-color:${this.canvasBg};padding:20px 16px 40px;letter-spacing:${t.letterSpacing};word-break:break-word;`;
@@ -22,29 +36,35 @@ window.styleThemes.magazine = {
         return `margin:0 0 ${sp.pMargin};font-size:15px;line-height:${sp.lineHeight};text-align:justify;color:${this.textColor};padding:0 4px;`;
     },
     h1Style(c, s, sp, t) {
-        // 衬线大字 + 居中（按 UI）
-        return `font-family:'Noto Serif SC',Georgia,'Times New Roman',serif;font-size:${s.h1Size};font-weight:900;color:${this.ink};margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom};line-height:1.35;letter-spacing:1px;text-align:center;`;
+        return `margin:44px 0 24px;padding:20px 0;text-align:center;border-top:1px solid ${this.ink};border-bottom:1px solid ${this.ink};`;
+    },
+    h1NumberStyle(c, s, sp, t) {
+        return `font-family:'Noto Serif SC',Georgia,'Times New Roman',serif;font-size:36px;font-weight:900;color:${this.inkSofter};line-height:1;letter-spacing:-1px;margin-bottom:8px;`;
+    },
+    h1LabelStyle(c, s, sp, t) {
+        return `font-family:'Noto Serif SC',Georgia,'Times New Roman',serif;font-size:10px;color:${this.crimson};letter-spacing:4px;font-weight:700;font-style:italic;margin-bottom:12px;`;
+    },
+    h1TitleStyle(c, s, sp, t) {
+        return `font-family:'Noto Serif SC',Georgia,'Times New Roman',serif;font-size:21px;font-weight:900;color:${this.ink};line-height:1.4;letter-spacing:1px;margin:0;`;
     },
     h2Style(c, s, sp, t) {
-        // 章节标题：上下双黑线 + 居中衬线大字（按 UI）
-        return `margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom};padding:16px 0;text-align:center;font-family:'Noto Serif SC',Georgia,'Times New Roman',serif;font-size:${s.h2Size};font-weight:900;color:${this.ink};line-height:1.4;letter-spacing:1px;border-top:1px solid ${this.ink};border-bottom:1px solid ${this.ink};`;
+        return `margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom};padding:14px 0;text-align:center;`;
+    },
+    h2NumberStyle(c, s, sp, t) {
+        return `font-family:'Noto Serif SC',Georgia,'Times New Roman',serif;font-size:18px;font-weight:900;color:${this.crimson};line-height:1;margin-bottom:8px;`;
     },
     h2Decor(c) {
-        // 章节标题前的小标签：CHAPTER ONE（按 UI 设计的简化版）
-        return '';
+        return `<section style="height:1px;background:${this.ink};margin-top:14px;"><span leaf=""><br></span></section>`;
     },
     blockquoteStyle(c) {
-        // 上下双线 + 居中衬线大字（按 UI）
         return `margin:32px 0;padding:32px 20px;border-top:2px solid ${this.ink};border-bottom:2px solid ${this.ink};text-align:center;background:#FFFFFF;font-family:'Noto Serif SC',Georgia,'Times New Roman',serif;font-size:16px;font-weight:700;color:${this.ink};line-height:1.85;letter-spacing:1px;`;
     },
     ulStyle(c) { return `margin:0 4px 24px;`; },
     olStyle(c) { return `margin:0 4px 24px;`; },
     liStyle(c) {
-        // 衬线编号 + 下划线分隔（按 UI）
         return `display:flex;align-items:baseline;padding:14px 0;border-bottom:1px solid ${this.inkBorder};`;
     },
     liIcon(c) {
-        // 衬线罗马数字编号（按 UI）
         return '';
     },
     olIcon(c, idx) {
@@ -57,15 +77,12 @@ window.styleThemes.magazine = {
         return `margin:32px 4px;`;
     },
     hrDecor(c) {
-        // 双线分隔（按 UI）
         return `<section style="height:1px;background:${this.ink};margin-bottom:3px;"><span leaf=""><br></span></section><section style="height:1px;background:${this.ink};"><span leaf=""><br></span></section>`;
     },
     codeStyle(c) {
-        // 行内代码：浅灰底黑字 + 边框（按 UI）
         return `background:#F5F5F5;color:${this.ink};padding:1px 6px;border:1px solid ${this.inkBorder};font-family:${fontFamilies.mono};font-size:14px;`;
     },
     preStyle(c) {
-        // 浅色衬线边代码块（按 UI）
         return `margin:0 4px 22px;background:#FFFFFF;border:1px solid ${this.ink};`;
     },
     preHeaderCodeStyle(c) {
@@ -81,26 +98,21 @@ window.styleThemes.magazine = {
         return `text-align:center;font-size:12px;color:${this.crimson};margin:8px 0 0 0;padding:0;font-family:'Noto Serif SC',Georgia,serif;font-style:italic;letter-spacing:0.5px;`;
     },
     aStyle(c) {
-        // 链接：深红 + 深红下划线（按 UI）
         return `color:${this.crimson};font-weight:600;border-bottom:1px solid ${this.crimson};`;
     },
     strongStyle(c) {
-        // 加粗：深黑（按 UI）
         return `color:${this.ink};font-weight:600;`;
     },
     emStyle(c) {
-        // 斜体：深红（按 UI）
         return `color:${this.crimson};font-style:italic;`;
     },
     metaLineStyle(c) {
         return `font-size:12px;color:${this.metaColor};text-align:center;margin:0 0 24px 0;font-family:'Noto Serif SC',Georgia,serif;font-style:italic;letter-spacing:0.5px;`;
     },
-    // 正文关键词下划线：深红色衬线（按 UI）
     keywordStyle(c) {
         return `border-bottom:2px solid ${this.crimson};font-weight:600;color:${this.ink};`;
     },
     sectionTagStyle(c) {
-        // 黑底白字衬线标签（按 UI）
         return `display:inline-block;background:${this.ink};color:#FFFFFF;font-family:'Noto Serif SC',Georgia,serif;font-size:11px;font-weight:700;padding:2px 12px;border-radius:0;margin-right:8px;letter-spacing:2px;`;
     },
     h3Style(c, s, sp, t) {
@@ -112,46 +124,36 @@ window.styleThemes.magazine = {
     imageWrapperStyle(c) {
         return `background:#FFFFFF;border:1px solid ${this.ink};padding:4px;margin:0 4px 8px;`;
     },
+    imageStyle(c) {
+        return `overflow:hidden;max-width:100%;height:auto;display:block;`;
+    },
     imageCaptionTextStyle(c) {
         return `font-family:'Noto Serif SC',Georgia,serif;font-size:12px;color:${this.crimson};text-align:center;margin:0 4px 24px;font-style:italic;letter-spacing:0.5px;`;
     },
     endDecorStyle(c) {
-        // END 杂志收尾：黑线 + 衬线斜体 END（按 UI）
         return `<section style="display:flex;align-items:center;justify-content:center;"><span style="height:1px;width:60px;background:${this.ink};margin-right:18px;"><span leaf=""><br></span></span><span style="font-family:'Noto Serif SC',Georgia,serif;font-size:12px;color:${this.ink};letter-spacing:6px;font-weight:700;font-style:italic;"><span leaf="">END</span></span><span style="height:1px;width:60px;background:${this.ink};margin-left:18px;"><span leaf=""><br></span></span></section>`;
     },
-    // 尾部名片（杂志风卡片）—— 严格按 UI 设计
     introCardHTML(data, ctx) {
         const sp = ctx.sp, s = ctx.s, c = ctx.c;
         const font = ctx.font;
         const cardStyle = `margin:${sp.pMargin} 0 8px;padding:32px 22px 26px;background:#FFFFFF;border-top:3px solid ${this.ink};border-bottom:1px solid ${this.ink};border-radius:0;text-align:center;font-family:${font};`;
-        // EDITOR 小标签（按 UI）
         const editorLabelStyle = `font-size:10px;color:${this.ink};letter-spacing:6px;margin:0 0 16px;font-weight:700;`;
-        // 圆头像：黑底 + 白色斜体衬线 T（按 UI）
         const avatarStyle = `display:inline-block;width:56px;height:56px;border-radius:50%;background:${this.ink};margin:0 0 14px;line-height:56px;text-align:center;`;
         const avatarTextStyle = `font-family:'Noto Serif SC',Georgia,serif;font-size:22px;font-weight:900;color:#FFFFFF;font-style:italic;`;
-        // 作者名（衬线粗体大字）
         const nameStyle = `font-family:'Noto Serif SC',Georgia,'Times New Roman',serif;font-size:19px;font-weight:900;color:${this.ink};margin:0 0 8px;letter-spacing:1.5px;`;
-        // 一句话简介（深红斜体衬线）
         const titleStyle = `font-size:13px;color:${this.crimson};margin:0 0 16px;letter-spacing:1px;font-style:italic;font-family:'Noto Serif SC',Georgia,serif;`;
-        // 三点分隔（黑色双圆点 + 黑线）
         const decoStyle = `display:flex;align-items:center;justify-content:center;margin:0 0 16px;`;
-        const decoDotStyle = `display:inline-block;width:6px;height:6px;border-radius:50%;background:${this.ink};margin:0 6px;`;
+        const decoDotStyle = `display:inline-block;width:6px;height:6px;border-radius:50%;background:${this.crimson};margin:0 6px;`;
         const decoLineStyle = `height:1.5px;width:28px;background:${this.ink};`;
-        // 关注行
-        const focusStyle = `font-size:13px;color:${this.textColor};margin:0 0 6px;line-height:1.8;`;
+        const focusStyle = `font-size:13px;color:${this.textColor};margin:0 0 6px;line-height:1.8;font-family:'Noto Serif SC',Georgia,serif;`;
         const focusLabelStyle = `color:${this.ink};font-weight:700;`;
-        // 产出行
-        const outputStyle = `font-size:13px;color:${this.textColor};margin:0 0 16px;line-height:1.8;`;
+        const outputStyle = `font-size:13px;color:${this.textColor};margin:0 0 16px;line-height:1.8;font-family:'Noto Serif SC',Georgia,serif;`;
         const outputLabelStyle = `color:${this.ink};font-weight:700;`;
-        // 互动文案（深红斜体衬线）
         const sloganStyle = `font-family:'Noto Serif SC',Georgia,serif;font-size:12px;color:${this.crimson};margin:0 0 4px;line-height:1.8;font-style:italic;font-weight:500;`;
-        // 免责声明
         const disclaimerStyle = `font-size:11px;color:${this.metaColor};margin:0;line-height:1.7;opacity:0.75;`;
 
         let html = `<section style="${cardStyle}">`;
-        // EDITOR 标签
         html += `<p style="${editorLabelStyle}"><span leaf="">EDITOR</span></p>`;
-        // 头像
         html += `<section style="${avatarStyle}"><span style="${avatarTextStyle}"><span leaf="">${(data.name || 'T').charAt(0).toUpperCase()}</span></span></section>`;
         if (data.name) {
             html += `<p style="${nameStyle}"><span leaf="">${data.name}</span></p>`;
