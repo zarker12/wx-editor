@@ -92,39 +92,36 @@ window.styleThemes.magazine = {
     hrDecor(c) {
         return `· · ·`;
     },
-    // 底部名片：米白底 · 上下双主题色线 · 宋体 · § I 罗马分节 · 居中斜体 slogan
+    // 底部名片：米白底 · 上下双线 · 衬线字 · 主题色竖线 name · 英文小标签 FOCUS/OUTPUT
     introCardHTML(data, ctx) {
         const sp = ctx.sp, s = ctx.s, c = ctx.c;
-        const cardStyle = `margin-top:${sp.pMargin};padding:28px 26px;background:${this.canvasBg};border-top:3px double ${c.accent};border-bottom:3px double ${c.accent};font-family:${this.serifFont};font-size:${s.fontSize};line-height:${sp.lineHeight};color:${this.ink};`;
-        // 分节小标签 § I / § II / § III
-        const sectionTag = (roman, label) => `<div style="font-size:11px;color:${c.accent};letter-spacing:3px;margin:14px 0 6px 0;font-style:italic;">§ ${roman} · ${label}</div>`;
-        // name 行：粗体 + 稍大字号 + 紧贴小标签
-        const nameStyle = `font-size:${parseInt(s.fontSize) + 3}px;font-weight:700;color:${this.ink};letter-spacing:2px;`;
-        const titleStyle = `font-size:${parseInt(s.fontSize) - 1}px;color:${this.inkSoft};margin-left:10px;font-style:italic;`;
-        // 关注/产出行：宋体文字 + 紧凑行距
-        const metaRowStyle = `display:block;margin:4px 0;font-size:${parseInt(s.fontSize) - 1}px;color:${this.inkSoft};line-height:1.7;`;
-        const labelStyle = `color:${c.accent};font-weight:600;letter-spacing:1px;`;
-        // slogan 居中 + 主题色 + 斜体 + 上下留白
-        const sloganStyle = `margin:22px 0 8px 0;text-align:center;font-style:italic;color:${this.ink};font-size:${parseInt(s.fontSize) + 2}px;letter-spacing:1px;line-height:1.7;`;
-        const dividerStyle = `border-top:1px solid ${this.lineSoft};margin:18px 0 10px 0;height:0;`;
-        // 免责声明：最小字号 + 浅灰 + § 罗马小标记
-        const disclaimerStyle = `display:flex;align-items:flex-start;gap:8px;margin:3px 0;font-size:11px;color:#6B7280;line-height:1.7;font-style:italic;`;
-        const disclaimerMarkStyle = `flex-shrink:0;color:${c.accent};font-size:10px;letter-spacing:1px;line-height:1.7;opacity:0.7;`;
+        const cardStyle = `margin-top:${sp.pMargin};padding:22px 20px;background:${this.canvasBg};border-top:3px double ${c.accent};border-bottom:3px double ${c.accent};border-left:none;border-right:none;border-radius:0;font-family:'Noto Serif SC', 'Songti SC', serif;font-size:${s.fontSize};line-height:${sp.lineHeight};color:#1F2937;`;
+        // name 行：左侧主题色竖线 + 粗体 + 稍大字号
+        const nameRowStyle = `border-left:3px solid ${c.accent};padding-left:12px;margin-bottom:6px;`;
+        const nameStyle = `font-size:${parseInt(s.fontSize) + 2}px;font-weight:600;color:${c.accent};`;
+        const titleStyle = `font-size:${parseInt(s.fontSize) - 1}px;color:#8A8A8A;margin-left:8px;`;
+        // 关注/产出行：英文小标签 + 字母间距
+        const metaRowStyle = `display:flex;align-items:baseline;gap:8px;margin:4px 0 4px 15px;`;
+        const labelStyle = `flex-shrink:0;color:${c.accent};font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;`;
+        const metaTextStyle = `flex:1;color:#4B5563;font-size:${parseInt(s.fontSize) - 1}px;`;
+        // slogan 居中 + 主题色 + 斜体
+        const sloganStyle = `margin:14px 0 6px 0;text-align:center;font-style:italic;color:${c.accent};font-size:${s.fontSize};font-weight:500;letter-spacing:0.5px;`;
+        const dividerStyle = `height:1px;background:${c.accentBorder};margin:12px 0 8px 0;`;
+        // 免责声明：最小字号 + 浅灰 + 主题色竖线
+        const disclaimerStyle = `display:flex;align-items:flex-start;gap:8px;margin:3px 0;font-size:11px;color:#9CA3AF;line-height:1.6;`;
+        const disclaimerMarkStyle = `flex-shrink:0;color:${c.accent};font-size:10px;line-height:1.6;`;
         let html = `<div style="${cardStyle}">`;
         if (data.name || data.title) {
-            html += sectionTag('I', 'AUTHOR');
-            html += `<div>`;
+            html += `<div style="${nameRowStyle}">`;
             if (data.name) html += `<span style="${nameStyle}">${data.name}</span>`;
             if (data.title) html += `<span style="${titleStyle}">${data.title}</span>`;
             html += `</div>`;
         }
         if (data.focus) {
-            html += sectionTag('II', 'FOCUS');
-            html += `<div style="${metaRowStyle}"><span style="${labelStyle}">— </span>${data.focus}</div>`;
+            html += `<div style="${metaRowStyle}"><span style="${labelStyle}">FOCUS</span><span style="${metaTextStyle}">${data.focus}</span></div>`;
         }
         if (data.output) {
-            html += sectionTag('III', 'OUTPUT');
-            html += `<div style="${metaRowStyle}"><span style="${labelStyle}">— </span>${data.output}</div>`;
+            html += `<div style="${metaRowStyle}"><span style="${labelStyle}">OUTPUT</span><span style="${metaTextStyle}">${data.output}</span></div>`;
         }
         if (data.slogan) {
             html += `<div style="${sloganStyle}">${data.slogan}</div>`;
@@ -133,10 +130,10 @@ window.styleThemes.magazine = {
             html += `<div style="${dividerStyle}"></div>`;
         }
         if (data.disclaimer1) {
-            html += `<div style="${disclaimerStyle}"><span style="${disclaimerMarkStyle}">§</span><span>${data.disclaimer1}</span></div>`;
+            html += `<div style="${disclaimerStyle}"><span style="${disclaimerMarkStyle}">|</span><span>${data.disclaimer1}</span></div>`;
         }
         if (data.disclaimer2) {
-            html += `<div style="${disclaimerStyle}"><span style="${disclaimerMarkStyle}">§</span><span>${data.disclaimer2}</span></div>`;
+            html += `<div style="${disclaimerStyle}"><span style="${disclaimerMarkStyle}">|</span><span>${data.disclaimer2}</span></div>`;
         }
         html += '</div>';
         return html;

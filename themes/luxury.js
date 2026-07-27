@@ -89,28 +89,27 @@ window.styleThemes.luxury = {
     hrDecor(c) {
         return `◆ ◆ ◆`;
     },
-    // 底部名片：深底金字 · 金色菱形◆分隔 · 英文小标签 FOCUS/OUTPUT · 居中斜体 slogan
+    // 底部名片：深底金字 · 主题色竖线 name · 英文小标签 FOCUS/OUTPUT · 极简留白
     introCardHTML(data, ctx) {
         const sp = ctx.sp, s = ctx.s, c = ctx.c;
-        const cardStyle = `margin-top:${sp.pMargin};padding:26px 24px;background:${this.ink};border-radius:8px;border:1px solid ${c.accent};font-family:${ctx.font};font-size:${s.fontSize};line-height:${sp.lineHeight};color:${this.gold};`;
-        // name 行：金色菱形◆ + 粗体 + 稍大字号
-        const nameRowStyle = `display:flex;align-items:baseline;gap:10px;margin-bottom:8px;`;
-        const diamondStyle = `flex-shrink:0;color:${c.accent};font-size:10px;line-height:1;`;
-        const nameStyle = `font-size:${parseInt(s.fontSize) + 2}px;font-weight:600;color:${this.gold};letter-spacing:1px;`;
-        const titleStyle = `font-size:${parseInt(s.fontSize) - 1}px;color:${this.metaColor};margin-left:6px;`;
+        const cardStyle = `margin-top:${sp.pMargin};padding:22px 20px;background:${this.ink};border-radius:8px;border:1px solid ${c.accentBorder};font-family:${ctx.font};font-size:${s.fontSize};line-height:${sp.lineHeight};color:#F5E6C8;`;
+        // name 行：左侧主题色竖线 + 粗体 + 稍大字号
+        const nameRowStyle = `border-left:3px solid ${c.accent};padding-left:12px;margin-bottom:6px;`;
+        const nameStyle = `font-size:${parseInt(s.fontSize) + 2}px;font-weight:600;color:${c.accent};`;
+        const titleStyle = `font-size:${parseInt(s.fontSize) - 1}px;color:#8A8A8A;margin-left:8px;`;
         // 关注/产出行：英文小标签 + 字母间距
-        const metaRowStyle = `display:flex;align-items:baseline;gap:10px;margin:5px 0 5px 20px;`;
-        const labelStyle = `flex-shrink:0;color:${c.accent};font-size:11px;font-weight:500;letter-spacing:2px;text-transform:uppercase;`;
-        const metaTextStyle = `flex:1;color:${this.gold};font-size:${parseInt(s.fontSize) - 1}px;letter-spacing:0.5px;`;
+        const metaRowStyle = `display:flex;align-items:baseline;gap:8px;margin:4px 0 4px 15px;`;
+        const labelStyle = `flex-shrink:0;color:${c.accent};font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;`;
+        const metaTextStyle = `flex:1;color:#4B5563;font-size:${parseInt(s.fontSize) - 1}px;`;
         // slogan 居中 + 主题色 + 斜体
-        const sloganStyle = `margin:18px 0 8px 0;text-align:center;font-style:italic;color:${this.gold};font-size:${parseInt(s.fontSize) + 1}px;letter-spacing:2px;`;
-        const dividerStyle = `text-align:center;color:${c.accent};font-size:9px;letter-spacing:8px;margin:16px 0 10px 0;opacity:0.6;`;
-        // 免责声明：最小字号 + 浅金 + 金色◆
-        const disclaimerStyle = `display:flex;align-items:flex-start;gap:8px;margin:3px 0;font-size:11px;color:${this.metaColor};line-height:1.6;`;
-        const disclaimerMarkStyle = `flex-shrink:0;color:${c.accent};font-size:9px;line-height:1.6;opacity:0.7;`;
+        const sloganStyle = `margin:14px 0 6px 0;text-align:center;font-style:italic;color:${c.accent};font-size:${s.fontSize};font-weight:500;letter-spacing:0.5px;`;
+        const dividerStyle = `height:1px;background:${c.accentBorder};margin:12px 0 8px 0;`;
+        // 免责声明：最小字号 + 浅灰 + 主题色竖线
+        const disclaimerStyle = `display:flex;align-items:flex-start;gap:8px;margin:3px 0;font-size:11px;color:#9CA3AF;line-height:1.6;`;
+        const disclaimerMarkStyle = `flex-shrink:0;color:${c.accent};font-size:10px;line-height:1.6;`;
         let html = `<div style="${cardStyle}">`;
         if (data.name || data.title) {
-            html += `<div style="${nameRowStyle}"><span style="${diamondStyle}">◆</span>`;
+            html += `<div style="${nameRowStyle}">`;
             if (data.name) html += `<span style="${nameStyle}">${data.name}</span>`;
             if (data.title) html += `<span style="${titleStyle}">${data.title}</span>`;
             html += `</div>`;
@@ -125,13 +124,13 @@ window.styleThemes.luxury = {
             html += `<div style="${sloganStyle}">${data.slogan}</div>`;
         }
         if (data.disclaimer1 || data.disclaimer2) {
-            html += `<div style="${dividerStyle}">◆ ◆ ◆</div>`;
+            html += `<div style="${dividerStyle}"></div>`;
         }
         if (data.disclaimer1) {
-            html += `<div style="${disclaimerStyle}"><span style="${disclaimerMarkStyle}">◆</span><span>${data.disclaimer1}</span></div>`;
+            html += `<div style="${disclaimerStyle}"><span style="${disclaimerMarkStyle}">|</span><span>${data.disclaimer1}</span></div>`;
         }
         if (data.disclaimer2) {
-            html += `<div style="${disclaimerStyle}"><span style="${disclaimerMarkStyle}">◆</span><span>${data.disclaimer2}</span></div>`;
+            html += `<div style="${disclaimerStyle}"><span style="${disclaimerMarkStyle}">|</span><span>${data.disclaimer2}</span></div>`;
         }
         html += '</div>';
         return html;

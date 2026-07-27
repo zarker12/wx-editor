@@ -1440,6 +1440,41 @@ function smartFormat() {
     text = text.replace(/!\[\[([^\]]*)\]\]/g, '![$1]');
 
     if (!text.trim()) { showToast('请先输入内容'); return; }
+
+    // === 预检测：判断输入类型，避免粗暴转换丢失格式 ===
+    // 1. 标准 Markdown 文本（含 # 标题、``` 代码块、> 引用、- 列表等）
+    const isMarkdown = /^#{1,6}\s/m.test(text)
+        || /^```/m.test(text)
+        || /^>\s/m.test(text)
+        || /^[-*]\s/m.test(text)
+        || /^\d+\.\s/m.test(text)
+        || /\*\*[^*]+\*\*/.test(text)
+        || /`[^`]+`/.test(text);
+    // 2. HTML 富文本（含 <h1>/<pre>/<blockquote>/<ul> 等结构标签）
+    const isHtmlRich = /<(h[1-6]|pre|blockquote|ul|ol|table|code)\b/i.test(html);
+
+    if (isMarkdown && !isHtmlRich) {
+        // 标准 MD：直接走 marked.js 解析，保留所有格式（标题层级/代码块/引用/列表/表格/加粗斜体）
+        if (!confirm('检测到标准 Markdown 格式，将直接解析为富文本。继续？')) return;
+        const newHtml = markdownToHTML(text);
+        editor.innerHTML = newHtml;
+        updatePreview();
+        showToast('Markdown 已解析为富文本！');
+        return;
+    }
+
+    if (isHtmlRich) {
+        // HTML 富文本：保留结构，只应用主题样式（不转纯文本重新识别）
+        if (!confirm('检测到富文本内容，将应用主题样式排版。继续？')) return;
+        const normalizedContent = normalizeEditorHTML(editor.innerHTML);
+        const styledContent = renderStyledHTML(normalizedContent);
+        editor.innerHTML = styledContent;
+        updatePreview();
+        showToast('富文本已应用主题样式！');
+        return;
+    }
+
+    // 3. 纯文本：走 smartFormatText 重新识别结构（口语化/无格式文本）
     if (/^#\s/.test(text) || /```/.test(text)) {
         if (!confirm('内容可能已经是Markdown格式，确定要重新智能排版吗？')) return;
     }
