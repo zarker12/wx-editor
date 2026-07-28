@@ -357,16 +357,16 @@
                     </div>
                     <div class="import-divider"></div>
                     <div class="import-section">
-                        <button class="smart-btn" id="smartFormatBtn">
+                        <button class="smart-btn" id="smartFormatBtn" data-tooltip="自动排版：识别标题/引用/代码块/列表，本地规则 + AI 增强">
                             <span class="import-icon">✨</span>
-                            <span>智能排版</span>
+                            <span>自动排版</span>
                         </button>
                     </div>
                     <div class="import-divider"></div>
                     <div class="import-section">
-                        <button class="smart-btn" id="gotoImageBtn" data-tooltip="把当前文章带到图片生成 Tab 做精细化配图" style="background:#fff;color:#10B981;border-color:#10B981;">
-                            <span class="import-icon">🎯</span>
-                            <span>精细化配图</span>
+                        <button class="smart-btn" id="gotoImageBtn" data-tooltip="一键配图：AI 理解文章，生成配图自动插入" style="background:#fff;color:#10B981;border-color:#10B981;">
+                            <span class="import-icon">🎨</span>
+                            <span>一键配图</span>
                         </button>
                     </div>
                 </div>
@@ -567,15 +567,6 @@
                         <button class="tool-btn" data-action="redo" data-tooltip="重做 · Ctrl+Y">↷</button>
                     </div>
                     <div class="toolbar-spacer"></div>
-                    <button class="tool-btn-action" id="autoFormatBtn" data-tooltip="自动排版：先本地智能排版，再调用 LLM 识别标题层级/规范引用代码块/修正段落首字符">
-                        自动排版
-                    </button>
-                    <button class="tool-btn-action" id="humanizeBtn" data-tooltip="去除 AI 味：先本地规则清洗，再调用 LLM 深度改写">
-                        去AI味
-                    </button>
-                    <button class="tool-btn-action" id="autoIllustrateBtn" data-tooltip="一键配图：AI 理解文章 → 生成配图 → 自动插入">
-                        一键配图
-                    </button>
                 </div>
                 <div id="editor" class="editor-rich" contenteditable="true" placeholder="在此书写你的文章...
 

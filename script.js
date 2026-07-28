@@ -1813,9 +1813,25 @@ function smartFormatText(text) {
                 break;
 
             case 'list-ul':
-            case 'list-ol':
                 flushAll();
                 result.push(`- ${cleanListItemText(trimmed)}`);
+                break;
+                
+            case 'list-ol':
+                flushAll();
+                const olMatch = trimmed.match(/^([0-9]+|[①②③④⑤⑥⑦⑧⑨⑩⒈⒉⒊⒋⒌⒍⒎⒏⒐⒑]+)[.、）)．]\s*(.*)/);
+                if (olMatch) {
+                    const num = olMatch[1];
+                    const rest = olMatch[2];
+                    let displayNum = num;
+                    const circleMap = {'①':1,'②':2,'③':3,'④':4,'⑤':5,'⑥':6,'⑦':7,'⑧':8,'⑨':9,'⑩':10};
+                    const circleMap2 = {'⒈':1,'⒉':2,'⒊':3,'⒋':4,'⒌':5,'⒍':6,'⒎':7,'⒏':8,'⒐':9,'⒑':10};
+                    if (circleMap[num] !== undefined) displayNum = circleMap[num];
+                    else if (circleMap2[num] !== undefined) displayNum = circleMap2[num];
+                    result.push(`${displayNum}. ${rest}`);
+                } else {
+                    result.push(`1. ${cleanListItemText(trimmed)}`);
+                }
                 break;
 
             case 'quote':
@@ -1857,7 +1873,9 @@ function smartFormatText(text) {
         result.push(quoteBuffer.map(l => `> ${l}`).join('\n'));
     }
     if (paraBuffer.length > 0) {
-        result.push(paraBuffer.join(''));
+        const joined = paraBuffer.join('');
+        const split = splitLongParagraph(joined);
+        result.push(split);
     }
 
     return highlightKeySentences(result.join('\n'));
@@ -2233,6 +2251,30 @@ function isFlowChartLine(line) {
         if (flowChars.includes(ch)) flowCount++;
     }
     return (totalChars > 0 && flowCount / totalChars > 0.3) || /^[│|┃]\s*$/.test(t) || /^[├┝┠┣┌┍┏┐┑┓└┕┗┘┙┛]/.test(t);
+}
+
+function splitLongParagraph(text) {
+    const MAX_PARA_LEN = 180;
+    if (text.length <= MAX_PARA_LEN) return text;
+
+    const sentences = text.split(/(?<=[。！？!?；;])\s*/);
+    if (sentences.length <= 2) return text;
+
+    const paragraphs = [];
+    let current = '';
+
+    for (const s of sentences) {
+        if (!s.trim()) continue;
+        if (current.length + s.length <= MAX_PARA_LEN) {
+            current += (current ? '' : '') + s;
+        } else {
+            if (current) paragraphs.push(current.trim());
+            current = s;
+        }
+    }
+    if (current) paragraphs.push(current.trim());
+
+    return paragraphs.join('\n\n');
 }
 
 function highlightKeySentences(text) {
@@ -2817,7 +2859,101 @@ copyHtmlBtn.addEventListener('click', copyRawHTML);
 clearBtn.addEventListener('click', clearContent);
 fileInput.addEventListener('change', handleFileUpload);
 parseUrlBtn.addEventListener('click', parseUrl);
-smartFormatBtn.addEventListener('click', smartFormat);
+smartFormatBtn.addEventListener('click', async () => {
+    const editor = document.getElementById('editor');
+    if (!editor || !editor.innerHTML.trim()) { showToast('请先输入内容'); return; }
+
+    const html = editor.innerHTML;
+    let text = html;
+    text = text.replace(/<img[^>]*?src=(["'])(.*?)\1[^>]*?>/gi, (match, quote, src) => {
+        const altMatch = match.match(/alt=(["'])(.*?)\1/i);
+        const alt = altMatch ? altMatch[2] : '';
+        return `![${alt}](${src})`;
+    });
+    text = text.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n\n').replace(/<\/div>/gi, '\n');
+    text = text.replace(/<[^>]+>/g, '');
+    text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+    text = text.replace(/\u3000/g, ' ').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+    if (!text.trim()) { showToast('请先输入内容'); return; }
+
+    const settings = (typeof getAISettings === 'function') ? getAISettings() : null;
+    const hasAI = !!(settings && settings.apiKey);
+
+    const origHTML = editor.innerHTML;
+    const origBtnText = smartFormatBtn.querySelector('span:last-child')?.textContent || '智能排版';
+    if (smartFormatBtn.querySelector('span:last-child')) {
+        smartFormatBtn.querySelector('span:last-child').textContent = '排版中...';
+    }
+    smartFormatBtn.disabled = true;
+
+    let statusEl = document.getElementById('formatStatus');
+    if (!statusEl) {
+        statusEl = document.createElement('div');
+        statusEl.id = 'formatStatus';
+        statusEl.style.cssText = 'padding:8px 14px;margin-top:8px;border-radius:6px;font-size:12px;display:none;';
+        editor.parentElement.insertBefore(statusEl, editor);
+    }
+    statusEl.style.display = 'block';
+    if (hasAI) {
+        statusEl.style.background = '#EFF6FF';
+        statusEl.style.color = '#1E40AF';
+        statusEl.style.border = '1px solid #BFDBFE';
+        statusEl.textContent = '⏳ AI 智能排版中：识别标题层级、规范引用代码块、优化段落结构...';
+    } else {
+        statusEl.style.background = '#FFFBEB';
+        statusEl.style.color = '#92400E';
+        statusEl.style.border = '1px solid #FDE68A';
+        statusEl.textContent = '⏳ 本地规则排版中（未配置 AI，仅做基础排版，建议配置 AI 获得更好效果）...';
+    }
+
+    try {
+        let resultText;
+        let stats = '';
+
+        if (hasAI && typeof window.formatArticleSmart === 'function') {
+            const result = await window.formatArticleSmart(text, settings);
+            resultText = result.text;
+            if (result.usedLLM) {
+                stats = `AI优化：${result.llmSummary || '结构已规范化'}`;
+            } else {
+                stats = result.llmError ? `AI失败(${result.llmError})，使用本地排版` : '本地排版完成';
+            }
+        } else {
+            resultText = smartFormatText(text);
+            stats = '本地规则排版完成（建议配置 AI 获得更好效果）';
+        }
+
+        if (resultText) {
+            if (typeof marked !== 'undefined') {
+                editor.innerHTML = marked.parse(resultText);
+            } else {
+                editor.innerText = resultText;
+            }
+            if (window.workflowState) {
+                window.workflowState.article = resultText;
+            }
+        }
+
+        statusEl.style.background = '#ECFDF5';
+        statusEl.style.color = '#065F46';
+        statusEl.style.border = '1px solid #6EE7B7';
+        statusEl.textContent = `✓ 排版完成 · ${stats}`;
+        if (typeof updatePreview === 'function') updatePreview();
+        showToast('自动排版完成');
+    } catch (e) {
+        editor.innerHTML = origHTML;
+        statusEl.style.background = '#FEF2F2';
+        statusEl.style.color = '#991B1B';
+        statusEl.style.border = '1px solid #FECACA';
+        statusEl.textContent = '✗ 排版失败：' + e.message;
+        showToast('排版失败：' + e.message);
+    } finally {
+        smartFormatBtn.disabled = false;
+        if (smartFormatBtn.querySelector('span:last-child')) {
+            smartFormatBtn.querySelector('span:last-child').textContent = origBtnText;
+        }
+    }
+});
 urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') parseUrl(); });
 
 const introInputs = document.querySelectorAll('.intro-input');
@@ -4205,10 +4341,48 @@ ${text}`;
     }
 
     async function formatViaLLM(text, settings) {
-        const prompt = `你是资深公众号排版编辑。请对以下 Markdown 文章做排版优化，不要改写文字内容，只调整结构和格式。
-排版优化：标题层级识别，文章大标题用 #，一级章节用 ##，二级小节用 ###，不要跳级，标题末尾不要加句号冒号。引用名人名言、重点金句、他人观点时用 > 引用语法，引用块前后空一行，不要把普通段落误标为引用。代码片段用三反引号包裹并标注语言，行内代码用反引号包裹。段落松散化，每段 2-3 句最佳，最多 4 句，长段落拆分为多个短段落，段落之间用空行分隔。并列要点用无序列表，步骤用有序列表，列表前后空一行。段落开头不能是标点符号（句号逗号分号感叹号问号冒号顿号），如果有就删掉。
-保留原文所有文字内容，不增删观点、不替换词语。保留图片语法、链接语法、加粗和斜体。
-请直接输出排版优化后的完整 Markdown 文本，从 # 标题开始，不要任何解释、思考过程、前后缀。
+        const prompt = `你是一位专业的公众号文章排版编辑。你的任务是对下方的文章进行 Markdown 格式优化，只调整结构和格式，绝对不要改写或增删任何文字内容。
+
+【排版规则·严格执行】
+
+1. 标题层级识别：
+   - 文章大标题（通常出现在开头，或包含"摘要""引言""概述"等关键词）用 # 标记
+   - 一级章节标题（如"一、xxx""一、xxx""第一部分 xxx"等）用 ## 标记
+   - 二级小节标题（如"1. xxx""1.1 xxx"等）用 ### 标记
+   - 不要跳级，标题末尾不要加句号冒号
+
+2. 引用块：
+   - 名人名言、重点金句、他人观点、哲理语句用 > 引用语法
+   - 引用块前后空一行
+   - 不要把普通段落误标为引用
+
+3. 代码块：
+   - 代码片段用三反引号包裹并标注语言（如 \`\`\`javascript）
+   - 行内代码用反引号包裹
+   - 代码块前后空一行
+
+4. 列表：
+   - 并列要点用无序列表（- 开头）
+   - 步骤/流程用有序列表（1. 开头）
+   - 列表前后空一行
+
+5. 段落：
+   - 段落松散化，每段 2-3 句最佳
+   - 长段落拆分为多个短段落
+   - 段落之间用空行分隔
+
+6. 标点修正：
+   - 段落开头如果是标点符号（句号逗号分号感叹号问号冒号顿号），直接删除该标点
+
+【保留规则】
+- 保留原文所有文字内容，不增删观点、不替换词语
+- 保留图片语法 ![alt](url)
+- 保留链接语法 [text](url)
+- 保留 **加粗** 和 *斜体*
+- 保留 --- 分割线
+
+【输出要求】
+请直接输出排版优化后的完整 Markdown 文本，从 # 标题开始，不要任何解释、思考过程、前后缀或代码标记。
 
 原文：
 ${text}`;
@@ -6436,11 +6610,19 @@ ${article.substring(0, 3000)}
     // Tab2 排版助手的「精细化配图」按钮
     const gotoImageBtn = document.getElementById('gotoImageBtn');
     if (gotoImageBtn) {
-        gotoImageBtn.addEventListener('click', () => {
-            // 优先用 workflowState，否则尝试从编辑器提取
+        gotoImageBtn.addEventListener('click', async () => {
+            const settings = (typeof getAISettings === 'function') ? getAISettings() : null;
+            const hasAI = !!(settings && settings.apiKey);
+
+            if (!hasAI) {
+                showToast('建议先配置 AI API Key 以使用一键配图功能');
+                const aiSettingsBtn = document.getElementById('aiSettingsBtn');
+                if (aiSettingsBtn) aiSettingsBtn.click();
+                return;
+            }
+
             let article = (window.workflowState && window.workflowState.article) || '';
             if (!article) {
-                // 从编辑器 innerHTML 反推 markdown 不可靠，提示用户
                 const editorText = editor.innerText || editor.textContent || '';
                 if (editorText.trim()) {
                     article = editorText;
@@ -6451,17 +6633,28 @@ ${article.substring(0, 3000)}
                 showToast('请先在创作 Tab 生成文章，或在排版助手中导入文章');
                 return;
             }
-            // 同步 workflowState
             window.workflowState.article = article;
-            // 切到 Tab3 图片生成 tab
-            const imageTab = document.querySelector('.tab-btn[data-tab="image"]');
-            if (imageTab) imageTab.click();
-            // 切换 mode 到 article-illustration
-            const aiModeBtn = document.querySelector('.mode-btn[data-mode="article-illustration"]');
-            if (aiModeBtn) aiModeBtn.click();
-            // 更新 Tab3 文章信息
-            setTimeout(() => updateArticleIllustrationPanel(), 100);
-            showToast('已进入配图 Tab，可点击「规划配图 Prompt」开始');
+
+            const origText = gotoImageBtn.querySelector('span:last-child')?.textContent || '一键配图';
+            if (gotoImageBtn.querySelector('span:last-child')) {
+                gotoImageBtn.querySelector('span:last-child').textContent = '配图中...';
+            }
+            gotoImageBtn.disabled = true;
+
+            try {
+                if (typeof window.autoIllustrate === 'function') {
+                    await window.autoIllustrate();
+                } else {
+                    showToast('配图功能加载中，请稍后重试');
+                }
+            } catch (e) {
+                showToast('配图失败：' + e.message);
+            } finally {
+                gotoImageBtn.disabled = false;
+                if (gotoImageBtn.querySelector('span:last-child')) {
+                    gotoImageBtn.querySelector('span:last-child').textContent = origText;
+                }
+            }
         });
     }
 
