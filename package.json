@@ -4,7 +4,7 @@
   "description": "",
   "main": "_server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test-e2e.js"
   },
   "repository": {
     "type": "git",
@@ -20,5 +20,8 @@
   "homepage": "https://github.com/zarker12/wx-editor#readme",
   "dependencies": {
     "jsdom": "^30.0.0"
+  },
+  "devDependencies": {
+    "marked": "^12.0.2"
   }
 }
