@@ -361,6 +361,43 @@ function renderStyledHTML(editorHTML) {
         return result;
     };
 
+    const applyThemeColor = (style, element) => {
+        if (theme.name === '黑金奢' || theme.name === '杂志风') {
+            return style;
+        }
+
+        let result = style;
+        const hasGradientText = /-webkit-background-clip\s*:\s*text/i.test(result);
+        const hasTransparentFill = /-webkit-text-fill-color\s*:\s*transparent/i.test(result);
+
+        if (hasGradientText && hasTransparentFill) {
+            return result;
+        }
+
+        result = result.replace(/color:\s*[^;"]*;?/gi, '');
+
+        let themeColor = c.accentDark;
+        switch (element) {
+            case 'h1': themeColor = c.accentDark; break;
+            case 'h2': themeColor = c.accent; break;
+            case 'h3': themeColor = c.accentDark; break;
+            case 'strong': themeColor = c.accentDark; break;
+            case 'em': themeColor = c.accent; break;
+            case 'a': themeColor = c.accent; break;
+            case 'blockquote': themeColor = c.accentDark; break;
+            default: themeColor = c.accentDark;
+        }
+
+        const colorIdx = result.indexOf('font-weight:');
+        if (colorIdx >= 0) {
+            result = result.slice(0, colorIdx) + `color:${themeColor};` + result.slice(colorIdx);
+        } else {
+            result = `color:${themeColor};` + result;
+        }
+
+        return result;
+    };
+
     function walk(node) {
         if (!node) return '';
 
@@ -376,36 +413,32 @@ function renderStyledHTML(editorHTML) {
         switch (tag) {
             case 'h1': {
                 let style = theme.h1Style(c, s, sp, t);
+                style = applyThemeColor(style, 'h1');
                 style = addBaseTextStyles(style);
                 return `<h1 style="${style}">${children}</h1>`;
             }
             case 'h2': {
                 let style = theme.h2Style(c, s, sp, t);
+                style = applyThemeColor(style, 'h2');
                 style = addBaseTextStyles(style);
                 const h2Decor = theme.h2Decor ? theme.h2Decor(c) : '';
                 const hasH2TitleStyle = typeof theme.h2TitleStyle === 'function';
 
-                // 卡片式 h2：如果主题有 h2TitleStyle 方法，使用外层容器 + 内部标题结构
                 if (hasH2TitleStyle) {
                     let titleStyle = theme.h2TitleStyle(c, s, sp, t);
+                    titleStyle = applyThemeColor(titleStyle, 'h2');
                     titleStyle = addBaseTextStyles(titleStyle);
                     return `<div style="margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0;"><div style="${style}">${h2Decor}<h2 style="${titleStyle}">${children}</h2></div></div>`;
                 }
 
-                // 大数字居中样式：检测 h2 内容是否以数字开头（如 "01 章节标题"）
-                // 若匹配，将开头的数字提取为大号居中粗体显示，下方显示章节标题
-                // 仅对以数字开头且紧跟分隔符的 h2 生效，避免误伤普通标题
                 const h2Text = node.textContent.trim();
                 const numMatch = h2Text.match(/^(\d+)[\s、.）)]+(.+)$/);
                 if (numMatch) {
-                    const num = numMatch[1];        // 开头数字，如 "01"
-                    const title = numMatch[2].trim(); // 章节标题文字
-                    // 数字大号居中粗体，使用主题色 accent
-                    // 主题可通过 h2NumberStyle 自定义数字样式，未定义则使用内置默认样式
+                    const num = numMatch[1];
+                    const title = numMatch[2].trim();
                     const numStyle = theme.h2NumberStyle
                         ? theme.h2NumberStyle(c, s, sp, t)
                         : `display:block;text-align:center;font-size:48px;font-weight:700;color:${c.accent};line-height:1.2;letter-spacing:2px;margin:0 0 8px 0;`;
-                    // 标题用正常 h2 字号，居中显示（沿用主题 h2Style，仅覆盖对齐方式）
                     const titleStyle = style.replace(/text-align:[^;]+;?/g, '') + 'text-align:center;display:block;margin:0;';
                     return `<div style="margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0;text-align:center;"><div style="${numStyle}">${num}</div><h2 style="${titleStyle}">${title}</h2>${h2Decor}</div>`;
                 }
@@ -424,6 +457,7 @@ function renderStyledHTML(editorHTML) {
                     style = style.replace(/font-size:[^;]+;/, `font-size:${parseInt(s.h2Size) - 2}px;`);
                     style = style.replace(/font-weight:[^;]+;/, 'font-weight:500;');
                 }
+                style = applyThemeColor(style, 'h3');
                 style = addBaseTextStyles(style);
                 return `<h3 style="${style}">${children}</h3>`;
             }
@@ -440,6 +474,7 @@ function renderStyledHTML(editorHTML) {
             }
             case 'blockquote': {
                 let style = theme.blockquoteStyle(c);
+                style = applyThemeColor(style, 'blockquote');
                 style = addBaseTextStyles(style);
                 return `<blockquote style="${style}">${children}</blockquote>`;
             }
@@ -482,6 +517,7 @@ function renderStyledHTML(editorHTML) {
             }
             case 'a': {
                 let style = theme.aStyle(c);
+                style = applyThemeColor(style, 'a');
                 style = addBaseTextStyles(style);
                 const href = node.getAttribute('href') || '#';
                 return `<a href="${href}" style="${style}">${children}</a>`;
@@ -489,12 +525,14 @@ function renderStyledHTML(editorHTML) {
             case 'strong':
             case 'b': {
                 let style = theme.strongStyle(c);
+                style = applyThemeColor(style, 'strong');
                 style = addBaseTextStyles(style);
                 return `<strong style="${style}">${children}</strong>`;
             }
             case 'em':
             case 'i': {
                 let style = theme.emStyle(c);
+                style = applyThemeColor(style, 'em');
                 style = addBaseTextStyles(style);
                 return `<em style="${style}">${children}</em>`;
             }
@@ -543,14 +581,12 @@ function renderStyledHTML(editorHTML) {
             case 'br':
                 return '<br>';
             case 'div': {
-                // END 结束标识：居中 + 主题色 + 主题字体，匹配文章整体风格
                 if (node.getAttribute('data-end-marker') === 'true') {
-                    const endStyle = `text-align:center;letter-spacing:10px;color:${c.accentDark};font-size:14px;padding:32px 0 16px 0;font-family:${font};font-weight:500;margin-top:16px;`;
-                    // 装饰线（使用主题色，与 hrDecor 风格呼应）
+                    const endStyle = `text-align:center;letter-spacing:10px;color:${c.accentDark};font-size:14px;padding:32px 0 16px 0;font-family:${font};font-weight:500;margin-top:16px;display:block;`;
                     const decorLine = theme.hrDecor
-                        ? `<div style="text-align:center;color:${c.accent}60;font-size:18px;letter-spacing:8px;margin-bottom:8px;font-family:${font};">${theme.hrDecor(c)}</div>`
+                        ? `<p style="text-align:center;color:${c.accent}60;font-size:18px;letter-spacing:8px;margin:0 0 8px 0;font-family:${font};display:block;">${theme.hrDecor(c)}</p>`
                         : '';
-                    return `${decorLine}<div style="${endStyle}">- E N D -</div>`;
+                    return `${decorLine}<p style="${endStyle}">- E N D -</p>`;
                 }
                 return children;
             }
@@ -569,10 +605,10 @@ function renderStyledHTML(editorHTML) {
     // END 结束标识：由模板自动追加，用主题色+主题字体渲染，居中显示
     // 无论 Markdown 如何转换、是否重新排版，都会稳定显示
     const endDecorLine = theme.hrDecor
-        ? `<div style="text-align:center;color:${c.accent}80;font-size:18px;letter-spacing:12px;margin:40px 0 8px 0;font-family:${font};">${theme.hrDecor(c)}</div>`
-        : `<div style="text-align:center;color:${c.accent}40;font-size:20px;letter-spacing:8px;margin:40px 0 8px 0;">· · ·</div>`;
-    const endStyle = `text-align:center;letter-spacing:10px;color:${c.accentDark};font-size:14px;padding:0 0 24px 0;font-family:${font};font-weight:500;`;
-    result += endDecorLine + `<div style="${endStyle}">- E N D -</div>`;
+        ? `<p style="text-align:center;color:${c.accent}80;font-size:18px;letter-spacing:12px;margin:40px 0 8px 0;font-family:${font};display:block;">${theme.hrDecor(c)}</p>`
+        : `<p style="text-align:center;color:${c.accent}40;font-size:20px;letter-spacing:8px;margin:40px 0 8px 0;display:block;">· · ·</p>`;
+    const endStyle = `text-align:center;letter-spacing:10px;color:${c.accentDark};font-size:14px;padding:0 0 24px 0;font-family:${font};font-weight:500;display:block;`;
+    result += endDecorLine + `<p style="${endStyle}">- E N D -</p>`;
 
     return result;
 }
@@ -854,9 +890,20 @@ function debouncedUpdatePreview() {
 // ===== 导出 =====
 function compressForWechat(html) {
     let result = html;
+    // 1. 移除所有换行符、制表符、回车符（微信会把它们解析为<br>导致行距翻倍）
+    result = result.replace(/[\n\r\t]+/g, '');
+    // 2. 移除所有 Unicode 空白符（包括 \u00A0 不间断空格、零宽空格等）
+    result = result.replace(/[\u00A0\u2000-\u200B\uFEFF]+/g, '');
+    // 3. 标签间空白替换为紧连（避免微信把标签间空白解析为<br>或额外间距）
     result = result.replace(/>\s+</g, '><');
-    result = result.replace(/\s+/g, (match) => match.includes('\n') ? ' ' : match);
+    // 4. 标签属性间多余空格压缩（保留文本内空格）
     result = result.replace(/\s{2,}/g, ' ');
+    // 5. 移除 span leaf 标记的空 span（这些在公众号中会产生额外间距）
+    result = result.replace(/<span[^>]*leaf[^>]*>\s*<\/span>/gi, '');
+    result = result.replace(/<span[^>]*leaf[^>]*>\s*<br\s*\/?>\s*<\/span>/gi, '');
+    // 6. 移除 br 标签（微信会自动处理段落间距，额外的br会导致行距翻倍）
+    //    但保留合法的 br（如用户原文中明确需要换行的），这里处理的是装饰性空span产生的多余br
+    result = result.replace(/<br\s*\/?>\s*<\/(div|p|section)>/gi, '</$1>');
     return result.trim();
 }
 
@@ -1933,6 +1980,18 @@ function detectHeadingLevel(line, idx, totalLines, prevLine, nextLine, lastHeadi
     const t = line.trim();
     if (t.length < 2) return null;
 
+    const isNumberedPattern = /^[0-9]+[、.．]\s+\S/.test(t) || /^[0-9]+\.[0-9]+(\.[0-9]+)?\s+\S/.test(t);
+    const isNumberedCirclePattern = /^[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮]\s*\S/.test(t) || /^[⒈⒉⒊⒋⒌⒍⒎⒏⒐⒑]\s*\S/.test(t);
+
+    if (isNumberedPattern || isNumberedCirclePattern) {
+        if (nextLine && (/^[0-9]+[、.．]\s+\S/.test(nextLine) || /^[0-9]+\.[0-9]+(\.[0-9]+)?\s+\S/.test(nextLine))) {
+            return null;
+        }
+        if (prevLine && (/^[0-9]+[、.．]\s+\S/.test(prevLine) || /^[0-9]+\.[0-9]+(\.[0-9]+)?\s+\S/.test(prevLine))) {
+            return null;
+        }
+    }
+
     const h1Patterns = [
         /^第[一二三四五六七八九十百千0-9]+部分[：: ]/,
         /^第[一二三四五六七八九十百千0-9]+章[、\s]/,
@@ -1956,13 +2015,13 @@ function detectHeadingLevel(line, idx, totalLines, prevLine, nextLine, lastHeadi
         /^第[一二三四五六七八九十百千0-9]+条[、\s]/,
         /^第[一二三四五六七八九十百千0-9]+点[、\s]/,
         /^第[一二三四五六七八九十百千0-9]+讲[、\s]/,
+        /^[0-9]+[、.．]\s+\S/,
     ];
     for (const p of h2Patterns) {
         if (p.test(t) && t.length < 70) return 'h2';
     }
 
     const h3Patterns = [
-        /^[0-9]+[、.．]\s+\S/,
         /^[0-9]+\.[0-9]+\s+\S/,
         /^[0-9]+\.[0-9]+\.[0-9]+\s+\S/,
         /^[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮]\s*\S/,
@@ -1978,6 +2037,9 @@ function detectHeadingLevel(line, idx, totalLines, prevLine, nextLine, lastHeadi
         /^核心要点$/, /^重要提示$/, /^写在最后$/, /^最后总结$/,
         /^附录$/, /^参考资料$/, /^参考文献$/,
         /^什么是/, /^为什么/, /^如何/, /^怎么/, /^哪些/, /^怎样/,
+        /^注意/, /^关键/, /^重点/, /^核心/, /^本质/,
+        /^方法/, /^技巧/, /^策略/, /^方案/, /^步骤/,
+        /^优势/, /^特点/, /^区别/, /^对比/, /^分析/,
     ];
     for (const p of h2Keywords) {
         if (p.test(t) && t.length < 25) {
@@ -1985,11 +2047,11 @@ function detectHeadingLevel(line, idx, totalLines, prevLine, nextLine, lastHeadi
         }
     }
 
-    if (t.length >= 4 && t.length <= 32 && /[\u4e00-\u9fa5]/.test(t)) {
+    if (t.length >= 4 && t.length <= 28 && /[\u4e00-\u9fa5]/.test(t)) {
         const hasEndPunct = /[。！？，；：、]$/.test(t);
         const startsWithListMark = /^[-•·■▪▸▹►▻◆◇★☆✓✔✅☑️]/.test(t);
         if (!hasEndPunct && !startsWithListMark) {
-            if (prevLine && prevLine.length > 10 && nextLine && nextLine.length > 10) {
+            if (prevLine && prevLine.length > 15 && nextLine && nextLine.length > 15) {
                 if (idx > 2 && idx < totalLines - 1) {
                     return lastHeadingLevel >= 2 ? 'h3' : 'h2';
                 }

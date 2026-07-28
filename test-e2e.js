@@ -217,31 +217,35 @@ function getH2Elements(themeName) {
 }
 
 // 清新绿：卡片式，外层div背景#DCFCE7，左竖条#22C55E
+// 注意：主题色会覆盖标题文字颜色（按用户需求），但保留背景/边框等主题特色
 {
     const h2s = getH2Elements('fresh');
+    const themeColor = window.getColorConfig();
+    const expectedH2Color = themeColor.accent;
     test('清新绿 渲染出2个h2', h2s.length === 2, `实际${h2s.length}个`);
     h2s.forEach((h, i) => {
-        // 卡片式：h2 在 div>div 结构里，外层 div 有背景色
         const combined = h.h2Style + ' ' + h.parentStyle;
         test(`清新绿 h2#${i} 外层有浅绿背景#DCFCE7`, /background:[^;]*DCFCE7/.test(h.parentStyle), h.parentStyle.slice(0, 120));
         test(`清新绿 h2#${i} 左竖条#22C55E`, /border-left:[^;]*22C55E/.test(h.parentStyle), h.parentStyle.slice(0, 120));
         test(`清新绿 h2#${i} 有圆角`, /border-radius:/.test(h.parentStyle), h.parentStyle.slice(0, 120));
         test(`清新绿 h2#${i} 装饰有SECTION`, h.decorHTML.includes('SECTION'), '缺失SECTION标签');
         test(`清新绿 h2#${i} 装饰有圆点`, /border-radius:50%/.test(h.decorHTML), '缺失圆点');
-        test(`清新绿 h2#${i} h2标题色深绿#15803D`, /color:[^;]*15803D/.test(h.h2Style), h.h2Style.slice(0, 120));
+        test(`清新绿 h2#${i} 应用主题色 accent`, h.h2Style.includes(expectedH2Color), `期望${expectedH2Color} 实际: ${h.h2Style.slice(0, 120)}`);
     });
 }
 
 // 活力橙：卡片式，外层div背景#FFF1E6，左竖条#FF6B35
 {
     const h2s = getH2Elements('vibrant');
+    const themeColor = window.getColorConfig();
+    const expectedH2Color = themeColor.accent;
     test('活力橙 渲染出2个h2', h2s.length === 2, `实际${h2s.length}个`);
     h2s.forEach((h, i) => {
         test(`活力橙 h2#${i} 外层浅橙背景#FFF1E6`, /background:[^;]*FFF1E6/.test(h.parentStyle), h.parentStyle.slice(0, 120));
         test(`活力橙 h2#${i} 左竖条#FF6B35`, /border-left:[^;]*FF6B35/.test(h.parentStyle), h.parentStyle.slice(0, 120));
         test(`活力橙 h2#${i} 装饰有药丸数字`, /border-radius:10px/.test(h.decorHTML), '缺失药丸');
         test(`活力橙 h2#${i} 装饰有SECTION`, h.decorHTML.includes('SECTION'), '缺失SECTION');
-        test(`活力橙 h2#${i} h2标题色深橙#9D2C00`, /color:[^;]*9D2C00/.test(h.h2Style), h.h2Style.slice(0, 120));
+        test(`活力橙 h2#${i} 应用主题色 accent`, h.h2Style.includes(expectedH2Color), `期望${expectedH2Color} 实际: ${h.h2Style.slice(0, 120)}`);
     });
 }
 
