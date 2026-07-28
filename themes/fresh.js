@@ -35,16 +35,16 @@ window.styleThemes.fresh = {
         return `font-size:${s.h1Size};font-weight:800;margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom};line-height:1.4;letter-spacing:0.5px;text-align:center;color:${c.accentDark};`;
     },
     h2Style(c, s, sp, t) {
-        return `margin:36px 0 18px;padding:12px 16px;background:${c.accentSoft};border-left:4px solid ${c.accent};border-radius:0 10px 10px 0;`;
+        return `margin:36px 0 18px;padding:12px 16px;background:#DCFCE7;border-left:4px solid #22C55E;border-radius:0 10px 10px 0;`;
     },
     h2Decor(c) {
-        return `<section style="display:flex;align-items:center;margin-bottom:4px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c.accent};margin-right:10px;"><span leaf=""><br></span></span><span style="font-size:11px;color:#16A34A;letter-spacing:2px;font-weight:600;"><span leaf="">SECTION 01</span></span></section>`;
+        return `<section style="display:flex;align-items:center;margin-bottom:4px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22C55E;margin-right:10px;"><span leaf=""><br></span></span><span style="font-size:11px;color:#16A34A;letter-spacing:2px;font-weight:600;"><span leaf="">SECTION 01</span></span></section>`;
     },
     h2NumberStyle(c) {
-        return `display:inline-block;background:${c.accent};color:#FFFFFF;font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px;margin-right:10px;letter-spacing:1px;`;
+        return `display:inline-block;background:#22C55E;color:#FFFFFF;font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px;margin-right:10px;letter-spacing:1px;`;
     },
     h2TitleStyle(c, s, sp, t) {
-        return `font-size:19px;font-weight:800;color:${c.accentDark};line-height:1.4;letter-spacing:0.5px;margin:0;`;
+        return `font-size:19px;font-weight:800;color:#15803D;line-height:1.4;letter-spacing:0.5px;margin:0;`;
     },
     blockquoteStyle(c) {
         return `margin:0 0 24px;padding:14px 18px;border-left:4px solid ${c.accent};background:${c.accentSoft};border-radius:0 12px 12px 0;font-size:15px;line-height:1.9;color:${this.textColor};`;

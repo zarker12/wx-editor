@@ -119,7 +119,10 @@ window.styleThemes.luxury = {
         return `margin:24px 0 14px;font-size:15px;font-weight:700;color:${this.goldLight};line-height:1.5;text-align:center;`;
     },
     imageWrapperStyle(c) {
-        return `background:${this.inkDeep};border-radius:6px;padding:4px;border:1px solid ${this.inkBorder};margin-bottom:8px;`;
+        return `background:${this.inkDeep};border-radius:6px;padding:4px;border:1px solid ${this.inkBorder};box-shadow:0 4px 12px -2px rgba(201,169,97,0.15);margin-bottom:8px;`;
+    },
+    imageStyle(c) {
+        return `max-width:100%;height:auto;display:block;border-radius:4px;`;
     },
     imageCaptionTextStyle(c) {
         return `font-size:12px;color:${this.metaColor};text-align:center;margin:0 0 28px 0;letter-spacing:0.5px;`;

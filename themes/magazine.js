@@ -48,7 +48,7 @@ window.styleThemes.magazine = {
         return `font-family:'Noto Serif SC',Georgia,'Times New Roman',serif;font-size:21px;font-weight:900;color:${this.ink};line-height:1.4;letter-spacing:1px;margin:0;`;
     },
     h2Style(c, s, sp, t) {
-        return `margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom};padding:14px 0;text-align:center;`;
+        return `margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom};padding:14px 0;text-align:center;font-family:'Noto Serif SC',Georgia,'Times New Roman',serif;font-size:${s.h2Size};font-weight:900;color:${this.ink};line-height:1.4;letter-spacing:1px;`;
     },
     h2NumberStyle(c, s, sp, t) {
         return `font-family:'Noto Serif SC',Georgia,'Times New Roman',serif;font-size:18px;font-weight:900;color:${this.crimson};line-height:1;margin-bottom:8px;`;

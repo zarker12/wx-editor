@@ -36,16 +36,16 @@ window.styleThemes.vibrant = {
         return `font-size:${s.h1Size};font-weight:800;margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom};line-height:1.4;letter-spacing:0.5px;text-align:center;background:${c.gradient};-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;`;
     },
     h2Style(c, s, sp, t) {
-        return `margin:36px 0 18px;padding:14px 18px;background:${c.accentSoft};border-left:4px solid ${c.accent};border-radius:0 12px 12px 0;`;
+        return `margin:36px 0 18px;padding:14px 18px;background:#FFF1E6;border-left:4px solid #FF6B35;border-radius:0 12px 12px 0;`;
     },
     h2Decor(c) {
         return `<section style="display:flex;align-items:center;margin-bottom:6px;"><span style="${this.h2NumberStyle(c)}"><span leaf="">01</span></span><span style="font-size:11px;color:#E85D04;letter-spacing:2px;font-weight:600;"><span leaf="">SECTION</span></span></section>`;
     },
     h2NumberStyle(c) {
-        return `display:inline-block;background:${c.accent};color:#FFFFFF;font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px;margin-right:10px;letter-spacing:1px;`;
+        return `display:inline-block;background:#FF6B35;color:#FFFFFF;font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px;margin-right:10px;letter-spacing:1px;`;
     },
     h2TitleStyle(c, s, sp, t) {
-        return `font-size:19px;font-weight:800;color:${c.accentDark};line-height:1.4;letter-spacing:0.5px;margin:0;`;
+        return `font-size:19px;font-weight:800;color:#9D2C00;line-height:1.4;letter-spacing:0.5px;margin:0;`;
     },
     blockquoteStyle(c) {
         return `margin:0 0 24px;padding:18px 22px;border-left:4px solid ${c.accent};background:${c.accentSoft};border-radius:0 14px 14px 0;font-size:15px;line-height:1.9;color:${this.textColor};`;
