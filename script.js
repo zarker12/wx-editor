@@ -190,13 +190,10 @@ function markdownToHTML(text) {
 // 清理未解析的 Markdown 符号（防止预览界面残留 ** ` _ 等）
 // 仅清理 HTML 文本节点中的残留，不影响已正确解析的标签
 function cleanResidualMarkdown(html) {
-    // 1. 清理成对但未在标签内的 **xxx**（marked 已转 strong 的不会受影响，因为已变成 <strong>）
-    //    只匹配文本节点中残留的 **...**
-    // 2. 清理单残留的 ** 或 *（未成对）
-    // 3. 清理残留的下划线斜体 ___ _（非单词内的）
-    // 4. 清理残留的反引号 `code`
-    // 注意：必须避免破坏 HTML 属性中的 =、"、' 等
-
+    // 清理 **** （四个或更多星号，AI 输出中常见的残留）
+    html = html.replace(/\*{4,}/g, '');
+    // 清理 *** （三个星号，可能是加粗+斜体未正确闭合）
+    html = html.replace(/\*{3}/g, '');
     // 清理成对的 **xxx** （文本中残留的加粗符号）
     html = html.replace(/\*\*([^*<\n]+?)\*\*/g, '<strong>$1</strong>');
     // 清理成对的 *xxx* （残留的斜体符号，但要避免匹配列表项的 *
@@ -210,6 +207,8 @@ function cleanResidualMarkdown(html) {
     // 清理残留的下划线强调
     html = html.replace(/(?<![a-zA-Z0-9])__([^_<\n]+?)__(?![a-zA-Z0-9])/g, '<strong>$1</strong>');
     html = html.replace(/(?<![a-zA-Z0-9])_([^_<\n]+?)_(?![a-zA-Z0-9])/g, '<em>$1</em>');
+    // 清理残留的 Markdown 标题符号（# 后无空格的情况）
+    html = html.replace(/(?<![#\w])#{1,6}(?!\s)(?![#<])/g, '');
     return html;
 }
 
@@ -1474,8 +1473,9 @@ function handleDrop(e) {
                 reader.onload = (evt) => {
                     const formatted = smartFormatText(evt.target.result);
                     const html = markdownToHTML(formatted);
-                    insertHTMLAtCursor(html);
-                    showToast(`已导入：${file.name}`);
+                    editor.innerHTML = html;
+                    updatePreview();
+                    showToast(`已导入：${file.name}（已替换原有内容）`);
                 };
                 reader.readAsText(file, 'UTF-8');
                 return;
@@ -2876,7 +2876,7 @@ smartFormatBtn.addEventListener('click', async () => {
     text = text.replace(/\u3000/g, ' ').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
     if (!text.trim()) { showToast('请先输入内容'); return; }
 
-    const settings = (typeof getAISettings === 'function') ? getAISettings() : null;
+    const settings = (typeof window.getAISettings === 'function') ? window.getAISettings() : ((typeof getAISettings === 'function') ? getAISettings() : null);
     const hasAI = !!(settings && settings.apiKey);
 
     const origHTML = editor.innerHTML;
@@ -2925,7 +2925,7 @@ smartFormatBtn.addEventListener('click', async () => {
 
         if (resultText) {
             if (typeof marked !== 'undefined') {
-                editor.innerHTML = marked.parse(resultText);
+                editor.innerHTML = markdownToHTML(resultText);
             } else {
                 editor.innerText = resultText;
             }
@@ -2940,6 +2940,7 @@ smartFormatBtn.addEventListener('click', async () => {
         statusEl.textContent = `✓ 排版完成 · ${stats}`;
         if (typeof updatePreview === 'function') updatePreview();
         showToast('自动排版完成');
+        setTimeout(() => { statusEl.style.display = 'none'; }, 5000);
     } catch (e) {
         editor.innerHTML = origHTML;
         statusEl.style.background = '#FEF2F2';
@@ -2947,6 +2948,7 @@ smartFormatBtn.addEventListener('click', async () => {
         statusEl.style.border = '1px solid #FECACA';
         statusEl.textContent = '✗ 排版失败：' + e.message;
         showToast('排版失败：' + e.message);
+        setTimeout(() => { statusEl.style.display = 'none'; }, 8000);
     } finally {
         smartFormatBtn.disabled = false;
         if (smartFormatBtn.querySelector('span:last-child')) {
@@ -7038,6 +7040,7 @@ ${article.substring(0, 3000)}
     window.autoIllustrate = autoIllustrate;
     window.humanizeArticle = humanizeArticle;
     window.formatArticleSmart = formatArticleSmart;
+    window.getAISettings = getAISettings;
 })();
 
 // ===== 草稿功能（localStorage，无需用户系统/注册登录）=====
