@@ -3042,6 +3042,15 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
         btn.classList.add('active');
         document.getElementById(`tab-${tab}`).classList.add('active');
+        // 顶部按钮上下文感知：data-tab-visible 的按钮仅在对应 tab 显示
+        document.querySelectorAll('.header-actions [data-tab-visible]').forEach(el => {
+            const visibleTab = el.getAttribute('data-tab-visible');
+            el.style.display = (visibleTab === tab) ? '' : 'none';
+        });
+        // 进入创作 tab 时刷新 AI 状态横幅
+        if (tab === 'create') {
+            updateCreateAIBanner();
+        }
     });
 });
 
@@ -5821,34 +5830,38 @@ ${article.substring(0, 3000)}
     }
 
     // ===== Tab1 选题中心（参考 daily-news-podcast skill 设计）=====
-    // 多源分级 + 四大板块分类 + 红线过滤 + 时间校准
+    // 多源分级 + 四大板块分类 + 红线过滤
     // 来源优先级：1.微博热搜 2.抖音热点 3.36氪科技 4.推荐选题
     // 四大板块：互联网 #2563eb / 职场 #7c3aed / 科技 #16a34a / 社会爆款 #dc2626
 
-    // ===== 长条形时间栏 + 时间校准 =====
-    function renderCalendar() {
-        const calDate = document.getElementById('calDate');
-        const calWeekday = document.getElementById('calWeekday');
-        const calTime = document.getElementById('calTime');
-        const calStatus = document.getElementById('calStatus');
-        if (!calDate) return;
-
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth() + 1;
-        const day = now.getDate();
-        const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-        const hour = now.getHours();
-        const min = now.getMinutes();
-        const timeStr = `${hour < 10 ? '0' + hour : hour}:${min < 10 ? '0' + min : min}`;
-
-        if (calDate) calDate.textContent = `${year}年${month}月${day}日`;
-        if (calWeekday) calWeekday.textContent = weekdays[now.getDay()];
-        if (calTime) calTime.textContent = timeStr;
-        if (calStatus) calStatus.innerHTML = '<span style="color:#10B981;">●</span> 实时';
+    // ===== AI 配置状态横幅 =====
+    function updateCreateAIBanner() {
+        const banner = document.getElementById('createAIStatusBanner');
+        if (!banner) return;
+        const settings = getAISettings();
+        if (settings && settings.apiKey) {
+            const config = LLM_PROVIDERS[settings.provider] || LLM_PROVIDERS.deepseek;
+            const modelName = (config.editable && settings.model) ? settings.model : config.model;
+            banner.style.display = 'flex';
+            banner.style.background = '#ECFDF5';
+            banner.style.border = '1px solid #6EE7B7';
+            banner.style.color = '#065F46';
+            banner.innerHTML = '<span style="color:#10B981;">●</span> AI 已就绪 · ' + config.name + ' · ' + modelName;
+            banner.onclick = null;
+            banner.style.cursor = 'default';
+        } else {
+            banner.style.display = 'flex';
+            banner.style.background = '#FEF3C7';
+            banner.style.border = '1px solid #FCD34D';
+            banner.style.color = '#92400E';
+            banner.innerHTML = '<span>⚠️</span> 尚未配置 AI，创作功能需要 AI 支持。<span style="text-decoration:underline;font-weight:600;">点击此处配置 →</span>';
+            banner.onclick = function() {
+                const modal = document.getElementById('aiSettingsModal');
+                if (modal) modal.style.display = 'flex';
+            };
+            banner.style.cursor = 'pointer';
+        }
     }
-    renderCalendar();
-    setInterval(renderCalendar, 30000);
 
     const TOPIC_CATEGORIES = {
         internet: { name: '互联网', color: '#2563eb' },
@@ -6281,6 +6294,74 @@ ${article.substring(0, 3000)}
             showToast('已进入排版助手，文章已填入编辑器');
         });
     }
+
+    // 格式工具栏：对 textarea 选中文本插入 Markdown 标记
+    document.querySelectorAll('.create-fmt-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (!createArticleArea) return;
+            const fmt = btn.dataset.fmt;
+            const ta = createArticleArea;
+            const start = ta.selectionStart;
+            const end = ta.selectionEnd;
+            const selected = ta.value.substring(start, end);
+            const before = ta.value.substring(0, start);
+            const after = ta.value.substring(end);
+            let insert = selected;
+            let cursorOffset = 0;
+
+            switch (fmt) {
+                case 'h2':
+                    insert = '## ' + (selected || '标题');
+                    cursorOffset = selected ? 0 : -2;
+                    break;
+                case 'h3':
+                    insert = '### ' + (selected || '小标题');
+                    cursorOffset = selected ? 0 : -3;
+                    break;
+                case 'bold':
+                    insert = '**' + (selected || '加粗文字') + '**';
+                    cursorOffset = selected ? 0 : -5;
+                    break;
+                case 'italic':
+                    insert = '*' + (selected || '斜体文字') + '*';
+                    cursorOffset = selected ? 0 : -4;
+                    break;
+                case 'quote':
+                    insert = '> ' + (selected || '引用内容');
+                    cursorOffset = 0;
+                    break;
+                case 'list':
+                    insert = '- ' + (selected || '列表项');
+                    cursorOffset = 0;
+                    break;
+                case 'code':
+                    if (selected.includes('\n')) {
+                        insert = '```\n' + selected + '\n```';
+                    } else {
+                        insert = '`' + (selected || '代码') + '`';
+                        cursorOffset = selected ? 0 : -2;
+                    }
+                    break;
+                case 'hr':
+                    insert = '\n---\n';
+                    cursorOffset = 0;
+                    break;
+            }
+
+            ta.value = before + insert + after;
+            ta.focus();
+            if (selected || cursorOffset !== 0) {
+                const newPos = start + insert.length + cursorOffset;
+                ta.setSelectionRange(newPos, newPos);
+            } else {
+                ta.setSelectionRange(start + insert.length, start + insert.length);
+            }
+            updateCreateWordNum();
+        });
+    });
+
+    // 初始刷新 AI 状态横幅
+    updateCreateAIBanner();
 
     // ===== 9.6 Tab3 文章配图：精细化封面/配图单独重新生成 =====
     // Tab3 文章配图相关的 DOM 元素
@@ -6873,6 +6954,8 @@ ${article.substring(0, 3000)}
 
             if (aiSettingsModal) aiSettingsModal.style.display = 'none';
             showToast('设置已保存');
+            // 刷新创作 tab 的 AI 状态横幅
+            updateCreateAIBanner();
         });
     }
 
