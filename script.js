@@ -5856,12 +5856,15 @@ ${article.substring(0, 3000)}
             banner.style.color = '#92400E';
             banner.innerHTML = '<span>⚠️</span> 尚未配置 AI，创作功能需要 AI 支持。<span style="text-decoration:underline;font-weight:600;">点击此处配置 →</span>';
             banner.onclick = function() {
-                const modal = document.getElementById('aiSettingsModal');
-                if (modal) modal.style.display = 'flex';
+                // 复用顶部 AI 设置按钮的完整初始化逻辑（填充 provider/key/model 等）
+                const btn = document.getElementById('aiSettingsBtn');
+                if (btn) btn.click();
             };
             banner.style.cursor = 'pointer';
         }
     }
+    // 暴露到全局，供顶层 tab 切换处理器调用（updateCreateAIBanner 定义在 IIFE 内）
+    window.updateCreateAIBanner = updateCreateAIBanner;
 
     const TOPIC_CATEGORIES = {
         internet: { name: '互联网', color: '#2563eb' },
