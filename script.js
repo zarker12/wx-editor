@@ -3520,13 +3520,18 @@ function formatParagraph(text) {
             apiKey = '';
             try { localStorage.removeItem('wx_editor_ai_settings_v2'); } catch {}
         }
-        // 旧版明文兼容（一次性迁移）
+        // 旧版明文兼容（一次性迁移：读出后写回 v2 再删除旧 key，避免下次再被误读）
         if (!apiKey) {
             const legacy = localStorage.getItem('llm_api_key');
             if (legacy) {
                 apiKey = legacy;
-                // 迁移到 v2 后删除旧版明文
-                try { localStorage.removeItem('llm_api_key'); } catch {}
+                try {
+                    localStorage.setItem('wx_editor_ai_settings_v2', JSON.stringify({
+                        apiKey: encodeKey(legacy),
+                        savedAt: Date.now()
+                    }));
+                    localStorage.removeItem('llm_api_key');
+                } catch {}
             }
         }
         return {
@@ -3830,8 +3835,11 @@ function formatParagraph(text) {
             },
             body: JSON.stringify({
                 model: model,
-                messages: [{ role: 'user', content: prompt }],
-                temperature: 0.8,
+                // 支持传入 system prompt（字符串则视为纯 user 消息；对象 {system, user} 拆为两条）
+                messages: (typeof prompt === 'object' && prompt !== null && prompt.system)
+                    ? [{ role: 'system', content: prompt.system }, { role: 'user', content: prompt.user }]
+                    : [{ role: 'user', content: String(prompt) }],
+                temperature: 0.7,
                 max_tokens: 4000
             })
         });
@@ -5634,15 +5642,51 @@ ${article.substring(0, 3000)}
         const maxWords = wordCount + 200;
         const sectionWords = Math.floor(wordCount / sections);
 
-        const prompt = `你是公众号主笔，有人设、有立场、有洞察力。请基于「${topic}」写一篇文章，字数 ${minWords}-${maxWords} 字（目标 ${wordCount} 字），分 ${sections} 个章节，每章 ${sectionWords} 字以上。风格：${styleMap[style] || styleMap.deep}。方向：${directionMap[direction] || directionMap.opinion}。用第一人称，加入口语化表达（说实话、坦白讲、老实说），句子长短混排。${bgLine}
-格式要求：Markdown 格式，以 # 大标题开头（15-25字，用爆款技巧：数字、悬念、反差，不要用「」号），紧跟一个 > 引用块引言（60-90字点出核心矛盾），然后用 ## 划分 ${sections} 个章节（标题要有信息量，不要用"第一章"），最后简短总结。不要末尾自我介绍，不要加 END 标记。
-内容要求：紧扣「${topic}」展开，每段都服务于主题。要有独立观点和信息增量，让读者获得新认知。要有具体的生活观察、个人体验、情感细节。段落松散自由，每段 2-3 句，一个想法讲完就换段。
-事实要求：不得编造具体数据、统计数字、百分比、人物、公司、事件、案例、名言出处。可以用"有人说过""身边有朋友"等泛化表达。观点和情感可以自由发挥。
-话题要求：不碰宗教、政治、政党、政策立场、国家领导人、民族独立、领土争端、民族矛盾。如果话题触碰，转换到生活化、人性化、情感化的侧面。
-语言要求：不要用破折号。不要用"此外、值得一提的是、至关重要、深入探讨、赋能、沉淀、迭代、落地、闭环、抓手、赛道"等 AI 腔。不要"不仅是…更是…"、"不是…而是…"平行结构。不要"首先、其次、最后"三段论。不要"这不禁让我们思考"、"未来必将"等反思句。不要"在XX的背景下"、"随着XX的发展"等 AI 开头。
-标题技巧：用数字、悬念、反差、具体场景。好标题示例：为什么90%的人对XX的理解都是错的、XX火了但我发现了3个被忽略的细节。
-请直接输出文章正文，从 # 标题开始。不要输出任何思考过程、结构规划、字数统计或审查说明。`;
-        return await callLLM(prompt, settings);
+        // system 消息：设定资深编辑人设 + 全局禁词表（去 AI 味）
+        const systemPrompt = `你是一位有十年从业经验的公众号资深主笔，写过大量被读者主动转发的原创文章。你的文字有三个特征：第一，有真实的观察和判断，不是空话套话；第二，句子长短交错，像说话一样自然，没有 AI 痕迹；第三，每段只讲一个意思，讲完就换段，不拖泥带水。
+
+你坚决避免以下"AI 腔"词汇和句式，出现即视为不合格：
+- 过渡词类：综上所述、总而言之、由此可见、与此同时、在此基础上、进而、由此、那么、因此、所以、然而、不过、总的来说、换言之、简而言之、首先、其次、最后、此外、值得一提的是、至关重要、深入探讨、赋能、沉淀、迭代、落地、闭环、抓手、赛道、破局、重塑、加持、维度、层面
+- 句式类："不仅是…更是…"、"不是…而是…"、"既…又…"、"一方面…另一方面…"三段论式排比
+- 反思句："这不禁让我们思考"、"这让我们意识到"、"未来必将"、"在这个XX的时代"
+- AI 开头："在XX的背景下"、"随着XX的发展"、"XX时代下"、"当下社会"
+- 标点：不用破折号，不用分号堆叠长句
+
+你要像跟一个聪明的朋友聊天那样写作：直接、有信息量、敢下判断，但留有余地。宁可说"我觉得"也不要装作客观。宁可说大白话也不要用大词。`;
+
+        // user 消息：具体写作任务（不再给"标题示例"，避免照抄；原则用文字描述）
+        const userPrompt = `请基于「${topic}」写一篇原创公众号文章，字数 ${minWords}-${maxWords} 字（目标 ${wordCount} 字），分 ${sections} 个章节，每章 ${sectionWords} 字以上。
+
+写作风格：${styleMap[style] || styleMap.deep}
+内容方向：${directionMap[direction] || directionMap.opinion}
+${bgLine}
+格式要求：必须是 Markdown 格式，结构如下——
+1. 第一行是 # 一级标题（15-25 字，要有信息量，让人想点开看，可以用数字、悬念、反差、具体场景，但不要用「」书名号，不要套用模板句式）
+2. 紧跟一个 > 引用块引言（60-90 字，点出核心矛盾或抛出问题，不要写成总结）
+3. 用 ## 划分 ${sections} 个章节，章节标题要传达信息量（不要用"第一章""第二部分"这种编号）
+4. 文末可以有一段简短收束（2-3 句），但不要自我介绍，不要加 END、完、以上等标记
+
+内容要求：
+- 紧扣「${topic}」展开，每段都服务于主题，不要发散跑题
+- 要有独立观点和信息增量，让读者读完获得新认知，而不是"我也知道"的废话
+- 要有具体的生活观察、个人体验、情感细节，避免空泛议论
+- 段落松散自由，每段 2-3 句，一个想法讲完就换段
+- 第一人称写作，可以适度口语化（如"说实话""坦白讲""老实讲"），但不要每段都用
+
+事实要求：
+- 不得编造具体数据、统计数字、百分比、人物姓名、公司名称、新闻事件、案例、名言出处
+- 可以用"身边有朋友""我观察到""有人说过"等泛化表达
+- 观点和情感可以自由发挥，但事实层面必须诚实
+
+话题边界：
+- 不碰宗教、政治、政党、政策立场、国家领导人、民族独立、领土争端、民族矛盾
+- 如果话题触碰以上，请自动转换到生活化、人性化、情感化的侧面来写
+
+输出要求：
+- 请直接输出文章正文，从 # 标题开始
+- 不要输出任何思考过程、结构规划、字数统计、审查说明、生成备注
+- 不要在文章前后加任何解释性文字`;
+        return await callLLM({ system: systemPrompt, user: userPrompt }, settings);
     }
 
     // ===== 高保真演示模式：无 API Key 或调用失败时使用的本地文章生成器 =====
@@ -5846,9 +5890,32 @@ ${article.substring(0, 3000)}
             banner.style.background = '#ECFDF5';
             banner.style.border = '1px solid #6EE7B7';
             banner.style.color = '#065F46';
-            banner.innerHTML = '<span style="color:#10B981;">●</span> AI 已就绪 · ' + config.name + ' · ' + modelName;
+            banner.innerHTML = '<span style="color:#10B981;">●</span> AI 已配置 · ' + config.name + ' · ' + modelName
+                + '<span style="margin-left:8px;padding:2px 8px;background:#fff;border:1px solid #6EE7B7;border-radius:4px;font-size:11px;cursor:pointer;color:#065F46;" id="aiBannerTestBtn">测试连接</span>';
             banner.onclick = null;
             banner.style.cursor = 'default';
+            const testBtn = document.getElementById('aiBannerTestBtn');
+            if (testBtn) {
+                testBtn.onclick = async function(e) {
+                    if (e) e.stopPropagation();
+                    testBtn.textContent = '测试中...';
+                    testBtn.style.opacity = '0.6';
+                    try {
+                        await callLLM('请回复"OK"', settings);
+                        testBtn.textContent = '✓ 连接成功';
+                        testBtn.style.color = '#065F46';
+                        testBtn.style.borderColor = '#10B981';
+                    } catch (err) {
+                        testBtn.textContent = '✗ 连接失败';
+                        testBtn.style.color = '#B91C1C';
+                        testBtn.style.borderColor = '#FCA5A5';
+                        showToast('AI 连接失败：' + (err && err.message ? err.message : '未知错误') + '，请检查 API Key 与网络');
+                    } finally {
+                        testBtn.style.opacity = '1';
+                        setTimeout(() => { testBtn.textContent = '测试连接'; testBtn.style.color = '#065F46'; testBtn.style.borderColor = '#6EE7B7'; }, 3000);
+                    }
+                };
+            }
         } else {
             banner.style.display = 'flex';
             banner.style.background = '#FEF3C7';
@@ -5971,12 +6038,12 @@ ${article.substring(0, 3000)}
         } catch (e) {
             console.warn('[微博] IT之家 RSS 也失败，使用预置选题');
         }
-        // 最后兜底：预置选题
+        // 最后兜底：预置选题（标记 _isMock，渲染时诚实提示）
         return [
-            { title: '当代年轻人的精神状态', cat: 'society', desc: '年轻人面对压力的真实反应', time: timeStr, source: '微博' },
-            { title: 'AI 改变了哪些工作', cat: 'tech', desc: 'AI 技术对传统岗位的冲击', time: timeStr, source: '微博' },
-            { title: '大厂年终奖真相', cat: 'workplace', desc: '互联网行业薪酬福利现状', time: timeStr, source: '微博' },
-            { title: '互联网行业的下一个风口', cat: 'internet', desc: '行业趋势预测与新机会', time: timeStr, source: '微博' }
+            { title: '当代年轻人的精神状态', cat: 'society', desc: '年轻人面对压力的真实反应', time: timeStr, source: '微博', _isMock: true },
+            { title: 'AI 改变了哪些工作', cat: 'tech', desc: 'AI 技术对传统岗位的冲击', time: timeStr, source: '微博', _isMock: true },
+            { title: '大厂年终奖真相', cat: 'workplace', desc: '互联网行业薪酬福利现状', time: timeStr, source: '微博', _isMock: true },
+            { title: '互联网行业的下一个风口', cat: 'internet', desc: '行业趋势预测与新机会', time: timeStr, source: '微博', _isMock: true }
         ];
     }
 
@@ -6065,8 +6132,8 @@ ${article.substring(0, 3000)}
         } catch (e) {
             console.warn('[抖音] 少数派 RSS 也失败，使用预置选题');
         }
-        // 最后兜底：预置选题
-        return DOUYIN_TOPICS.map(t => ({ ...t, source: '抖音', time: timeStr }));
+        // 最后兜底：预置选题（标记 _isMock，渲染时诚实提示）
+        return DOUYIN_TOPICS.map(t => ({ ...t, source: '抖音', time: timeStr, _isMock: true }));
     }
 
     // 综合资讯：聚合多个 RSS 源（36氪+IT之家+少数派），各取前 8 条混合
@@ -6116,12 +6183,15 @@ ${article.substring(0, 3000)}
             recommend: '综合资讯'
         }[topicCenterState.currentSource] || '';
 
-        // 时间标签：实时抓取的显示"实时"，预置的显示"今日精选"
+        // 诚实标注：检测列表中是否含 mock 数据
+        const hasMock = items.some(it => it._isMock);
         const now = new Date();
         const timeStr = `${now.getHours() < 10 ? '0' + now.getHours() : now.getHours()}:${now.getMinutes() < 10 ? '0' + now.getMinutes() : now.getMinutes()}`;
-        const timeLabel = `实时 ${timeStr}`;
+        // mock 数据不再假装"实时"，明确标注"示例选题"
+        const timeLabel = hasMock ? '示例选题' : `实时 ${timeStr}`;
+        const mockTip = hasMock ? '<span style="color:#92400E;font-size:11px;margin-left:6px;">⚠️ 实时数据获取失败，当前为预置示例</span>' : '';
 
-        hotTopicsList.innerHTML = `<div style="font-size:12px;color:#6B7280;margin-bottom:8px;font-weight:600;">${sourceLabel} · ${timeLabel}（共 ${items.length} 条，点击选择）：</div>` +
+        hotTopicsList.innerHTML = `<div style="font-size:12px;color:#6B7280;margin-bottom:8px;font-weight:600;">${sourceLabel} · ${timeLabel}（共 ${items.length} 条，点击选择）：${mockTip}</div>` +
             items.map((it, i) => {
                 const catInfo = TOPIC_CATEGORIES[it.cat] || TOPIC_CATEGORIES.society;
                 const safeTitle = (it.title || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
@@ -6202,7 +6272,12 @@ ${article.substring(0, 3000)}
             }
         } catch (e) {
             console.error('加载选题失败:', e);
-            items = RECOMMEND_TOPICS.map(t => ({ ...t, source: 'recommend', time: '今日精选' }));
+            // 各源失败时用对应的本地预置选题（不再统一用 RECOMMEND_TOPICS）
+            const now = new Date();
+            const timeStr = `${now.getHours() < 10 ? '0' + now.getHours() : now.getHours()}:${now.getMinutes() < 10 ? '0' + now.getMinutes() : now.getMinutes()}`;
+            const mockSourceName = { weibo: '微博', douyin: '抖音', '36kr': '36氪', recommend: '综合资讯' }[source] || '综合资讯';
+            const mockArray = source === '36kr' ? KR36_TOPICS : RECOMMEND_TOPICS;
+            items = mockArray.map(t => ({ ...t, source: mockSourceName, time: timeStr, _isMock: true }));
         }
 
         topicCenterState.currentList = filterByRedline(items);
@@ -6244,11 +6319,24 @@ ${article.substring(0, 3000)}
         });
     });
 
-    // 刷新按钮：重新加载当前源
+    // 刷新按钮：重新加载当前源（带 loading 视觉反馈）
     const refreshTopicsBtn = document.getElementById('refreshTopicsBtn');
     if (refreshTopicsBtn) {
-        refreshTopicsBtn.addEventListener('click', () => {
-            switchTopicSource(topicCenterState.currentSource);
+        refreshTopicsBtn.addEventListener('click', async () => {
+            if (refreshTopicsBtn.dataset.loading === '1') return;
+            const originalText = refreshTopicsBtn.textContent;
+            refreshTopicsBtn.dataset.loading = '1';
+            refreshTopicsBtn.textContent = '⏳ 刷新中...';
+            refreshTopicsBtn.style.opacity = '0.6';
+            refreshTopicsBtn.style.cursor = 'wait';
+            try {
+                await switchTopicSource(topicCenterState.currentSource);
+            } finally {
+                refreshTopicsBtn.dataset.loading = '0';
+                refreshTopicsBtn.textContent = originalText;
+                refreshTopicsBtn.style.opacity = '1';
+                refreshTopicsBtn.style.cursor = 'pointer';
+            }
         });
     }
 
@@ -6256,14 +6344,47 @@ ${article.substring(0, 3000)}
     // 默认激活 36 氪（真实 RSS 资讯）
     setTimeout(() => switchTopicSource('36kr', true), 100);
 
+    // 生成按钮状态控制：无 API Key 时禁用并引导配置（不再静默返回 mock 垃圾）
+    function updateCreateGenerateBtnState() {
+        if (!createGenerateBtn) return;
+        const settings = getAISettings();
+        const hasKey = !!(settings && settings.apiKey);
+        if (hasKey) {
+            createGenerateBtn.disabled = false;
+            createGenerateBtn.textContent = '🚀 生成文章';
+            createGenerateBtn.style.opacity = '1';
+            createGenerateBtn.style.cursor = 'pointer';
+            createGenerateBtn.title = '';
+        } else {
+            createGenerateBtn.disabled = false; // 保持可点击以触发引导
+            createGenerateBtn.textContent = '⚠️ 未配置 AI，点击配置';
+            createGenerateBtn.style.opacity = '0.85';
+            createGenerateBtn.style.cursor = 'pointer';
+            createGenerateBtn.title = '尚未配置 AI API Key，点击前往配置';
+        }
+    }
+
     // 生成按钮
     if (createGenerateBtn) {
-        createGenerateBtn.addEventListener('click', () => createGenerateArticle(false));
+        createGenerateBtn.addEventListener('click', () => {
+            const settings = getAISettings();
+            if (!settings || !settings.apiKey) {
+                // 无 key：引导配置，不再静默生成 mock
+                showToast('请先配置 AI API Key，配置后才能生成真实文章', 'warn');
+                const btn = document.getElementById('aiSettingsBtn');
+                if (btn) btn.click();
+                return;
+            }
+            createGenerateArticle(false);
+        });
     }
     // 重新生成按钮
     if (createRegenerateBtn) {
         createRegenerateBtn.addEventListener('click', () => createGenerateArticle(true));
     }
+    // 初始化按钮状态
+    updateCreateGenerateBtnState();
+    window.updateCreateGenerateBtnState = updateCreateGenerateBtnState;
     // 字数实时统计
     if (createArticleArea) {
         createArticleArea.addEventListener('input', updateCreateWordNum);
@@ -6957,8 +7078,9 @@ ${article.substring(0, 3000)}
 
             if (aiSettingsModal) aiSettingsModal.style.display = 'none';
             showToast('设置已保存');
-            // 刷新创作 tab 的 AI 状态横幅
+            // 刷新创作 tab 的 AI 状态横幅与生成按钮状态
             updateCreateAIBanner();
+            if (typeof window.updateCreateGenerateBtnState === 'function') window.updateCreateGenerateBtnState();
         });
     }
 
