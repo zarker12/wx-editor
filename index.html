@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>公众号文章排版助手</title>
-    <link rel="stylesheet" href="styles.css?v=10">
+    <link rel="stylesheet" href="styles.css?v=12">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -15,6 +15,42 @@
 </head>
 <body>
     <div class="app-container">
+        <!-- ===== 左侧导航 ===== -->
+        <aside class="app-sidebar">
+            <div class="sidebar-logo">
+                <span class="logo-icon">✎</span>
+                <span class="logo-text">排版助手</span>
+            </div>
+            <nav class="app-nav">
+                <div class="nav-section-label">工作流</div>
+                <button class="nav-item active" data-tab="editor">
+                    <span class="nav-icon">✎</span><span>排版</span>
+                </button>
+                <button class="nav-item" data-tab="create">
+                    <span class="nav-icon">✍</span><span>创作</span>
+                </button>
+                <button class="nav-item" data-tab="subscribe">
+                    <span class="nav-icon">📰</span><span>订阅</span>
+                </button>
+                <button class="nav-item" data-tab="image">
+                    <span class="nav-icon">🖼</span><span>图片</span>
+                </button>
+                <div class="nav-section-label">资产</div>
+                <button class="nav-item" data-tab="products">
+                    <span class="nav-icon">📦</span><span>产物</span>
+                </button>
+                <button class="nav-item" data-tab="settings">
+                    <span class="nav-icon">⚙️</span><span>设置</span>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <div><span class="ai-status-dot" id="sidebarAiDot"></span><span id="sidebarAiText">AI 未配置</span></div>
+                <div style="margin-top:6px;opacity:0.7;">v2.0 · Cloudflare Ready</div>
+            </div>
+        </aside>
+
+        <!-- ===== 主区域 ===== -->
+        <div class="app-main">
         <header class="header">
             <div class="logo">
                 <span class="logo-icon">✎</span>
@@ -50,19 +86,79 @@
             </div>
         </header>
 
-        <div class="tab-bar">
-            <button class="tab-btn" data-tab="create">
-                <span class="tab-icon">✍</span>
-                创作
-            </button>
-            <button class="tab-btn active" data-tab="editor">
-                <span class="tab-icon">✎</span>
-                排版助手
-            </button>
-            <button class="tab-btn" data-tab="image">
-                <span class="tab-icon">🖼</span>
-                图片生成
-            </button>
+        <!-- Tab: 订阅 -->
+        <div class="tab-content" id="tab-subscribe">
+            <main class="main-content" style="background:#F9FAFB;">
+                <section style="flex:1;display:flex;flex-direction:column;padding:32px 40px;overflow-y:auto;">
+                    <div class="dash-panel">
+                        <h2>📰 公众号订阅</h2>
+                        <p class="dash-sub">管理你订阅的微信公众号 RSS 源，一键同步最新文章。部署到 Cloudflare 后由 Cron 每 2 小时自动同步。</p>
+                        <div class="dash-cards">
+                            <div class="dash-card"><div class="num" id="dashSubCount">0</div><div class="label">已订阅公众号</div></div>
+                            <div class="dash-card"><div class="num" id="dashArticleCount">0</div><div class="label">已同步文章</div></div>
+                            <div class="dash-card"><div class="num" id="dashSyncState">本地</div><div class="label">存储模式</div></div>
+                        </div>
+                        <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
+                            <button id="dashManageSubsBtn" type="button" style="padding:10px 18px;background:#07C160;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">⚙ 管理订阅</button>
+                            <button id="dashSyncBtn" type="button" style="padding:10px 18px;background:#fff;color:#07C160;border:1px solid #07C160;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">🔄 立即同步</button>
+                            <button id="dashGoCreateBtn" type="button" style="padding:10px 18px;background:#fff;color:#3B82F6;border:1px solid #3B82F6;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">→ 去创作引用</button>
+                        </div>
+                        <div>
+                            <div style="font-size:13px;color:#374151;font-weight:600;margin-bottom:10px;">最近文章</div>
+                            <div id="dashArticlesList" style="display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto;"></div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- Tab: 产物 -->
+        <div class="tab-content" id="tab-products">
+            <main class="main-content" style="background:#F9FAFB;">
+                <section style="flex:1;display:flex;flex-direction:column;padding:32px 40px;overflow-y:auto;">
+                    <div class="dash-panel">
+                        <h2>📦 我的产物</h2>
+                        <p class="dash-sub">所有草稿与导出文件集中管理。草稿保存在浏览器本地，重要内容请下载备份。</p>
+                        <div class="dash-cards">
+                            <div class="dash-card"><div class="num" id="dashDraftCount">0</div><div class="label">本地草稿</div></div>
+                            <div class="dash-card"><div class="num" id="dashWordCount">0</div><div class="label">当前字数</div></div>
+                        </div>
+                        <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
+                            <button id="dashSaveDraftBtn" type="button" style="padding:10px 18px;background:#10B981;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">💾 保存当前为草稿</button>
+                            <button id="dashDownloadMdBtn" type="button" style="padding:10px 18px;background:#3B82F6;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">📥 下载为 .md</button>
+                            <button id="dashManageDraftBtn" type="button" style="padding:10px 18px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">📋 管理草稿列表</button>
+                        </div>
+                        <div>
+                            <div style="font-size:13px;color:#374151;font-weight:600;margin-bottom:10px;">最近草稿</div>
+                            <div id="dashDraftList" style="display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto;"></div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- Tab: 设置 -->
+        <div class="tab-content" id="tab-settings">
+            <main class="main-content" style="background:#F9FAFB;">
+                <section style="flex:1;display:flex;flex-direction:column;padding:32px 40px;overflow-y:auto;">
+                    <div class="dash-panel">
+                        <h2>⚙️ 设置</h2>
+                        <p class="dash-sub">配置 AI 模型、图片生成、订阅数据源。所有配置保存在浏览器本地。</p>
+                        <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
+                            <button id="dashAiSettingsBtn" type="button" style="padding:10px 18px;background:#10B981;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">🤖 AI 模型设置</button>
+                            <button id="dashThemeBtn" type="button" style="padding:10px 18px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">🎨 主题色</button>
+                        </div>
+                        <div style="padding:16px;border:1px solid #E5E7EB;border-radius:10px;background:#F9FAFB;">
+                            <div style="font-size:13px;color:#374151;font-weight:600;margin-bottom:8px;">当前配置概览</div>
+                            <div id="dashSettingsOverview" style="font-size:12px;color:#6B7280;line-height:1.8;">加载中...</div>
+                        </div>
+                        <div style="margin-top:18px;padding:14px;border-radius:10px;background:linear-gradient(135deg,rgba(16,185,129,0.08),rgba(59,130,246,0.08));border:1px solid rgba(16,185,129,0.2);">
+                            <div style="font-size:13px;font-weight:600;color:#065F46;margin-bottom:4px;">☁️ Cloudflare 部署</div>
+                            <div style="font-size:12px;color:#374151;line-height:1.6;">订阅与爆文榜单数据由 Pages Functions + D1 + Cron 提供，全部免费。当前为本地模式，部署后可持久化与自动同步。</div>
+                        </div>
+                    </div>
+                </section>
+            </main>
         </div>
 
         <!-- Tab 1: 创作 -->
@@ -93,6 +189,7 @@
                                 <button data-source="36kr" class="topic-source-btn active" type="button" style="padding:7px 14px;background:#1E40AF;color:#fff;border:1px solid #1E40AF;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">📊 36氪科技</button>
                                 <button data-source="recommend" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#3B82F6;border:1px solid #3B82F6;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">🌐 综合资讯</button>
                                 <button data-source="wechat" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#07C160;border:1px solid #07C160;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">📢 公众号订阅</button>
+                                <button data-source="wechat-hot" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#DC2626;border:1px solid #DC2626;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">🔥 微信爆文榜</button>
                                 <button id="manageSubsBtn" type="button" title="管理公众号订阅" style="padding:7px 10px;background:#fff;color:#07C160;border:1px solid #07C160;border-radius:6px;font-size:12px;cursor:pointer;">⚙ 订阅</button>
                                 <button id="refreshTopicsBtn" type="button" style="padding:7px 12px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:6px;font-size:12px;cursor:pointer;margin-left:auto;">🔄 刷新</button>
                             </div>
@@ -871,7 +968,8 @@
                 </div>
             </div>
         </div>
-    </div>
+        </div><!-- /.app-main -->
+    </div><!-- /.app-container -->
 
     <!-- 公众号订阅管理弹窗（全局，脱离 tab 容器；须在 script.js 之前，确保绑定事件时元素已存在） -->
     <div id="subsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
@@ -900,6 +998,6 @@
     <script src="themes/magazine.js"></script>
     <script src="themes/fresh.js"></script>
     <script src="themes/vibrant.js"></script>
-    <script src="script.js?v=47"></script>
+    <script src="script.js?v=49"></script>
 </body>
 </html>

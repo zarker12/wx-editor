@@ -3034,25 +3034,149 @@ let currentImgColor = 'emerald';
 let generatedCanvases = [];
 let currentPageIdx = 0;
 
-// Tab切换
-document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const tab = btn.dataset.tab;
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById(`tab-${tab}`).classList.add('active');
-        // 顶部按钮上下文感知：data-tab-visible 的按钮仅在对应 tab 显示
-        document.querySelectorAll('.header-actions [data-tab-visible]').forEach(el => {
-            const visibleTab = el.getAttribute('data-tab-visible');
-            el.style.display = (visibleTab === tab) ? '' : 'none';
-        });
-        // 进入创作 tab 时刷新 AI 状态横幅
-        if (tab === 'create') {
-            updateCreateAIBanner();
-        }
+// Tab切换（兼容顶部 .tab-btn 与左侧 .nav-item）
+function switchTab(tab) {
+    document.querySelectorAll('.tab-btn, .nav-item').forEach(b => {
+        if (b.dataset.tab === tab) b.classList.add('active');
+        else b.classList.remove('active');
     });
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    const target = document.getElementById(`tab-${tab}`);
+    if (target) target.classList.add('active');
+    // 顶部按钮上下文感知：data-tab-visible 的按钮仅在对应 tab 显示
+    document.querySelectorAll('.header-actions [data-tab-visible]').forEach(el => {
+        const visibleTab = el.getAttribute('data-tab-visible');
+        el.style.display = (visibleTab === tab) ? '' : 'none';
+    });
+    // 进入创作 tab 时刷新 AI 状态横幅
+    if (tab === 'create') {
+        if (typeof updateCreateAIBanner === 'function') updateCreateAIBanner();
+    }
+    // 进入订阅/产物/设置 tab 时刷新对应面板
+    if (tab === 'subscribe') refreshSubscribeDash();
+    if (tab === 'products') refreshProductsDash();
+    if (tab === 'settings') refreshSettingsDash();
+}
+document.querySelectorAll('.tab-btn, .nav-item').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
 });
+
+// ===== 侧边栏 AI 状态指示 =====
+function updateSidebarAiStatus() {
+    const dot = document.getElementById('sidebarAiDot');
+    const text = document.getElementById('sidebarAiText');
+    if (!dot || !text) return;
+    try {
+        const s = getAISettings && getAISettings();
+        if (s && s.apiKey) {
+            dot.classList.add('ready');
+            text.textContent = 'AI 已就绪';
+        } else {
+            dot.classList.remove('ready');
+            text.textContent = 'AI 未配置';
+        }
+    } catch {}
+}
+
+// ===== 订阅 Dashboard =====
+async function refreshSubscribeDash() {
+    try {
+        const subs = (typeof loadSubscriptions === 'function') ? await loadSubscriptions() : [];
+        const subCount = document.getElementById('dashSubCount');
+        const artCount = document.getElementById('dashArticleCount');
+        const syncState = document.getElementById('dashSyncState');
+        const list = document.getElementById('dashArticlesList');
+        if (subCount) subCount.textContent = subs.length;
+        const status = (typeof _subsBackendStatus !== 'undefined') ? _subsBackendStatus : 'unknown';
+        if (syncState) syncState.textContent = status === 'ok' ? '云端' : '本地';
+        // 文章数：尝试取缓存
+        let arts = [];
+        try { arts = JSON.parse(localStorage.getItem('wx_editor_subs_articles_cache_v1') || '[]'); } catch {}
+        if (artCount) artCount.textContent = arts.length;
+        if (list) {
+            if (arts.length === 0) {
+                list.innerHTML = '<div style="padding:16px;text-align:center;color:#9CA3AF;font-size:13px;border:1px dashed #E5E7EB;border-radius:8px;">暂无文章，点"立即同步"抓取</div>';
+            } else {
+                list.innerHTML = arts.slice(0, 10).map(a => `
+                    <div style="padding:10px 12px;border:1px solid #E5E7EB;border-radius:8px;background:#fff;">
+                        <div style="font-size:13px;color:#1F2937;font-weight:500;margin-bottom:4px;">${(a.title||'').replace(/</g,'&lt;')}</div>
+                        <div style="font-size:11px;color:#9CA3AF;">${(a.source||'')} · ${a.time||''}</div>
+                    </div>`).join('');
+            }
+        }
+    } catch (e) { console.warn('refreshSubscribeDash', e); }
+}
+
+// ===== 产物 Dashboard =====
+function refreshProductsDash() {
+    try {
+        const drafts = (typeof getDrafts === 'function') ? getDrafts() : (JSON.parse(localStorage.getItem('wx_editor_drafts') || '[]'));
+        const dc = document.getElementById('dashDraftCount');
+        const wc = document.getElementById('dashWordCount');
+        const list = document.getElementById('dashDraftList');
+        if (dc) dc.textContent = drafts.length;
+        // 当前编辑器字数
+        if (wc) {
+            const ed = document.getElementById('editor');
+            const txt = ed ? ed.innerText : '';
+            wc.textContent = txt.replace(/\s/g,'').length;
+        }
+        if (list) {
+            if (!drafts.length) {
+                list.innerHTML = '<div style="padding:16px;text-align:center;color:#9CA3AF;font-size:13px;border:1px dashed #E5E7EB;border-radius:8px;">暂无草稿</div>';
+            } else {
+                list.innerHTML = drafts.slice(0, 10).map((d, i) => `
+                    <div style="padding:10px 12px;border:1px solid #E5E7EB;border-radius:8px;background:#fff;">
+                        <div style="font-size:13px;color:#1F2937;font-weight:500;margin-bottom:4px;">${(d.title||d.name||'草稿'+(i+1)).replace(/</g,'&lt;')}</div>
+                        <div style="font-size:11px;color:#9CA3AF;">${(d.time||d.createdAt||'')} · ${((d.content||'').replace(/\s/g,'').length)}字</div>
+                    </div>`).join('');
+            }
+        }
+    } catch (e) { console.warn('refreshProductsDash', e); }
+}
+
+// ===== 设置 Dashboard =====
+function refreshSettingsDash() {
+    const ov = document.getElementById('dashSettingsOverview');
+    if (!ov) return;
+    try {
+        const s = getAISettings && getAISettings();
+        const rows = [];
+        rows.push(`<div>AI 模型：<b>${s && s.provider ? s.provider : '未配置'}</b></div>`);
+        rows.push(`<div>API Key：<b>${s && s.apiKey ? '已配置（' + s.apiKey.slice(0,4) + '...' + s.apiKey.slice(-2) + '）' : '未配置'}</b></div>`);
+        const subs = JSON.parse(localStorage.getItem('wx_editor_subscriptions_v1') || '[]');
+        rows.push(`<div>已订阅公众号：<b>${subs.length}</b> 个</div>`);
+        rows.push(`<div>存储模式：<b>${(typeof _subsBackendStatus !== 'undefined' && _subsBackendStatus==='ok') ? '云端（D1）' : '本地（localStorage）'}</b></div>`);
+        ov.innerHTML = rows.join('');
+    } catch (e) { ov.textContent = '配置读取失败：' + e.message; }
+}
+
+// 绑定 dashboard 按钮到既有 modal/函数
+function bindDashButtons() {
+    const $ = id => document.getElementById(id);
+    $('dashManageSubsBtn') && $('dashManageSubsBtn').addEventListener('click', () => {
+        const m = $('subsModal'); if (m) { m.style.display = 'flex'; if (typeof renderSubsList==='function') renderSubsList(); }
+    });
+    $('dashSyncBtn') && $('dashSyncBtn').addEventListener('click', async (e) => {
+        const b = e.currentTarget; b.disabled=true; b.textContent='⏳ 同步中...';
+        try {
+            const r = (typeof syncAllSubscriptions==='function') ? await syncAllSubscriptions() : {synced:'local'};
+            showToast(r.synced === 'local' ? '本地模式：已抓取并缓存' : `同步成功 ${r.synced} 个源`);
+            refreshSubscribeDash();
+        } catch(err){ showToast('同步失败：'+err.message); }
+        finally { b.disabled=false; b.textContent='🔄 立即同步'; }
+    });
+    $('dashGoCreateBtn') && $('dashGoCreateBtn').addEventListener('click', () => switchTab('create'));
+    $('dashSaveDraftBtn') && $('dashSaveDraftBtn').addEventListener('click', () => { const b=$('draftBtn'); if(b) b.click(); showToast('已触发保存草稿'); });
+    $('dashDownloadMdBtn') && $('dashDownloadMdBtn').addEventListener('click', () => { const b=$('downloadMdBtn'); if(b) b.click(); });
+    $('dashManageDraftBtn') && $('dashManageDraftBtn').addEventListener('click', () => { const m=$('draftModal'); if(m) m.style.display='flex'; });
+    $('dashAiSettingsBtn') && $('dashAiSettingsBtn').addEventListener('click', () => { const b=$('aiSettingsBtn'); if(b) b.click(); });
+    $('dashThemeBtn') && $('dashThemeBtn').addEventListener('click', () => { const b=$('aiSettingsBtn'); if(b) b.click(); });
+}
+bindDashButtons();
+updateSidebarAiStatus();
+// 定期刷新侧边栏状态（AI 设置变化后）
+setInterval(updateSidebarAiStatus, 3000);
 
 // 模式切换
 document.querySelectorAll('.mode-btn').forEach(btn => {
@@ -6346,6 +6470,59 @@ ${bgLine}
         } catch { return '未知时间'; }
     }
 
+    // ===== 微信爆文榜（多源降级：后端 API → rss2json 公共 RSS → 诚实标注的示例榜）=====
+    // 后端 /api/hot-articles 已尝试 RSSHub 公共实例；前端再做一层 rss2json 兜底。
+    async function fetchWechatHotArticles() {
+        // 1. 优先调后端
+        try {
+            const ctrl = AbortSignal.timeout(9000);
+            const res = await fetch('/api/hot-articles?size=30', { signal: ctrl });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.rows && data.rows.length) {
+                    return data.rows.map(r => ({
+                        title: r.title,
+                        cat: guessCategory(r.title || ''),
+                        source: r.source || '微信爆文',
+                        desc: (r.content || '').slice(0, 80) || '点击查看爆文详情',
+                        time: r.pub_date ? formatPubDate(r.pub_date) : '近期',
+                        link: r.url || '',
+                        readCount: r.read_count || 0,
+                        _isMock: !!data._isMock
+                    }));
+                }
+            }
+        } catch (e) {
+            console.warn('[微信爆文榜] 后端查询失败，尝试前端直抓', e);
+        }
+        // 2. 前端直抓 RSSHub 公共实例（通过 rss2json 代理绕 CORS）
+        const rsshubFeeds = [
+            'https://rsshub.app/wechat/announce',
+            'https://rsshub.feeded.xyz/wechat/announce'
+        ];
+        for (const feed of rsshubFeeds) {
+            try {
+                const items = await fetchRSSNews(feed, '微信爆文');
+                if (items && items.length) return items;
+            } catch (e) {
+                continue;
+            }
+        }
+        // 3. 兜底：诚实标注的示例爆文榜
+        const mock = [
+            { title: '一篇 10w+ 是怎么炼成的：标题、封面、正文的 27 个细节', source: '文案怪谈', desc: '10w+ 不是玄学，是系统工程...' },
+            { title: '我用 AI 写公众号 30 天，粉丝从 0 涨到 5000 的复盘', source: '增长黑盒', desc: 'AI 不是替代创作者，而是放大器...' },
+            { title: '公众号又改版了：推荐流逻辑变化与应对策略', source: '运营研究社', desc: '本次改版最大的变化是把"在看"权重降低...' },
+            { title: '爆款标题的 6 个公式：从恐惧、好奇到利益承诺', source: '文案怪谈', desc: '标题决定打开率...' },
+            { title: '2026 公众号广告报价参考：头部账号报价普跌 20%', source: '新榜', desc: '受整体环境影响...' },
+            { title: 'AI 时代的内容创作：哪些公众号会被淘汰，哪些会崛起', source: '未来内容', desc: 'AI 是分水岭...' }
+        ].map(m => ({
+            ...m, cat: guessCategory(m.title), time: '示例', link: '', readCount: 50000 + Math.floor(Math.random() * 50000), _isMock: true
+        }));
+        setTimeout(() => showToast('公共数据源暂不可用，当前为示例爆文榜。自建 RSSHub 可获取实时数据'), 200);
+        return mock;
+    }
+
     // 手动同步：调后端 /api/sync；本地降级时提示
     async function syncAllSubscriptions() {
         const status = await detectSubsBackend();
@@ -6438,7 +6615,9 @@ ${bgLine}
             weibo: '微博热搜',
             douyin: '抖音热点',
             '36kr': '36氪科技',
-            recommend: '综合资讯'
+            recommend: '综合资讯',
+            wechat: '公众号订阅',
+            'wechat-hot': '微信爆文榜'
         }[topicCenterState.currentSource] || '';
 
         // 诚实标注：检测列表中是否含 mock 数据
@@ -6499,7 +6678,8 @@ ${bgLine}
                 douyin: '#111',
                 '36kr': '#1E40AF',
                 recommend: '#3B82F6',
-                wechat: '#07C160'
+                wechat: '#07C160',
+                'wechat-hot': '#DC2626'
             };
             const c = colors[source] || '#3B82F6';
             if (isActive) {
@@ -6516,7 +6696,7 @@ ${bgLine}
         });
 
         // 加载列表
-        setCreateStatus(`正在加载${({weibo:'微博热搜',douyin:'抖音热点','36kr':'36氪科技',recommend:'推荐选题',wechat:'公众号订阅'})[source] || '数据'}...`, true);
+        setCreateStatus(`正在加载${({weibo:'微博热搜',douyin:'抖音热点','36kr':'36氪科技',recommend:'推荐选题',wechat:'公众号订阅','wechat-hot':'微信爆文榜'})[source] || '数据'}...`, true);
 
         let items = [];
         try {
@@ -6530,6 +6710,9 @@ ${bgLine}
             } else if (source === 'wechat') {
                 // 公众号订阅：优先调后端 API（D1），失败降级前端直抓 RSS
                 items = await fetchWechatSubsArticles();
+            } else if (source === 'wechat-hot') {
+                // 微信爆文榜：后端 API → rss2json → 示例榜（多源降级）
+                items = await fetchWechatHotArticles();
             } else {
                 // 推荐选题 → 综合资讯：聚合 36氪+IT之家+少数派 RSS
                 items = await fetchAggregatedNews();
