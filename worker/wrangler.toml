@@ -10,6 +10,6 @@ crons = ["0 */2 * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "wechat-articles"
-database_id = "在此填入 wrangler d1 create 返回的 ID（与根目录 wrangler.toml 一致）"
+database_id = "07866451-5e7a-4b0c-995c-069b1eb31ff2"
 
 # 部署：cd worker && wrangler deploy

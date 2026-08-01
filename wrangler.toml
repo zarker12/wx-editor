@@ -7,7 +7,7 @@ pages_build_output_dir = "."
 [[d1_databases]]
 binding = "DB"
 database_name = "wechat-articles"
-database_id = "在此填入 wrangler d1 create 返回的 ID"
+database_id = "07866451-5e7a-4b0c-995c-069b1eb31ff2"
 
 # 注意：Pages 项目不支持在 wrangler.toml 里直接配 Cron Triggers。
 # 定时同步由独立的 Cron Worker 执行（见 worker/wrangler.toml）。
