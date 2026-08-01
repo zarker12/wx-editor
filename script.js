@@ -3054,8 +3054,15 @@ function switchTab(tab) {
     }
     // 进入订阅/产物/设置 tab 时刷新对应面板
     if (tab === 'subscribe') refreshSubscribeDash();
-    if (tab === 'products') refreshProductsDash();
+    if (tab === 'products') {
+        refreshProductsDash();
+        if (window._productsApi && window._productsApi.renderAll) {
+            try { window._productsApi.renderAll(); } catch(e) { console.warn('prod render', e); }
+        }
+    }
     if (tab === 'settings') refreshSettingsDash();
+    // 进入信息中枢 tab 时刷新（已有数据则只重渲染，不强制重新拉取）
+    if (tab === 'inbox' && window._inboxRefresh) window._inboxRefresh(false);
 }
 document.querySelectorAll('.tab-btn, .nav-item').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
@@ -3207,10 +3214,12 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
         }
         // 显示/隐藏文章配图工作区
         const aiPanel = document.getElementById('articleIllustrationPanel');
+        const ccPanel = document.getElementById('contentCardsPanel');
         const legacyInput = document.querySelector('.image-input-section');
         const legacyPreview = document.querySelector('.image-preview-section');
         if (currentImgMode === 'article-illustration') {
             if (aiPanel) aiPanel.style.display = 'flex';
+            if (ccPanel) ccPanel.style.display = 'none';
             if (legacyInput) legacyInput.style.display = 'none';
             if (legacyPreview) legacyPreview.style.display = 'none';
             // 加载 workflowState 的文章信息
@@ -3219,8 +3228,14 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
                     window.updateArticleIllustrationPanel();
                 }
             }
+        } else if (currentImgMode === 'content-cards') {
+            if (ccPanel) ccPanel.style.display = 'flex';
+            if (aiPanel) aiPanel.style.display = 'none';
+            if (legacyInput) legacyInput.style.display = 'none';
+            if (legacyPreview) legacyPreview.style.display = 'none';
         } else {
             if (aiPanel) aiPanel.style.display = 'none';
+            if (ccPanel) ccPanel.style.display = 'none';
             if (legacyInput) legacyInput.style.display = '';
             if (legacyPreview) legacyPreview.style.display = '';
         }
@@ -7792,6 +7807,10 @@ function saveCurrentDraft() {
     if (drafts.length > 20) drafts.length = 20;
     saveDrafts(drafts);
     renderDraftList();
+    // V4：同步入产物中心
+    if (window._productsApi) {
+        try { window._productsApi.saveArticle({ content, title: draft.name }); } catch(e) { console.warn('prod sync', e); }
+    }
     showToast('草稿已保存');
 }
 
@@ -8279,4 +8298,1813 @@ function showUserMenu() {
 
     // 更新 UI（不再需要 OAuth 回调，改用 PAT 方式）
     updateUserUI();
+})();
+
+// ===== V1 信息中枢 Inbox =====
+(function() {
+    const inboxState = {
+        currentSource: 'all',
+        allItems: [],
+        keyword: '',
+        timeFilter: 'all'
+    };
+
+    const SOURCE_META = {
+        'wechat': { label: '公众号', color: '#07C160', icon: '📢' },
+        'wechat-hot': { label: '爆文榜', color: '#DC2626', icon: '🔥' },
+        'weibo': { label: '微博', color: '#E11D48', icon: '📈' },
+        '36kr': { label: '36氪', color: '#1E40AF', icon: '📊' },
+        'douyin': { label: '抖音', color: '#111', icon: '🎵' },
+        'recommend': { label: '综合', color: '#3B82F6', icon: '🌐' }
+    };
+
+    // 统一数据拉取：调用现有函数聚合所有信源
+    async function fetchAllSources() {
+        const results = [];
+        const tasks = [
+            { source: 'wechat', fn: fetchWechatItems },
+            { source: 'wechat-hot', fn: fetchWechatHotItems },
+            { source: 'weibo', fn: fetchWeiboItems },
+            { source: '36kr', fn: fetch36krItems },
+            { source: 'douyin', fn: fetchDouyinItems },
+            { source: 'recommend', fn: fetchRecommendItems }
+        ];
+        // 并行拉取所有源
+        const settled = await Promise.allSettled(tasks.map(async t => {
+            try {
+                const items = await t.fn();
+                return { source: t.source, items: items || [] };
+            } catch (e) {
+                console.warn('inbox source fail:', t.source, e);
+                return { source: t.source, items: [], error: true };
+            }
+        }));
+        for (const r of settled) {
+            if (r.status === 'fulfilled' && r.value) {
+                const items = Array.isArray(r.value.items) ? r.value.items : [];
+                for (const it of items) {
+                    results.push({ ...it, _source: r.value.source });
+                }
+            }
+        }
+        return results;
+    }
+
+    // 各源的封装（调用现有全局函数，做防御性处理）
+    async function fetchWechatItems() {
+        try {
+            const r = await fetch('/api/articles?size=30');
+            if (r.ok) { const d = await r.json(); return (d.rows||[]).map(x=>({title:x.title, source:x.source||'公众号', time:x.pub_date||'', url:x.url||'', desc:x.content||'', readCount:x.read_count||0})); }
+        } catch {}
+        // 降级：本地缓存的订阅文章
+        try { return JSON.parse(localStorage.getItem('wx_editor_subs_articles_cache_v1')||'[]'); } catch {}
+        return [];
+    }
+    async function fetchWechatHotItems() {
+        try {
+            const r = await fetch('/api/hot-articles?size=30');
+            if (r.ok) { const d = await r.json(); return (d.rows||[]).map(x=>({...x, title:x.title, source:x.source||'爆文榜', time:x.pub_date||'', url:x.url||'', desc:x.content||'', readCount:x.read_count||0})); }
+        } catch {}
+        return [];
+    }
+    async function fetchWeiboItems() {
+        // 复用创作模块的 weibo 抓取；若不可达返回空
+        try {
+            if (typeof window._fetchWeiboTopics === 'function') return await window._fetchWeiboTopics();
+        } catch {}
+        return [];
+    }
+    async function fetch36krItems() {
+        try {
+            const r = await fetch('/api/articles?source=36氪&size=30');
+            if (r.ok) { const d = await r.json(); return (d.rows||[]).map(x=>({...x,title:x.title,source:'36氪',time:x.pub_date||'',url:x.url||'',desc:x.content||''})); }
+        } catch {}
+        return [];
+    }
+    async function fetchDouyinItems() { return []; }
+    async function fetchRecommendItems() {
+        try {
+            if (typeof window._fetchAggregatedNews === 'function') return await window._fetchAggregatedNews();
+        } catch {}
+        return [];
+    }
+
+    // 时间过滤
+    function filterByTime(items) {
+        if (inboxState.timeFilter === 'all') return items;
+        const now = Date.now();
+        const ranges = { '1h': 3600e3, '24h': 86400e3, '7d': 7*86400e3 };
+        const span = ranges[inboxState.timeFilter] || 0;
+        return items.filter(it => {
+            const t = parseItemTime(it.time || it.pub_date || it.date);
+            return t && (now - t) <= span;
+        });
+    }
+    function parseItemTime(t) {
+        if (!t) return 0;
+        const d = new Date(t);
+        return isNaN(d) ? 0 : d.getTime();
+    }
+
+    // 关键词过滤
+    function filterByKeyword(items) {
+        if (!inboxState.keyword) return items;
+        const kw = inboxState.keyword.toLowerCase();
+        return items.filter(it =>
+            (it.title||'').toLowerCase().includes(kw) ||
+            (it.desc||it.content||'').toLowerCase().includes(kw)
+        );
+    }
+
+    // 渲染信息卡片
+    function renderInbox() {
+        const list = document.getElementById('inboxList');
+        const count = document.getElementById('inboxCount');
+        if (!list) return;
+        let items = inboxState.allItems;
+        // 信源过滤
+        if (inboxState.currentSource !== 'all') {
+            items = items.filter(it => it._source === inboxState.currentSource);
+        }
+        items = filterByTime(filterByKeyword(items));
+        // 按时间倒序
+        items.sort((a,b) => parseItemTime(b.time) - parseItemTime(a.time));
+        if (count) count.textContent = `${items.length} 条`;
+        if (items.length === 0) {
+            list.innerHTML = '<div style="grid-column:1/-1;padding:40px;text-align:center;color:#9CA3AF;font-size:14px;">暂无信息，试试切换信源或刷新</div>';
+            return;
+        }
+        list.innerHTML = items.slice(0, 60).map(it => {
+            const meta = SOURCE_META[it._source] || { label: it.source||'未知', color: '#6B7280', icon: '📌' };
+            const isMock = it._isMock ? '<span style="color:#92400E;font-size:10px;margin-left:4px;">示例</span>' : '';
+            const readInfo = it.readCount ? `<span style="font-size:11px;color:#9CA3AF;">👁 ${it.readCount}</span>` : '';
+            const timeStr = (it.time||'').toString().slice(0,16);
+            const desc = (it.desc||it.content||'').slice(0,80);
+            return `<div class="inbox-card" data-source="${it._source}" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px;cursor:pointer;transition:all 0.2s;display:flex;flex-direction:column;gap:6px;position:relative;overflow:hidden;" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 20px rgba(0,0,0,0.08)';this.style.borderColor='${meta.color}66';" onmouseout="this.style.transform='';this.style.boxShadow='';this.style.borderColor='#E5E7EB';">
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                    <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:${meta.color}15;color:${meta.color};font-weight:600;">${meta.icon} ${meta.label}</span>${isMock}
+                    ${readInfo}
+                    <span style="font-size:10px;color:#9CA3AF;margin-left:auto;">${timeStr}</span>
+                </div>
+                <div style="font-size:14px;color:#1F2937;font-weight:600;line-height:1.4;">${(it.title||'').replace(/</g,'&lt;')}</div>
+                ${desc ? `<div style="font-size:12px;color:#6B7280;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${desc.replace(/</g,'&lt;')}</div>` : ''}
+                <div style="display:flex;gap:6px;margin-top:auto;padding-top:6px;border-top:1px dashed #F3F4F6;">
+                    <button class="inbox-to-create" data-title="${(it.title||'').replace(/"/g,'&quot;')}" type="button" style="padding:4px 10px;background:linear-gradient(135deg,#10B981,#3B82F6);color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;">✍ 带入创作</button>
+                    ${it.url ? `<a href="${it.url}" target="_blank" rel="noopener" style="padding:4px 10px;background:#F3F4F6;color:#6B7280;border:none;border-radius:5px;font-size:11px;text-decoration:none;">原文 ↗</a>` : ''}
+                </div>
+            </div>`;
+        }).join('');
+        // 绑定带入创作
+        list.querySelectorAll('.inbox-to-create').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const title = btn.getAttribute('data-title');
+                const input = document.getElementById('createTopicInput');
+                if (input) input.value = title;
+                switchTab('create');
+                showToast(`已带入创作：${title.slice(0,20)}`);
+            });
+        });
+    }
+
+    // 刷新全部
+    async function refreshInbox(force) {
+        // 如果已有数据且非强制，只重渲染
+        if (!force && inboxState.allItems.length > 0) { renderInbox(); return; }
+        const btn = document.getElementById('inboxRefreshBtn');
+        const list = document.getElementById('inboxList');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ 加载中...'; }
+        if (list) list.innerHTML = '<div style="grid-column:1/-1;padding:40px;text-align:center;color:#9CA3AF;font-size:14px;">⏳ 正在聚合所有信源...</div>';
+        try {
+            inboxState.allItems = await fetchAllSources();
+            renderInbox();
+        } catch (e) {
+            console.error('inbox refresh', e);
+            if (list) list.innerHTML = '<div style="grid-column:1/-1;padding:40px;text-align:center;color:#DC2626;font-size:14px;">加载失败：'+e.message+'</div>';
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = '🔄 刷新全部'; }
+        }
+    }
+
+    // 信源切换
+    function bindSourceTabs() {
+        document.querySelectorAll('.inbox-source-btn').forEach(b => {
+            b.addEventListener('click', () => {
+                inboxState.currentSource = b.dataset.inboxSource;
+                document.querySelectorAll('.inbox-source-btn').forEach(x => {
+                    x.classList.remove('active');
+                    x.style.background = '#fff';
+                    x.style.color = x.style.borderColor;
+                });
+                b.classList.add('active');
+                const meta = SOURCE_META[b.dataset.inboxSource];
+                const c = meta ? meta.color : '#10B981';
+                b.style.background = c;
+                b.style.color = '#fff';
+                renderInbox();
+            });
+        });
+    }
+
+    // 初始化
+    function init() {
+        bindSourceTabs();
+        const searchInput = document.getElementById('inboxSearchInput');
+        if (searchInput) searchInput.addEventListener('input', (e) => {
+            inboxState.keyword = e.target.value;
+            renderInbox();
+        });
+        const timeFilter = document.getElementById('inboxTimeFilter');
+        if (timeFilter) timeFilter.addEventListener('change', (e) => {
+            inboxState.timeFilter = e.target.value;
+            renderInbox();
+        });
+        const refreshBtn = document.getElementById('inboxRefreshBtn');
+        if (refreshBtn) refreshBtn.addEventListener('click', () => refreshInbox(true));
+        // 暴露给 switchTab 调用（默认非强制：已有数据则只重渲染）
+        window._inboxRefresh = (force) => refreshInbox(force);
+        // V5：暴露给命令面板查询所有信源条目
+        window._inboxApi = window._inboxApi || {};
+        window._inboxApi.getAllItems = () => inboxState.allItems.slice(0, 50);
+        window._inboxApi.refresh = (force) => refreshInbox(force);
+    }
+    // DOM ready
+    if (document.readyState !== 'loading') init();
+    else document.addEventListener('DOMContentLoaded', init);
+})();
+
+// ===== V2 创作蓝图系统 =====
+(function() {
+    const blueprint = {
+        mode: 'ai',           // 'ai' | 'custom'
+        type: 'opinion',
+        audience: 'intermediate',
+        tone1: 50, tone2: 50, tone3: 50,  // 严谨↔活泼, 理性↔感性, 正式↔随性
+        structure: 'pyramid',
+        length: '1200',
+        platform: 'wechat'
+    };
+
+    const PRESETS = {
+        'tech-deep': { type:'insight', audience:'expert', tone1:25, tone2:30, tone3:30, structure:'pyramid', length:'1500', platform:'wechat' },
+        'warm-story': { type:'story', audience:'beginner', tone1:75, tone2:75, tone3:70, structure:'progressive', length:'1200', platform:'wechat' },
+        'sharp-opinion': { type:'opinion', audience:'intermediate', tone1:60, tone2:35, tone3:65, structure:'contrast', length:'1200', platform:'wechat' },
+        'knowledge-pop': { type:'knowledge', audience:'beginner', tone1:65, tone2:60, tone3:55, structure:'progressive', length:'1200', platform:'xiaohongshu' }
+    };
+
+    // 调性 → 旧 style 兼容映射（用于同步到隐藏的旧 select）
+    function toneToStyle(bp) {
+        if (!bp) return 'deep';
+        if (bp.type === 'story') return 'story';
+        if (bp.type === 'emotion') return 'warm';
+        if (bp.type === 'opinion' && bp.tone1 >= 60) return 'sharp';
+        if (bp.tone1 >= 65) return 'casual';
+        return 'deep';
+    }
+
+    // 结构 → 旧 sections 兼容映射
+    function structureToSections(structure) {
+        const map = { pyramid: '4', scqa: '4', star: '4', contrast: '3', progressive: '5', list: '5' };
+        return map[structure] || '4';
+    }
+
+    // 兼容旧代码：创建隐藏的旧 select 占位
+    function ensureLegacyInputs() {
+        ['createWordCount','createDirection','createStyle','createSections'].forEach(id => {
+            if (!document.getElementById(id)) {
+                const el = document.createElement('select');
+                el.id = id; el.style.display = 'none';
+                document.body.appendChild(el);
+            }
+        });
+    }
+
+    // 同步蓝图值到旧 select（保护旧生成逻辑不报错）
+    function syncToLegacy() {
+        const wc = document.getElementById('createWordCount'); if (wc) wc.value = blueprint.length;
+        const dir = document.getElementById('createDirection'); if (dir) dir.value = blueprint.type;
+        const st = document.getElementById('createStyle'); if (st) st.value = toneToStyle(blueprint);
+        const sec = document.getElementById('createSections'); if (sec) sec.value = structureToSections(blueprint.structure);
+    }
+
+    function applyBlueprint(bp) {
+        Object.assign(blueprint, bp);
+        // 同步 UI
+        document.querySelectorAll('.bp-type-btn').forEach(b => {
+            const on = b.dataset.type === blueprint.type;
+            b.classList.toggle('active', on);
+            b.style.borderColor = on ? '#10B981' : '#E5E7EB';
+            b.style.background = on ? '#ECFDF5' : '#fff';
+            b.querySelector('div:last-child').style.color = on ? '#1F2937' : '#6B7280';
+        });
+        document.querySelectorAll('.bp-aud-btn').forEach(b => {
+            const on = b.dataset.aud === blueprint.audience;
+            b.classList.toggle('active', on);
+            b.style.borderColor = on ? '#10B981' : '#E5E7EB';
+            b.style.background = on ? '#ECFDF5' : '#fff';
+            b.style.color = on ? '#1F2937' : '#6B7280';
+        });
+        const s = document.getElementById('blueprintStructure'); if (s) s.value = blueprint.structure;
+        const l = document.getElementById('blueprintLength'); if (l) l.value = blueprint.length;
+        const p = document.getElementById('blueprintPlatform'); if (p) p.value = blueprint.platform;
+        ['1','2','3'].forEach(n => {
+            const inp = document.getElementById('bpTone'+n);
+            const val = document.getElementById('bpTone'+n+'Val');
+            if (inp) inp.value = blueprint['tone'+n];
+            if (val) val.textContent = blueprint['tone'+n];
+        });
+        syncToLegacy();
+    }
+
+    function init() {
+        // 兼容旧代码：创建隐藏的旧 select 占位（避免旧生成逻辑读到 null）
+        ensureLegacyInputs();
+
+        // 模式切换
+        document.querySelectorAll('.blueprint-mode-btn').forEach(b => {
+            b.addEventListener('click', () => {
+                blueprint.mode = b.dataset.mode;
+                document.querySelectorAll('.blueprint-mode-btn').forEach(x => {
+                    const on = x.dataset.mode === blueprint.mode;
+                    x.style.background = on ? 'linear-gradient(135deg,#10B981,#3B82F6)' : '#fff';
+                    x.style.color = on ? '#fff' : '#6B7280';
+                    x.classList.toggle('active', on);
+                });
+                document.getElementById('blueprintAIPanel').style.display = blueprint.mode === 'ai' ? 'block' : 'none';
+                document.getElementById('blueprintCustomPanel').style.display = blueprint.mode === 'custom' ? 'block' : 'none';
+                const genBtn = document.getElementById('createGenerateBtn');
+                if (genBtn) genBtn.textContent = blueprint.mode === 'ai' ? '🚀 生成文章' : '✍ 进入编辑器';
+            });
+        });
+
+        // 内容类型选择
+        document.querySelectorAll('.bp-type-btn').forEach(b => {
+            b.addEventListener('click', () => applyBlueprint({ type: b.dataset.type }));
+        });
+        // 受众选择
+        document.querySelectorAll('.bp-aud-btn').forEach(b => {
+            b.addEventListener('click', () => applyBlueprint({ audience: b.dataset.aud }));
+        });
+        // 调性滑块
+        ['1','2','3'].forEach(n => {
+            const inp = document.getElementById('bpTone'+n);
+            if (inp) inp.addEventListener('input', (e) => {
+                blueprint['tone'+n] = parseInt(e.target.value);
+                const val = document.getElementById('bpTone'+n+'Val');
+                if (val) val.textContent = e.target.value;
+                syncToLegacy();
+            });
+        });
+        // 结构/长度/平台
+        const s = document.getElementById('blueprintStructure'); if (s) s.addEventListener('change', e => { blueprint.structure = e.target.value; syncToLegacy(); });
+        const l = document.getElementById('blueprintLength'); if (l) l.addEventListener('change', e => { blueprint.length = e.target.value; syncToLegacy(); });
+        const p = document.getElementById('blueprintPlatform'); if (p) p.addEventListener('change', e => { blueprint.platform = e.target.value; });
+        // 预设
+        document.querySelectorAll('.bp-preset-btn').forEach(b => {
+            b.addEventListener('click', () => {
+                const preset = PRESETS[b.dataset.preset];
+                if (preset) { applyBlueprint(preset); showToast('已应用预设：' + b.textContent); }
+            });
+        });
+        // 保存预设
+        const saveBtn = document.getElementById('bpSavePresetBtn');
+        if (saveBtn) saveBtn.addEventListener('click', () => {
+            const name = prompt('预设名称：', '我的预设');
+            if (!name) return;
+            try {
+                const saved = JSON.parse(localStorage.getItem('wx_bp_presets') || '{}');
+                saved[name] = { ...blueprint };
+                localStorage.setItem('wx_bp_presets', JSON.stringify(saved));
+                showToast('预设「' + name + '」已保存');
+            } catch(e) { showToast('保存失败'); }
+        });
+        // 自定义模式：AI 辅助工具栏（选中文本浮现）
+        const toolbar = document.getElementById('aiAssistToolbar');
+        const editor = document.getElementById('createArticleEditor') || document.getElementById('editorContent');
+        if (toolbar && editor) {
+            document.addEventListener('mouseup', () => {
+                const sel = window.getSelection();
+                const text = sel ? sel.toString().trim() : '';
+                if (blueprint.mode === 'custom' && text.length > 0 && editor.contains(sel.anchorNode)) {
+                    const rect = sel.getRangeAt(0).getBoundingClientRect();
+                    toolbar.style.display = 'flex';
+                    toolbar.style.left = (rect.left + rect.width/2 - 100) + 'px';
+                    toolbar.style.top = (rect.top - 40) + 'px';
+                } else {
+                    toolbar.style.display = 'none';
+                }
+            });
+            document.querySelectorAll('.ai-assist-btn').forEach(b => {
+                b.addEventListener('click', () => {
+                    const sel = window.getSelection();
+                    const text = sel ? sel.toString().trim() : '';
+                    const action = b.dataset.action;
+                    toolbar.style.display = 'none';
+                    window._blueprintAiAssist && window._blueprintAiAssist(action, text);
+                });
+            });
+        }
+        // 暴露当前蓝图给生成逻辑
+        window._getBlueprint = () => ({ ...blueprint });
+        // 初始同步一次，确保隐藏 select 有初值
+        syncToLegacy();
+    }
+    if (document.readyState !== 'loading') init();
+    else document.addEventListener('DOMContentLoaded', init);
+})();
+
+// ===== V3 贴图卡片 Canvas 合成（基于 article-content-cards skill 规范）=====
+(function() {
+    const W = 720, H = 960;
+
+    // 风格预设（背景 prompt 关键词 + 渐变基调）
+    const STYLES = {
+        'tech-dark': { bgPrompt: 'futuristic holographic data streams, deep blue neon', tone: '#0a1628', accent: '#3B82F6' },
+        'business-minimal': { bgPrompt: 'clean geometric premium, black white gold', tone: '#0f0f0f', accent: '#B4966A' },
+        'finance-dark': { bgPrompt: 'trading screens charts abstract, black gold green', tone: '#0a0f0a', accent: '#D4AF37' },
+        'science-fresh': { bgPrompt: 'clean lab molecular bright teal', tone: '#e8f4f0', accent: '#06B6D4' },
+        'lifestyle-warm': { bgPrompt: 'warm interior soft natural light cream', tone: '#2a1f15', accent: '#EA580C' },
+        'retro-magazine': { bgPrompt: 'vintage film grain editorial muted', tone: '#1a1410', accent: '#B4896B' },
+        'chinese-ink': { bgPrompt: 'ink wash brush strokes mountain black white red', tone: '#0a0a0a', accent: '#C83232' },
+        'japanese-muted': { bgPrompt: 'soft light minimal wabi-sabi pastel', tone: '#2a2a28', accent: '#B8B8B0' },
+        'trendy-poster': { bgPrompt: 'bold colors graphic pop art high saturation', tone: '#1a0010', accent: '#FF6464' }
+    };
+
+    // accent 配色（RGB）
+    const ACCENTS = {
+        ai: [59, 130, 246],
+        cloud: [6, 182, 212],
+        robot: [249, 115, 22],
+        health: [34, 197, 94],
+        brain: [168, 85, 247],
+        finance: [212, 175, 55],
+        edu: [99, 102, 241],
+        entertain: [236, 72, 153]
+    };
+
+    // smoothstep 渐变（模拟 skill 的 t*t*(3-2t)）
+    function drawSmoothGradient(ctx, topRatio, maxA) {
+        const topY = H * topRatio;
+        const span = H - topY;
+        for (let y = topY; y < H; y++) {
+            let t = (y - topY) / span;
+            t = t * t * (3 - 2 * t);
+            const a = Math.floor(maxA * t);
+            ctx.fillStyle = `rgba(6,6,10,${a/255})`;
+            ctx.fillRect(0, y, W, 1);
+        }
+    }
+
+    // 顶部暗化
+    function drawTopDarken(ctx) {
+        for (let y = 0; y < 90; y++) {
+            const a = Math.floor(110 * (1 - y / 90));
+            ctx.fillStyle = `rgba(0,0,0,${a/255})`;
+            ctx.fillRect(0, y, W, 1);
+        }
+    }
+
+    // 文字换行
+    function wrapText(ctx, text, font, maxW) {
+        ctx.font = font;
+        const lines = [];
+        let cur = '';
+        for (const ch of text) {
+            const test = cur + ch;
+            if (ctx.measureText(test).width > maxW && cur) {
+                lines.push(cur);
+                cur = ch;
+            } else {
+                cur = test;
+            }
+        }
+        if (cur) lines.push(cur);
+        return lines;
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+    }
+
+    // 玻璃拟态 badge
+    function drawBadge(ctx, text, padX, padY) {
+        ctx.font = 'bold 22px "Noto Sans SC", sans-serif';
+        const metrics = ctx.measureText(text);
+        const bw = metrics.width + 28;
+        const bh = 22 + 16;
+        // 圆角矩形
+        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.lineWidth = 1;
+        roundRect(ctx, padX, 32, bw, bh, 14);
+        ctx.fill();
+        ctx.stroke();
+        // 文字
+        ctx.fillStyle = 'rgba(255,255,255,0.94)';
+        ctx.fillText(text, padX + 14, 32 + 22 + 8);
+        return { bw, bh };
+    }
+
+    // 生成背景图（调用图片 API 或用纯色降级）
+    async function fetchBackground(style, topicHint) {
+        const s = STYLES[style] || STYLES['business-minimal'];
+        // 尝试用网站已配置的图片 API
+        try {
+            const apiKey = (typeof getImageApiKey === 'function') ? getImageApiKey() : (localStorage.getItem('wx_image_api_key') || '');
+            const provider = localStorage.getItem('wx_image_provider') || 'trae';
+            if (apiKey || provider === 'trae') {
+                const prompt = `Dramatic cinematic scene: ${s.bgPrompt}, matching topic "${topicHint}". No text, no letters, no words, no logos. Pure visual atmosphere. 720x960 vertical.`;
+                const url = `https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=${encodeURIComponent(prompt)}&image_size=portrait_4_3`;
+                const r = await fetch(url);
+                if (r.ok) {
+                    const blob = await r.blob();
+                    return await blobToDataURL(blob);
+                }
+            }
+        } catch (e) { console.warn('bg fetch fail, fallback gradient', e); }
+        // 降级：用风格基调色生成渐变背景
+        return null;
+    }
+
+    function blobToDataURL(blob) {
+        return new Promise((resolve) => {
+            const fr = new FileReader();
+            fr.onload = () => resolve(fr.result);
+            fr.onerror = () => resolve(null);
+            fr.readAsDataURL(blob);
+        });
+    }
+
+    // 画降级渐变背景
+    function drawFallbackBg(ctx, style) {
+        const s = STYLES[style] || STYLES['business-minimal'];
+        const grad = ctx.createLinearGradient(0, 0, W, H);
+        grad.addColorStop(0, s.tone);
+        grad.addColorStop(1, '#000');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, W, H);
+        // 加点纹理
+        for (let i = 0; i < 50; i++) {
+            ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.03})`;
+            const r = Math.random() * 100 + 20;
+            ctx.beginPath();
+            ctx.arc(Math.random() * W, Math.random() * H, r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // 合成单张卡片
+    async function compositeCard(card) {
+        const canvas = document.createElement('canvas');
+        canvas.width = W; canvas.height = H;
+        const ctx = canvas.getContext('2d');
+        const accent = ACCENTS[card.accent] || ACCENTS.cloud;
+        const accentColor = `rgb(${accent[0]},${accent[1]},${accent[2]})`;
+
+        // 1. 背景
+        const bgUrl = await fetchBackground(card.style, card.topicHint || card.title);
+        if (bgUrl) {
+            await new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => { ctx.drawImage(img, 0, 0, W, H); resolve(); };
+                img.onerror = () => { drawFallbackBg(ctx, card.style); resolve(); };
+                img.src = bgUrl;
+            });
+        } else {
+            drawFallbackBg(ctx, card.style);
+        }
+
+        // 2. smoothstep 渐变叠加
+        drawSmoothGradient(ctx, 0.45, 240);
+        // 3. 顶部暗化
+        drawTopDarken(ctx);
+
+        const pad = 40;
+        // 4. badge
+        drawBadge(ctx, card.badge || '内容卡', pad, 32);
+
+        // 5. accent 横条
+        const barY = H * 0.62;
+        ctx.fillStyle = accentColor;
+        ctx.fillRect(pad, barY, 56, 5);
+
+        // 6. 按类型渲染
+        if (card.type === 'cover') {
+            renderCover(ctx, card, accent, accentColor, barY, pad);
+        } else if (card.type === 'summary') {
+            renderSummary(ctx, card, accent, accentColor, barY, pad);
+        } else {
+            renderContent(ctx, card, accent, accentColor, barY, pad);
+        }
+        return canvas.toDataURL('image/jpeg', 0.92);
+    }
+
+    function renderContent(ctx, card, accent, accentColor, barY, pad) {
+        const mw = W - pad * 2;
+        // 标题 56px
+        ctx.font = '600 56px "Noto Sans SC", sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,1)';
+        ctx.textBaseline = 'top';
+        let titleY = barY + 22;
+        const titleLines = wrapText(ctx, card.title, '600 56px "Noto Sans SC", sans-serif', mw);
+        titleLines.forEach((line, i) => ctx.fillText(line, pad, titleY + i * 68));
+
+        // 副标题 30px（带 accent 阴影发光）
+        ctx.font = '500 30px "Noto Sans SC", sans-serif';
+        const subY = titleY + titleLines.length * 68 + 6;
+        const subLines = wrapText(ctx, card.subtitle || '', '500 30px "Noto Sans SC", sans-serif', mw);
+        subLines.forEach((line, i) => {
+            ctx.fillStyle = `rgba(${accent[0]},${accent[1]},${accent[2]},0.2)`;
+            ctx.fillText(line, pad + 1, subY + i * 42 + 1);
+            ctx.fillStyle = 'rgba(255,255,255,0.94)';
+            ctx.fillText(line, pad, subY + i * 42);
+        });
+
+        // 分隔线
+        const sepY = subY + subLines.length * 42 + 14;
+        ctx.fillStyle = 'rgba(255,255,255,0.16)';
+        ctx.fillRect(pad, sepY, mw, 1);
+
+        // 描述 22px
+        ctx.font = '400 22px "Noto Sans SC", sans-serif';
+        ctx.fillStyle = 'rgba(190,200,215,0.78)';
+        const descLines = wrapText(ctx, card.desc || '', '400 22px "Noto Sans SC", sans-serif', mw);
+        const bodyY = sepY + 16;
+        descLines.forEach((line, i) => ctx.fillText(line, pad, bodyY + i * 32));
+    }
+
+    function renderCover(ctx, card, accent, accentColor, barY, pad) {
+        const mw = W - pad * 2;
+        ctx.font = '700 60px "Noto Sans SC", sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,1)';
+        ctx.textBaseline = 'top';
+        let titleY = barY + 22;
+        const titleLines = wrapText(ctx, card.title, '700 60px "Noto Sans SC", sans-serif', mw);
+        titleLines.forEach((line, i) => ctx.fillText(line, pad, titleY + i * 72));
+
+        ctx.font = '500 32px "Noto Sans SC", sans-serif';
+        const subY = titleY + titleLines.length * 72 + 8;
+        const subLines = wrapText(ctx, card.subtitle || '', '500 32px "Noto Sans SC", sans-serif', mw);
+        subLines.forEach((line, i) => {
+            ctx.fillStyle = 'rgba(255,255,255,0.94)';
+            ctx.fillText(line, pad, subY + i * 44);
+        });
+
+        if (card.hook) {
+            const hookY = subY + subLines.length * 44 + 20;
+            ctx.font = '400 26px "Noto Sans SC", sans-serif';
+            ctx.fillStyle = 'rgba(220,225,235,0.78)';
+            ctx.fillText(card.hook, pad, hookY);
+        }
+    }
+
+    function renderSummary(ctx, card, accent, accentColor, barY, pad) {
+        const mw = W - pad * 2;
+        ctx.font = '600 56px "Noto Sans SC", sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,1)';
+        ctx.textBaseline = 'top';
+        let titleY = barY + 22;
+        const titleLines = wrapText(ctx, card.title, '600 56px "Noto Sans SC", sans-serif', mw);
+        titleLines.forEach((line, i) => ctx.fillText(line, pad, titleY + i * 68));
+
+        // 关键词圆角标签
+        if (card.keywords && card.keywords.length) {
+            const kwY = titleY + titleLines.length * 68 + 20;
+            let kwX = pad;
+            ctx.font = '500 26px "Noto Sans SC", sans-serif';
+            card.keywords.forEach(kw => {
+                const w = ctx.measureText(kw).width + 24;
+                ctx.strokeStyle = `rgba(${accent[0]},${accent[1]},${accent[2]},0.7)`;
+                ctx.lineWidth = 1;
+                roundRect(ctx, kwX, kwY, w, 26 + 14, 10);
+                ctx.stroke();
+                ctx.fillStyle = 'rgba(255,255,255,0.86)';
+                ctx.fillText(kw, kwX + 12, kwY + 7);
+                kwX += w + 12;
+            });
+        }
+
+        // 收尾句居中
+        if (card.closing) {
+            ctx.font = '400 26px "Noto Sans SC", sans-serif';
+            ctx.fillStyle = 'rgba(220,225,235,0.82)';
+            ctx.textAlign = 'center';
+            const closeLines = wrapText(ctx, card.closing, '400 26px "Noto Sans SC", sans-serif', mw);
+            const closeY = H - 100 - closeLines.length * 34;
+            closeLines.forEach((line, i) => ctx.fillText(line, W / 2, closeY + i * 34));
+            ctx.textAlign = 'left';
+        }
+    }
+
+    // 从用户输入解析卡片内容
+    function parseCardFromInput(text, type) {
+        text = (text || '').trim();
+        if (!text) return null;
+        if (type === 'cover') {
+            const lines = text.split('\n').filter(Boolean);
+            return { type: 'cover', title: lines[0] || text.slice(0, 20), subtitle: lines[1] || '深度解读', hook: lines[2] || '一文看懂核心要点', badge: '封面' };
+        }
+        if (type === 'summary') {
+            const parts = text.split(/[，,。；;]/).filter(Boolean);
+            return {
+                type: 'summary',
+                title: parts[0] || '核心总结',
+                keywords: parts.slice(1, 4).map(p => p.trim().slice(0, 8)).filter(Boolean),
+                closing: parts[parts.length - 1] || '关注获取更多深度内容',
+                badge: '总结'
+            };
+        }
+        // content
+        const lines = text.split('\n').filter(Boolean);
+        const title = lines[0] || text.slice(0, 20);
+        const subtitle = lines[1] || '关键洞察';
+        const desc = lines.slice(2).join(' ') || text.slice(20, 120) || '这一点值得关注';
+        return { type: 'content', title, subtitle, desc, badge: '内容' };
+    }
+
+    async function generateCards() {
+        const input = document.getElementById('ccInput');
+        const typeSel = document.getElementById('ccCardType');
+        const styleSel = document.getElementById('ccStyle');
+        const accentSel = document.getElementById('ccAccent');
+        const preview = document.getElementById('ccPreview');
+        const btn = document.getElementById('ccGenerateBtn');
+        if (!input || !preview) return;
+        const text = input.value.trim();
+        if (!text) { showToast('请输入标题或文章'); return; }
+        const type = typeSel.value;
+        const style = styleSel.value;
+        const accent = accentSel.value;
+        if (btn) { btn.disabled = true; btn.textContent = '🎨 生成中...'; }
+        preview.innerHTML = '<div style="grid-column:1/-1;padding:40px;text-align:center;color:#9CA3AF;font-size:13px;">⏳ 正在合成卡片...</div>';
+        try {
+            // 如果输入是长文章，生成 3 张系列卡；否则单张
+            const isLong = text.length > 80 || text.split('\n').length > 3;
+            let cards = [];
+            if (isLong) {
+                // 系列卡：cover + 1 content + summary
+                cards = [
+                    { ...parseCardFromInput(text.split('\n')[0] || text.slice(0,40), 'cover'), style, accent, topicHint: text.slice(0,30) },
+                    { ...parseCardFromInput(text, 'content'), style, accent, topicHint: text.slice(0,30) },
+                    { ...parseCardFromInput(text, 'summary'), style, accent, topicHint: text.slice(0,30) }
+                ];
+            } else {
+                cards = [{ ...parseCardFromInput(text, type), style, accent, topicHint: text.slice(0,20) }];
+            }
+            // 并行合成
+            const dataUrls = await Promise.all(cards.map(c => compositeCard(c)));
+            preview.innerHTML = dataUrls.map((url, i) => `
+                <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;">
+                    <img src="${url}" style="width:100%;display:block;" />
+                    <div style="padding:8px 10px;display:flex;gap:6px;align-items:center;background:#F9FAFB;">
+                        <span style="font-size:11px;color:#6B7280;">${cards[i].type === 'cover' ? '封面卡' : cards[i].type === 'summary' ? '总结卡' : '内容卡'}</span>
+                        <a href="${url}" download="card-${i+1}.jpg" style="margin-left:auto;font-size:11px;color:#10B981;text-decoration:none;">⬇ 下载</a>
+                    </div>
+                </div>`).join('');
+            showToast(`已生成 ${dataUrls.length} 张卡片`);
+            // V4：自动入产物中心
+            try {
+                if (window._productsApi && dataUrls.length) {
+                    const title = (text.split('\n')[0] || text.slice(0, 20)).trim() || '贴图卡片';
+                    window._productsApi.saveCard({
+                        title,
+                        text,
+                        thumb: dataUrls[0],
+                        thumbs: dataUrls,
+                        style, accent
+                    });
+                }
+            } catch (e) { console.warn('card save to products', e); }
+        } catch (e) {
+            console.error('card gen', e);
+            preview.innerHTML = '<div style="grid-column:1/-1;padding:40px;text-align:center;color:#DC2626;font-size:13px;">生成失败：'+e.message+'</div>';
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = '🎨 生成卡片'; }
+        }
+    }
+
+    function init() {
+        const btn = document.getElementById('ccGenerateBtn');
+        if (btn) btn.addEventListener('click', generateCards);
+        // 暴露给模式切换
+        window._ccPanel = document.getElementById('contentCardsPanel');
+    }
+    if (document.readyState !== 'loading') init();
+    else document.addEventListener('DOMContentLoaded', init);
+})();
+
+// ===== V4 产物中心：统一产物库 =====
+(function productsCenterModule() {
+    'use strict';
+    const STORE_KEY = 'wx_products_v1';
+    const MIGRATED_KEY = 'wx_products_migrated_v1';
+    const MAX_VERSIONS = 10;
+
+    const TYPE_META = {
+        article: { icon: '📝', label: '文章', color: '#3B82F6', bg: 'rgba(59,130,246,0.10)' },
+        card:     { icon: '🎴', label: '卡片', color: '#8B5CF6', bg: 'rgba(139,92,246,0.10)' },
+        audio:    { icon: '🎙', label: '音频', color: '#F59E0B', bg: 'rgba(245,158,11,0.10)' }
+    };
+
+    const state = {
+        products: [],
+        filter: { type: 'all', keyword: '', tag: '', sort: 'recent', view: 'grid' }
+    };
+
+    // ---------- 存储层 ----------
+    function load() {
+        try { state.products = JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); }
+        catch { state.products = []; }
+    }
+    function persist() {
+        try { localStorage.setItem(STORE_KEY, JSON.stringify(state.products)); }
+        catch (e) { console.warn('products persist fail', e); }
+    }
+
+    // 旧草稿迁移：把 wx_editor_drafts 转换为 article 类型产物
+    function migrateLegacyDrafts() {
+        if (localStorage.getItem(MIGRATED_KEY)) return;
+        try {
+            const oldDrafts = JSON.parse(localStorage.getItem('wx_editor_drafts') || '[]');
+            for (const d of oldDrafts) {
+                const text = (d.content || '').replace(/<[^>]+>/g, '');
+                state.products.push({
+                    id: 'art_' + d.id,
+                    type: 'article',
+                    title: d.name || '未命名文章',
+                    content: d.content || '',
+                    text: text,
+                    wordCount: text.replace(/\s/g, '').length,
+                    tags: [],
+                    versions: [{
+                        v: 1, content: d.content || '', savedAt: d.savedAt || new Date().toISOString(), note: '迁移自旧草稿'
+                    }],
+                    parentId: null,
+                    derivedIds: [],
+                    createdAt: d.savedAt || new Date().toISOString(),
+                    updatedAt: d.savedAt || new Date().toISOString(),
+                    trashed: false
+                });
+            }
+            localStorage.setItem(MIGRATED_KEY, '1');
+            persist();
+        } catch (e) { console.warn('migrate fail', e); }
+    }
+
+    // ---------- API ----------
+    function list() { return state.products.slice(); }
+    function get(id) { return state.products.find(p => p.id === id); }
+
+    function upsert(partial) {
+        const now = new Date().toISOString();
+        let p;
+        if (partial.id && (p = get(partial.id))) {
+            // 更新：把当前内容压栈为版本
+            if (partial.content !== undefined && partial.content !== p.content) {
+                p.versions = p.versions || [];
+                p.versions.unshift({
+                    v: (p.versions[0]?.v || 0) + 1,
+                    content: p.content,
+                    text: p.text,
+                    wordCount: p.wordCount,
+                    savedAt: p.updatedAt || now,
+                    note: partial.versionNote || '自动版本'
+                });
+                if (p.versions.length > MAX_VERSIONS) p.versions.length = MAX_VERSIONS;
+            }
+            Object.assign(p, partial, { updatedAt: now });
+        } else {
+            // 新建：id 加入随机后缀，避免同毫秒创建导致碰撞
+            const rand = Math.random().toString(36).slice(2, 8);
+            const id = partial.id || (partial.type?.slice(0,3) + '_' + Date.now() + '_' + rand);
+            const text = partial.text || (partial.content || '').replace(/<[^>]+>/g, '');
+            p = {
+                id,
+                type: partial.type || 'article',
+                title: partial.title || '未命名',
+                content: partial.content || '',
+                text,
+                wordCount: text.replace(/\s/g, '').length,
+                tags: partial.tags || [],
+                versions: [],
+                parentId: partial.parentId || null,
+                derivedIds: [],
+                createdAt: partial.createdAt || now,
+                updatedAt: now,
+                trashed: false,
+                meta: partial.meta || {}
+            };
+            state.products.unshift(p);
+        }
+        persist();
+        return p;
+    }
+
+    function remove(id, permanent) {
+        const i = state.products.findIndex(p => p.id === id);
+        if (i < 0) return;
+        if (permanent) {
+            state.products.splice(i, 1);
+        } else {
+            state.products[i].trashed = true;
+            state.products[i].updatedAt = new Date().toISOString();
+        }
+        persist();
+    }
+    function restore(id) {
+        const p = get(id); if (!p) return;
+        p.trashed = false; p.updatedAt = new Date().toISOString();
+        persist();
+    }
+    function emptyTrash() {
+        state.products = state.products.filter(p => !p.trashed);
+        persist();
+    }
+    function addTag(id, tag) {
+        const p = get(id); if (!p) return;
+        tag = (tag || '').trim();
+        if (!tag) return;
+        if (!p.tags.includes(tag)) p.tags.push(tag);
+        persist();
+    }
+    function removeTag(id, tag) {
+        const p = get(id); if (!p) return;
+        p.tags = p.tags.filter(t => t !== tag);
+        persist();
+    }
+    function linkDerivative(parentId, childId) {
+        const parent = get(parentId); const child = get(childId);
+        if (!parent || !child) return;
+        if (!parent.derivedIds.includes(childId)) parent.derivedIds.push(childId);
+        child.parentId = parentId;
+        persist();
+    }
+    function restoreVersion(id, v) {
+        const p = get(id); if (!p || !p.versions) return;
+        const ver = p.versions.find(x => x.v === v);
+        if (!ver) return;
+        // 当前内容先入版本
+        p.versions.unshift({
+            v: (p.versions[0]?.v || 0) + 1,
+            content: p.content, text: p.text, wordCount: p.wordCount,
+            savedAt: p.updatedAt, note: '回滚前快照'
+        });
+        if (p.versions.length > MAX_VERSIONS) p.versions.length = MAX_VERSIONS;
+        // 移除已恢复的版本
+        p.versions = p.versions.filter(x => x.v !== v);
+        p.content = ver.content; p.text = ver.text; p.wordCount = ver.wordCount;
+        p.updatedAt = new Date().toISOString();
+        persist();
+    }
+
+    // ---------- 查询 ----------
+    function filterProducts() {
+        const f = state.filter;
+        let arr = state.products.slice();
+        if (f.type === 'trash') {
+            arr = arr.filter(p => p.trashed);
+        } else {
+            arr = arr.filter(p => !p.trashed);
+            if (f.type !== 'all') arr = arr.filter(p => p.type === f.type);
+        }
+        if (f.tag) arr = arr.filter(p => p.tags && p.tags.includes(f.tag));
+        if (f.keyword) {
+            const kw = f.keyword.toLowerCase();
+            arr = arr.filter(p =>
+                (p.title||'').toLowerCase().includes(kw) ||
+                (p.text||'').toLowerCase().includes(kw) ||
+                (p.tags||[]).some(t => t.toLowerCase().includes(kw))
+            );
+        }
+        const sorters = {
+            recent: (a,b) => (b.updatedAt||'').localeCompare(a.updatedAt||''),
+            created: (a,b) => (b.createdAt||'').localeCompare(a.createdAt||''),
+            name: (a,b) => (a.title||'').localeCompare(b.title||''),
+            size: (a,b) => (b.wordCount||0) - (a.wordCount||0)
+        };
+        arr.sort(sorters[f.sort] || sorters.recent);
+        return arr;
+    }
+
+    function allTags() {
+        const tagSet = {};
+        for (const p of state.products) {
+            if (p.trashed) continue;
+            for (const t of (p.tags || [])) tagSet[t] = (tagSet[t]||0) + 1;
+        }
+        return Object.keys(tagSet).map(t => ({ tag: t, count: tagSet[t] })).sort((a,b) => b.count - a.count);
+    }
+
+    function stats() {
+        const s = { article: 0, card: 0, audio: 0, trash: 0, total: 0 };
+        for (const p of state.products) {
+            if (p.trashed) { s.trash++; continue; }
+            s.total++;
+            if (s[p.type] !== undefined) s[p.type]++;
+        }
+        return s;
+    }
+
+    // ---------- 渲染 ----------
+    function fmtTime(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        const now = new Date();
+        const diff = (now - d) / 1000;
+        if (diff < 60) return '刚刚';
+        if (diff < 3600) return Math.floor(diff/60) + ' 分钟前';
+        if (diff < 86400) return Math.floor(diff/3600) + ' 小时前';
+        if (diff < 86400*7) return Math.floor(diff/86400) + ' 天前';
+        return `${d.getMonth()+1}/${d.getDate()}`;
+    }
+    function escapeHtml(s) {
+        return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+    function preview(p) {
+        const t = p.text || '';
+        if (p.type === 'card' && p.meta?.thumb) return ''; // 卡片用缩略图
+        return t.replace(/\s+/g, ' ').trim().slice(0, 90);
+    }
+
+    function renderStats() {
+        const el = document.getElementById('prodStats');
+        if (!el) return;
+        const s = stats();
+        const items = [
+            { k: 'total', label: '产物总数', icon: '📦', color: '#10B981', count: s.total },
+            { k: 'article', label: '文章', icon: '📝', color: '#3B82F6', count: s.article },
+            { k: 'card', label: '卡片', icon: '🎴', color: '#8B5CF6', count: s.card },
+            { k: 'audio', label: '音频', icon: '🎙', color: '#F59E0B', count: s.audio },
+            { k: 'trash', label: '回收站', icon: '🗑', color: '#9CA3AF', count: s.trash }
+        ];
+        el.innerHTML = items.map(it => `
+            <div data-stat="${it.k}" class="prod-stat-card" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;cursor:pointer;transition:all 0.2s;${state.filter.type === it.k ? 'border-color:'+it.color+';box-shadow:0 0 0 3px '+it.color+'20;' : ''}">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:18px;">${it.icon}</span>
+                    <div>
+                        <div style="font-size:20px;font-weight:700;color:${it.color};line-height:1;">${it.count}</div>
+                        <div style="font-size:11px;color:#6B7280;margin-top:2px;">${it.label}</div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        el.querySelectorAll('[data-stat]').forEach(card => {
+            card.addEventListener('click', () => {
+                setFilter('type', card.dataset.stat);
+            });
+            card.addEventListener('mouseenter', () => { card.style.transform = 'translateY(-2px)'; card.style.boxShadow = '0 6px 16px rgba(0,0,0,0.08)'; });
+            card.addEventListener('mouseleave', () => { card.style.transform = ''; card.style.boxShadow = ''; });
+        });
+    }
+
+    function renderTagBar() {
+        const el = document.getElementById('prodTagBar');
+        if (!el) return;
+        const tags = allTags();
+        if (!tags.length) { el.innerHTML = ''; return; }
+        el.innerHTML = `<span style="font-size:11px;color:#9CA3AF;padding:4px 6px;">🏷</span>` +
+            tags.slice(0, 12).map(t => `
+                <button data-tag="${escapeHtml(t.tag)}" class="prod-tag-pill" style="padding:4px 10px;background:${state.filter.tag === t.tag ? '#10B981' : '#fff'};color:${state.filter.tag === t.tag ? '#fff' : '#6B7280'};border:1px solid ${state.filter.tag === t.tag ? '#10B981' : '#E5E7EB'};border-radius:14px;font-size:11px;cursor:pointer;">${escapeHtml(t.tag)} <span style="opacity:0.7;">${t.count}</span></button>
+            `).join('');
+        el.querySelectorAll('[data-tag]').forEach(b => {
+            b.addEventListener('click', () => {
+                const tag = b.dataset.tag;
+                setFilter('tag', state.filter.tag === tag ? '' : tag);
+            });
+        });
+    }
+
+    function renderList() {
+        const listEl = document.getElementById('prodList');
+        const emptyEl = document.getElementById('prodEmpty');
+        if (!listEl) return;
+        const arr = filterProducts();
+        if (!arr.length) {
+            listEl.innerHTML = '';
+            if (emptyEl) emptyEl.style.display = 'block';
+            return;
+        }
+        if (emptyEl) emptyEl.style.display = 'none';
+
+        const isGrid = state.filter.view === 'grid';
+        listEl.style.gridTemplateColumns = isGrid ? 'repeat(auto-fill,minmax(280px,1fr))' : '1fr';
+
+        listEl.innerHTML = arr.map(p => {
+            const meta = TYPE_META[p.type] || TYPE_META.article;
+            const prev = preview(p);
+            const title = escapeHtml(p.title || '未命名');
+            const tagsHtml = (p.tags||[]).slice(0,3).map(t => `<span style="display:inline-block;padding:1px 6px;background:${meta.bg};color:${meta.color};border-radius:3px;font-size:10px;margin-right:4px;">#${escapeHtml(t)}</span>`).join('');
+            const derivedCount = (p.derivedIds||[]).length;
+            const versionCount = (p.versions||[]).length;
+
+            // 卡片产物缩略图
+            let thumbHtml = '';
+            if (p.type === 'card' && p.meta?.thumb) {
+                thumbHtml = `<img src="${p.meta.thumb}" style="width:100%;height:${isGrid ? '140px' : '60px'};object-fit:cover;background:#F3F4F6;" alt="">`;
+            } else if (p.type === 'card' && Array.isArray(p.meta?.thumbs) && p.meta.thumbs.length) {
+                thumbHtml = `<div style="display:flex;height:${isGrid ? '140px' : '60px'};overflow:hidden;background:#F3F4F6;">${p.meta.thumbs.slice(0,3).map(u => `<img src="${u}" style="height:100%;flex:1;object-fit:cover;min-width:0;">`).join('')}</div>`;
+            } else if (isGrid) {
+                // 文章/音频用渐变占位
+                thumbHtml = `<div style="height:80px;background:linear-gradient(135deg,${meta.bg},#fff);display:flex;align-items:center;justify-content:center;font-size:36px;opacity:0.6;">${meta.icon}</div>`;
+            }
+
+            if (isGrid) {
+                return `
+                <div class="prod-card" data-id="${p.id}" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden;cursor:pointer;transition:all 0.2s;display:flex;flex-direction:column;">
+                    ${thumbHtml}
+                    <div style="padding:10px 12px;flex:1;display:flex;flex-direction:column;gap:6px;">
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <span style="display:inline-block;padding:2px 6px;background:${meta.bg};color:${meta.color};border-radius:4px;font-size:10px;font-weight:600;letter-spacing:0.5px;">${meta.icon} ${meta.label}</span>
+                            ${p.trashed ? '<span style="font-size:10px;color:#DC2626;">已删</span>' : ''}
+                        </div>
+                        <div style="font-size:13px;font-weight:600;color:#1F2937;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${title}</div>
+                        ${prev ? `<div style="font-size:11px;color:#9CA3AF;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(prev)}</div>` : ''}
+                        <div style="font-size:11px;color:#9CA3AF;margin-top:auto;">${fmtTime(p.updatedAt)} · ${p.wordCount||0}字</div>
+                        ${tagsHtml ? `<div>${tagsHtml}</div>` : ''}
+                        ${(derivedCount || versionCount) ? `<div style="font-size:10px;color:#9CA3AF;border-top:1px dashed #F3F4F6;padding-top:6px;">${versionCount ? '🗂 '+versionCount+'版本' : ''} ${derivedCount ? '· 🔗 '+derivedCount+'衍生' : ''}</div>` : ''}
+                    </div>
+                </div>`;
+            } else {
+                return `
+                <div class="prod-card" data-id="${p.id}" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;cursor:pointer;transition:all 0.2s;display:flex;gap:12px;padding:10px;align-items:center;">
+                    ${thumbHtml ? `<div style="width:80px;height:60px;flex-shrink:0;border-radius:6px;overflow:hidden;">${thumbHtml.replace(/height:[^;"]+/g,'height:60px').replace(/width:100%;/g,'width:80px;')}</div>` : `<div style="width:60px;height:60px;flex-shrink:0;border-radius:6px;background:${meta.bg};display:flex;align-items:center;justify-content:center;font-size:24px;">${meta.icon}</div>`}
+                    <div style="flex:1;min-width:0;">
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                            <span style="display:inline-block;padding:2px 6px;background:${meta.bg};color:${meta.color};border-radius:4px;font-size:10px;font-weight:600;">${meta.icon} ${meta.label}</span>
+                            ${tagsHtml}
+                            ${p.trashed ? '<span style="font-size:10px;color:#DC2626;">已删</span>' : ''}
+                        </div>
+                        <div style="font-size:13px;font-weight:600;color:#1F2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${title}</div>
+                        <div style="font-size:11px;color:#9CA3AF;margin-top:2px;">${fmtTime(p.updatedAt)} · ${p.wordCount||0}字 ${versionCount ? '· 🗂 '+versionCount+'版本' : ''} ${derivedCount ? '· 🔗 '+derivedCount+'衍生' : ''}</div>
+                    </div>
+                </div>`;
+            }
+        }).join('');
+
+        listEl.querySelectorAll('.prod-card').forEach(c => {
+            c.addEventListener('click', () => openDetail(c.dataset.id));
+            c.addEventListener('mouseenter', () => { c.style.transform = 'translateY(-2px)'; c.style.boxShadow = '0 6px 16px rgba(0,0,0,0.08)'; });
+            c.addEventListener('mouseleave', () => { c.style.transform = ''; c.style.boxShadow = ''; });
+        });
+    }
+
+    function renderAll() {
+        renderStats();
+        renderTagBar();
+        renderList();
+    }
+
+    function setFilter(key, value) {
+        state.filter[key] = value;
+        if (key === 'type') {
+            document.querySelectorAll('.prod-filter-btn').forEach(b => {
+                const on = b.dataset.prodType === value;
+                b.classList.toggle('active', on);
+                if (on) {
+                    b.style.background = '#10B981';
+                    b.style.color = '#fff';
+                    b.style.border = 'none';
+                    b.style.fontWeight = '600';
+                } else {
+                    b.style.background = '#fff';
+                    b.style.color = b.dataset.prodType === 'all' ? '#10B981' : ({article:'#3B82F6', card:'#8B5CF6', audio:'#F59E0B', trash:'#9CA3AF'}[b.dataset.prodType] || '#6B7280');
+                    b.style.border = '1px solid ' + b.style.color;
+                    b.style.fontWeight = '400';
+                }
+            });
+        }
+        renderList();
+    }
+
+    // ---------- 详情抽屉 ----------
+    function openDetail(id) {
+        const p = get(id);
+        if (!p) return;
+        const meta = TYPE_META[p.type] || TYPE_META.article;
+        document.getElementById('prodDetailType').textContent = `${meta.icon} ${meta.label} · ${p.id}`;
+        document.getElementById('prodDetailTitle').textContent = p.title || '未命名';
+        document.getElementById('prodDetailHeader').style.background = `linear-gradient(135deg, ${meta.color}, ${meta.color}cc)`;
+
+        const body = document.getElementById('prodDetailBody');
+        const created = new Date(p.createdAt); const updated = new Date(p.updatedAt);
+        const tagsHtml = (p.tags||[]).map(t => `
+            <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:${meta.bg};color:${meta.color};border-radius:12px;font-size:11px;margin:0 4px 4px 0;">
+                #${escapeHtml(t)}
+                <button data-tag-del="${escapeHtml(t)}" style="background:none;border:none;color:${meta.color};cursor:pointer;padding:0;font-size:13px;line-height:1;">&times;</button>
+            </span>`).join('');
+
+        // 预览
+        let previewHtml = '';
+        if (p.type === 'card') {
+            const thumbs = Array.isArray(p.meta?.thumbs) && p.meta.thumbs.length ? p.meta.thumbs : (p.meta?.thumb ? [p.meta.thumb] : []);
+            if (thumbs.length) {
+                previewHtml = `<div style="display:grid;grid-template-columns:repeat(${Math.min(thumbs.length,3)},1fr);gap:8px;margin-bottom:14px;">${thumbs.map(u => `<img src="${u}" style="width:100%;border-radius:6px;border:1px solid #E5E7EB;">`).join('')}</div>`;
+            }
+        } else if (p.content) {
+            const text = p.text || p.content.replace(/<[^>]+>/g,'');
+            previewHtml = `<div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:12px;font-size:12px;color:#374151;max-height:200px;overflow-y:auto;line-height:1.6;margin-bottom:14px;white-space:pre-wrap;">${escapeHtml(text.slice(0, 600))}${text.length>600?'…':''}</div>`;
+        }
+
+        // 版本历史
+        let versionsHtml = '';
+        if (p.versions && p.versions.length) {
+            versionsHtml = `
+                <div style="margin-top:18px;">
+                    <div style="font-size:12px;color:#374151;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px;">🗂 版本历史 <span style="font-size:10px;color:#9CA3AF;font-weight:400;">（共 ${p.versions.length} 个历史版本）</span></div>
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                        ${p.versions.map(v => `
+                            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#FAFAFA;border:1px solid #F3F4F6;border-radius:6px;">
+                                <div>
+                                    <div style="font-size:12px;color:#374151;font-weight:500;">v${v.v} · ${escapeHtml(v.note||'')}</div>
+                                    <div style="font-size:10px;color:#9CA3AF;margin-top:2px;">${fmtTime(v.savedAt)} · ${v.wordCount||0}字</div>
+                                </div>
+                                <button data-ver-restore="${v.v}" style="padding:4px 10px;background:#fff;color:#F59E0B;border:1px solid #F59E0B;border-radius:5px;font-size:11px;cursor:pointer;">⏮ 回滚</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+        }
+
+        // 衍生关系
+        let derivedHtml = '';
+        const parent = p.parentId ? get(p.parentId) : null;
+        const derived = (p.derivedIds||[]).map(d => get(d)).filter(Boolean);
+        if (parent || derived.length) {
+            const relItems = [];
+            if (parent) relItems.push(`<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:#FAFAFA;border-radius:6px;font-size:11px;"><span style="color:#9CA3AF;">⬆ 源自</span><span style="color:${TYPE_META[parent.type]?.color};">${TYPE_META[parent.type]?.icon||''} ${escapeHtml(parent.title)}</span><button data-jump="${parent.id}" style="margin-left:auto;color:#3B82F6;background:none;border:none;cursor:pointer;font-size:11px;">跳转 →</button></div>`);
+            for (const d of derived) relItems.push(`<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:#FAFAFA;border-radius:6px;font-size:11px;"><span style="color:#9CA3AF;">⬇ 衍生</span><span style="color:${TYPE_META[d.type]?.color};">${TYPE_META[d.type]?.icon||''} ${escapeHtml(d.title)}</span><button data-jump="${d.id}" style="margin-left:auto;color:#3B82F6;background:none;border:none;cursor:pointer;font-size:11px;">跳转 →</button></div>`);
+            derivedHtml = `<div style="margin-top:18px;"><div style="font-size:12px;color:#374151;font-weight:700;margin-bottom:8px;">🔗 衍生关系</div><div style="display:flex;flex-direction:column;gap:6px;">${relItems.join('')}</div></div>`;
+        }
+
+        body.innerHTML = `
+            <div style="font-size:11px;color:#9CA3AF;margin-bottom:14px;display:flex;gap:14px;flex-wrap:wrap;">
+                <span>📅 创建 ${fmtTime(p.createdAt)} · ${created.toLocaleDateString('zh-CN')}</span>
+                <span>✏ 更新 ${fmtTime(p.updatedAt)} · ${updated.toLocaleString('zh-CN')}</span>
+                <span>📊 ${p.wordCount||0} 字</span>
+            </div>
+
+            ${previewHtml}
+
+            <div style="margin-bottom:14px;">
+                <div style="font-size:12px;color:#374151;font-weight:700;margin-bottom:6px;">🏷 标签</div>
+                <div style="margin-bottom:6px;">${tagsHtml || '<span style="font-size:11px;color:#9CA3AF;">无标签</span>'}</div>
+                <div style="display:flex;gap:6px;">
+                    <input id="prodTagInput" type="text" placeholder="添加标签后回车" style="flex:1;padding:6px 10px;border:1px solid #D1D5DB;border-radius:6px;font-size:12px;outline:none;">
+                    <button id="prodTagAddBtn" style="padding:6px 12px;background:${meta.color};color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;">添加</button>
+                </div>
+            </div>
+
+            ${derivedHtml}
+            ${versionsHtml}
+        `;
+
+        // 标签操作
+        const tagInput = document.getElementById('prodTagInput');
+        const tagAddBtn = document.getElementById('prodTagAddBtn');
+        if (tagAddBtn) {
+            tagAddBtn.addEventListener('click', () => {
+                const v = tagInput.value.trim();
+                if (!v) return;
+                addTag(id, v); tagInput.value = ''; openDetail(id); renderAll();
+            });
+        }
+        if (tagInput) {
+            tagInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter' && tagAddBtn) tagAddBtn.click();
+            });
+        }
+        body.querySelectorAll('[data-tag-del]').forEach(b => {
+            b.addEventListener('click', () => { removeTag(id, b.dataset.tagDel); openDetail(id); renderAll(); });
+        });
+        body.querySelectorAll('[data-ver-restore]').forEach(b => {
+            b.addEventListener('click', () => {
+                if (confirm('确认回滚到此版本？当前内容会先入版本快照。')) {
+                    restoreVersion(id, parseInt(b.dataset.verRestore, 10));
+                    openDetail(id); renderAll(); showToast('已回滚到 v'+b.dataset.verRestore);
+                }
+            });
+        });
+        body.querySelectorAll('[data-jump]').forEach(b => {
+            b.addEventListener('click', () => openDetail(b.dataset.jump));
+        });
+
+        // 底部操作
+        const actions = document.getElementById('prodDetailActions');
+        const isTrashed = !!p.trashed;
+        actions.innerHTML = '';
+        const mkBtn = (txt, bg, onclick) => {
+            const b = document.createElement('button');
+            b.textContent = txt;
+            b.style.cssText = `padding:8px 14px;background:${bg};color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;`;
+            b.addEventListener('click', onclick);
+            actions.appendChild(b);
+        };
+
+        if (p.type === 'article' && !isTrashed) {
+            mkBtn('✎ 载入编辑器', '#10B981', () => {
+                const ed = document.getElementById('editor');
+                if (ed) { ed.innerHTML = p.content || ''; if (typeof updatePreview === 'function') updatePreview(); }
+                document.querySelector('.nav-item[data-tab="editor"]')?.click();
+                showToast('已载入编辑器');
+                closeDetail();
+            });
+            mkBtn('🎴 生成卡片', '#8B5CF6', () => {
+                const ccBtn = document.querySelector('.mode-btn[data-mode="content-cards"]');
+                document.querySelector('.nav-item[data-tab="editor"]')?.click();
+                if (ccBtn) ccBtn.click();
+                const ta = document.getElementById('ccInput');
+                if (ta) {
+                    ta.value = p.text || (p.content||'').replace(/<[^>]+>/g,'');
+                    showToast('已带入贴图卡片，点击「生成卡片」');
+                }
+                // 生成后由生成流程自动入库
+                window._ccDeriveFrom = p.id;
+                closeDetail();
+            });
+            mkBtn('📥 下载 .md', '#3B82F6', () => {
+                const md = (typeof htmlToMarkdown === 'function') ? htmlToMarkdown(p.content || '') : (p.text||'');
+                const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = (p.title||'文章') + '.md';
+                a.click();
+                URL.revokeObjectURL(a.href);
+            });
+        }
+        if (p.type === 'card' && !isTrashed) {
+            mkBtn('📥 下载卡片', '#8B5CF6', () => {
+                const thumbs = Array.isArray(p.meta?.thumbs) ? p.meta.thumbs : (p.meta?.thumb ? [p.meta.thumb] : []);
+                thumbs.forEach((u, i) => {
+                    const a = document.createElement('a');
+                    a.href = u; a.download = `${p.title||'card'}-${i+1}.jpg`;
+                    a.click();
+                });
+            });
+            mkBtn('📝 转为文章', '#3B82F6', () => {
+                const newP = upsert({
+                    type: 'article',
+                    title: (p.title||'卡片') + '（衍生文章）',
+                    content: (p.meta?.text||p.text||''),
+                    tags: p.tags ? p.tags.slice() : [],
+                    parentId: p.id
+                });
+                linkDerivative(p.id, newP.id);
+                showToast('已创建衍生文章');
+                renderAll(); openDetail(newP.id);
+            });
+        }
+        if (p.type === 'audio') {
+            mkBtn('▶ 播放', '#F59E0B', () => {
+                if (p.meta?.audioUrl) {
+                    new Audio(p.meta.audioUrl).play().catch(()=>showToast('播放失败'));
+                } else showToast('音频文件未上传（占位）');
+            });
+        }
+
+        if (!isTrashed) {
+            mkBtn('🗑 移入回收站', '#9CA3AF', () => {
+                if (confirm('确认移入回收站？30 天内可恢复。')) {
+                    remove(id, false); renderAll(); closeDetail(); showToast('已移入回收站');
+                }
+            });
+        } else {
+            mkBtn('♻ 恢复', '#10B981', () => { restore(id); renderAll(); closeDetail(); showToast('已恢复'); });
+            mkBtn('❌ 永久删除', '#DC2626', () => {
+                if (confirm('永久删除后无法恢复，确认？')) { remove(id, true); renderAll(); closeDetail(); showToast('已永久删除'); }
+            });
+        }
+
+        document.getElementById('prodDetailDrawer').style.display = 'flex';
+    }
+    function closeDetail() {
+        const d = document.getElementById('prodDetailDrawer');
+        if (d) d.style.display = 'none';
+    }
+
+    // ---------- 对外暴露（保存钩子）----------
+    window._productsApi = {
+        list, get, upsert, remove, restore, emptyTrash,
+        addTag, removeTag, linkDerivative, restoreVersion,
+        renderAll, openDetail,
+        // 文章保存钩子：编辑器内容入产物库
+        saveArticle(opts) {
+            const editor = document.getElementById('editor');
+            const content = opts?.content || (editor ? editor.innerHTML : '');
+            if (!content.trim()) return null;
+            const text = content.replace(/<[^>]+>/g, '');
+            // 取首行作为标题
+            const firstLine = text.split('\n').map(s=>s.trim()).find(s=>s) || '未命名文章';
+            return upsert({
+                id: opts?.id,
+                type: 'article',
+                title: opts?.title || firstLine.substring(0, 30),
+                content,
+                text,
+                tags: opts?.tags || [],
+                versionNote: opts?.versionNote || '编辑器保存'
+            });
+        },
+        // 卡片保存钩子
+        saveCard(opts) {
+            const id = opts.id;
+            const existing = id ? get(id) : null;
+            const p = upsert({
+                id, type: 'card',
+                title: opts.title || '贴图卡片',
+                content: opts.text || '',
+                text: opts.text || '',
+                tags: opts.tags || [],
+                parentId: opts.parentId || existing?.parentId || null,
+                meta: { thumb: opts.thumb, thumbs: opts.thumbs, style: opts.style, accent: opts.accent },
+                versionNote: opts.versionNote || '卡片生成'
+            });
+            // 衍生关系
+            const deriveFrom = opts.parentId || window._ccDeriveFrom;
+            if (deriveFrom) {
+                linkDerivative(deriveFrom, p.id);
+                window._ccDeriveFrom = null;
+            }
+            return p;
+        }
+    };
+
+    // ---------- 事件绑定 ----------
+    function bindEvents() {
+        document.querySelectorAll('.prod-filter-btn').forEach(b => {
+            b.addEventListener('click', () => setFilter('type', b.dataset.prodType));
+        });
+        const search = document.getElementById('prodSearchInput');
+        if (search) {
+            let t;
+            search.addEventListener('input', () => {
+                clearTimeout(t);
+                t = setTimeout(() => { state.filter.keyword = search.value.trim(); renderList(); }, 200);
+            });
+        }
+        const sortSel = document.getElementById('prodSortSelect');
+        if (sortSel) sortSel.addEventListener('change', () => { state.filter.sort = sortSel.value; renderList(); });
+        document.querySelectorAll('.prod-view-btn').forEach(b => {
+            b.addEventListener('click', () => {
+                state.filter.view = b.dataset.view;
+                document.querySelectorAll('.prod-view-btn').forEach(x => {
+                    const on = x.dataset.view === state.filter.view;
+                    x.classList.toggle('active', on);
+                    x.style.background = on ? '#fff' : 'transparent';
+                });
+                renderList();
+            });
+        });
+        const closeBtn = document.getElementById('prodDetailClose');
+        if (closeBtn) closeBtn.addEventListener('click', closeDetail);
+        const drawer = document.getElementById('prodDetailDrawer');
+        if (drawer) drawer.addEventListener('click', e => { if (e.target === drawer) closeDetail(); });
+
+        const exportBtn = document.getElementById('prodExportBtn');
+        if (exportBtn) exportBtn.addEventListener('click', () => {
+            const data = JSON.stringify(state.products, null, 2);
+            const blob = new Blob([data], { type: 'application/json;charset=utf-8' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `products-${new Date().toISOString().slice(0,10)}.json`;
+            a.click(); URL.revokeObjectURL(a.href);
+            showToast(`已导出 ${state.products.length} 个产物`);
+        });
+        const importBtn = document.getElementById('prodImportBtn');
+        if (importBtn) importBtn.addEventListener('click', () => {
+            const inp = document.createElement('input');
+            inp.type = 'file'; inp.accept = '.json,.md,.txt';
+            inp.onchange = e => {
+                const f = e.target.files[0]; if (!f) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try {
+                        if (f.name.endsWith('.json')) {
+                            const arr = JSON.parse(reader.result);
+                            if (Array.isArray(arr)) {
+                                for (const it of arr) {
+                                    if (!it.id) it.id = 'imp_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+                                    state.products.unshift(it);
+                                }
+                                persist(); renderAll(); showToast(`已导入 ${arr.length} 个产物`);
+                            }
+                        } else {
+                            const text = String(reader.result);
+                            const p = upsert({ type: 'article', title: f.name.replace(/\.[^.]+$/,''), content: text, text });
+                            renderAll(); showToast('已导入：' + p.title);
+                        }
+                    } catch (err) { showToast('导入失败：' + err.message); }
+                };
+                reader.readAsText(f);
+            };
+            inp.click();
+        });
+        const cleanupBtn = document.getElementById('prodCleanupBtn');
+        if (cleanupBtn) cleanupBtn.addEventListener('click', () => {
+            const s = stats();
+            if (!s.trash) { showToast('回收站为空'); return; }
+            if (confirm(`确认清空回收站？共 ${s.trash} 个产物将被永久删除。`)) {
+                emptyTrash(); renderAll(); showToast('回收站已清空');
+            }
+        });
+    }
+
+    function init() {
+        load();
+        migrateLegacyDrafts();
+        bindEvents();
+        renderAll();
+    }
+    if (document.readyState !== 'loading') init();
+    else document.addEventListener('DOMContentLoaded', init);
+})();
+
+// ===== V5 全局命令面板（Ctrl+K） + 新手引导 + 通知条 =====
+(function v5ShellModule() {
+    'use strict';
+    const ONBOARD_SEEN_KEY = 'wx_onboard_seen_v5';
+
+    // ---------- 通知条 ----------
+    let bannerTimer = null;
+    function showBanner(msg, ms = 4000) {
+        const el = document.getElementById('globalBanner');
+        if (!el) return;
+        el.innerHTML = msg + '<span class="banner-close" onclick="this.parentElement.classList.remove(\'show\')">&times;</span>';
+        el.classList.add('show');
+        clearTimeout(bannerTimer);
+        bannerTimer = setTimeout(() => el.classList.remove('show'), ms);
+    }
+    window._showBanner = showBanner;
+
+    // ---------- 新手引导 ----------
+    function showOnboard() {
+        const el = document.getElementById('onboardOverlay');
+        if (el) el.classList.add('show');
+    }
+    function hideOnboard() {
+        const el = document.getElementById('onboardOverlay');
+        if (el) el.classList.remove('show');
+        try { localStorage.setItem(ONBOARD_SEEN_KEY, '1'); } catch {}
+    }
+    function shouldShowOnboard() {
+        try { return !localStorage.getItem(ONBOARD_SEEN_KEY); } catch { return false; }
+    }
+
+    // ---------- 命令面板 ----------
+    const cmdkState = { items: [], selected: 0 };
+
+    function buildCmdkItems(query) {
+        const q = (query || '').trim().toLowerCase();
+        const items = [];
+
+        // 1. 导航
+        const navItems = [
+            { key: 'editor', icon: '✎', title: '排版', sub: '编辑文章并应用主题', tag: '导航' },
+            { key: 'inbox', icon: '📥', title: '信息中枢', sub: '聚合所有信源', tag: '导航' },
+            { key: 'create', icon: '✍', title: '创作', sub: 'AI 一键 / 自定义创作', tag: '导航' },
+            { key: 'subscribe', icon: '📰', title: '订阅', sub: '管理公众号订阅', tag: '导航' },
+            { key: 'image', icon: '🖼', title: '图片', sub: 'AI 图片生成', tag: '导航' },
+            { key: 'products', icon: '📦', title: '产物中心', sub: '统一管理所有产物', tag: '导航' },
+            { key: 'settings', icon: '⚙️', title: '设置', sub: 'AI 模型 / 主题色', tag: '导航' }
+        ];
+        for (const n of navItems) {
+            if (!q || n.title.toLowerCase().includes(q) || n.sub.toLowerCase().includes(q)) {
+                items.push({ type: 'nav', ...n, action: () => switchTab(n.key) });
+            }
+        }
+
+        // 2. 动作
+        const actions = [
+            { icon: '💾', title: '保存当前为草稿', sub: '编辑器内容 → 草稿 + 产物库', tag: '动作', action: () => { switchTab('editor'); setTimeout(() => saveCurrentDraft(), 100); } },
+            { icon: '📥', title: '下载为 Markdown', sub: '当前编辑器内容导出 .md', tag: '动作', action: () => { switchTab('editor'); setTimeout(() => downloadAsMarkdown(), 100); } },
+            { icon: '⎘', title: '复制全文', sub: '复制到剪贴板', tag: '动作', action: () => { const b = document.getElementById('copyBtn'); if (b) b.click(); } },
+            { icon: '🚀', title: 'AI 一键创作', sub: '基于当前选题或编辑器内容', tag: '动作', action: () => { const b = document.getElementById('aiWorkflowBtn'); if (b) b.click(); } },
+            { icon: '🎴', title: '生成贴图卡片', sub: '基于当前编辑器内容', tag: '动作', action: () => { switchTab('editor'); setTimeout(() => { const b = document.querySelector('.mode-btn[data-mode="content-cards"]'); if (b) b.click(); }, 100); } },
+            { icon: '📤', title: '导出全部产物', sub: '下载 JSON 备份', tag: '动作', action: () => { const b = document.getElementById('prodExportBtn'); if (b) b.click(); } },
+            { icon: '📥', title: '导入文件', sub: '从 .json / .md 导入', tag: '动作', action: () => { const b = document.getElementById('prodImportBtn'); if (b) b.click(); } },
+            { icon: '⚙️', title: 'AI 设置', sub: '配置模型 API Key', tag: '动作', action: () => { const b = document.getElementById('aiSettingsBtn'); if (b) b.click(); } },
+            { icon: '🎨', title: '主题色切换', sub: '在 emerald/blue/orange/purple 间循环', tag: '动作', action: () => cycleTheme() }
+        ];
+        for (const a of actions) {
+            if (!q || a.title.toLowerCase().includes(q) || a.sub.toLowerCase().includes(q)) {
+                items.push({ type: 'action', ...a });
+            }
+        }
+
+        // 3. 产物（如果有产物库 API）
+        if (window._productsApi) {
+            const prods = window._productsApi.list().filter(p => !p.trashed);
+            for (const p of prods.slice(0, 30)) {
+                const typeIcon = p.type === 'article' ? '📝' : p.type === 'card' ? '🎴' : '🎙';
+                const title = p.title || '未命名';
+                if (!q || title.toLowerCase().includes(q) || (p.text||'').toLowerCase().includes(q) || (p.tags||[]).some(t => t.toLowerCase().includes(q))) {
+                    items.push({
+                        type: 'product', icon: typeIcon, title,
+                        sub: `${p.type === 'article' ? '文章' : p.type === 'card' ? '卡片' : '音频'} · ${p.wordCount||0}字 · ${(p.tags||[]).join(' / ') || '无标签'}`,
+                        tag: '产物',
+                        action: () => { switchTab('products'); setTimeout(() => window._productsApi.openDetail(p.id), 200); }
+                    });
+                }
+            }
+        }
+
+        // 4. 信源（如果有信息中枢 API）
+        if (window._inboxApi && window._inboxApi.getAllItems) {
+            try {
+                const items2 = window._inboxApi.getAllItems();
+                for (const it of items2.slice(0, 20)) {
+                    const title = it.title || '';
+                    if (!q || title.toLowerCase().includes(q) || (it.desc||'').toLowerCase().includes(q)) {
+                        items.push({
+                            type: 'inbox', icon: '📰', title,
+                            sub: `信源：${it._source || it.source || ''} · ${it.time || ''}`,
+                            tag: '信源',
+                            action: () => { switchTab('inbox'); }
+                        });
+                    }
+                }
+            } catch {}
+        }
+
+        return items.slice(0, 50);
+    }
+
+    function renderCmdk() {
+        const resultsEl = document.getElementById('cmdkResults');
+        if (!resultsEl) return;
+        if (!cmdkState.items.length) {
+            resultsEl.innerHTML = '<div class="cmdk-empty">无匹配结果</div>';
+            return;
+        }
+        // 分组
+        const groups = {};
+        for (const it of cmdkState.items) {
+            (groups[it.tag] = groups[it.tag] || []).push(it);
+        }
+        let html = '';
+        let idx = 0;
+        for (const [groupName, groupItems] of Object.entries(groups)) {
+            html += `<div class="cmdk-group-label">${groupName}</div>`;
+            for (const it of groupItems) {
+                const active = idx === cmdkState.selected ? 'active' : '';
+                html += `<div class="cmdk-item ${active}" data-idx="${idx}">
+                    <span class="cmdk-item-icon">${it.icon}</span>
+                    <div class="cmdk-item-body">
+                        <div class="cmdk-item-title">${escapeCmdk(it.title)}</div>
+                        <div class="cmdk-item-sub">${escapeCmdk(it.sub || '')}</div>
+                    </div>
+                    <span class="cmdk-item-tag">${it.type}</span>
+                </div>`;
+                idx++;
+            }
+        }
+        resultsEl.innerHTML = html;
+        resultsEl.querySelectorAll('.cmdk-item').forEach((el, i) => {
+            el.addEventListener('click', () => executeCmdk(parseInt(el.dataset.idx, 10)));
+            el.addEventListener('mouseenter', () => { cmdkState.selected = parseInt(el.dataset.idx, 10); updateActive(); });
+        });
+    }
+    function escapeCmdk(s) {
+        return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+    function updateActive() {
+        document.querySelectorAll('.cmdk-item').forEach((el, i) => {
+            el.classList.toggle('active', i === cmdkState.selected);
+        });
+        // 滚动到可见
+        const active = document.querySelector('.cmdk-item.active');
+        if (active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest' });
+    }
+    function executeCmdk(idx) {
+        const it = cmdkState.items[idx];
+        if (!it) return;
+        closeCmdk();
+        if (typeof it.action === 'function') {
+            try { it.action(); } catch (e) { console.warn('cmdk action', e); }
+        }
+    }
+    function openCmdk() {
+        const overlay = document.getElementById('cmdkOverlay');
+        if (!overlay) return;
+        overlay.classList.add('show');
+        const input = document.getElementById('cmdkInput');
+        if (input) { input.value = ''; setTimeout(() => input.focus(), 50); }
+        cmdkState.items = buildCmdkItems('');
+        cmdkState.selected = 0;
+        renderCmdk();
+    }
+    function closeCmdk() {
+        const overlay = document.getElementById('cmdkOverlay');
+        if (overlay) overlay.classList.remove('show');
+    }
+
+    // ---------- 主题循环切换 ----------
+    const THEMES = ['theme-emerald', 'theme-blue', 'theme-orange', 'theme-purple'];
+    function cycleTheme() {
+        const body = document.body;
+        const current = THEMES.find(t => body.classList.contains(t)) || 'theme-emerald';
+        const idx = THEMES.indexOf(current);
+        const next = THEMES[(idx + 1) % THEMES.length];
+        body.classList.remove(current);
+        body.classList.add(next);
+        try { localStorage.setItem('wx_theme_v5', next); } catch {}
+        showBanner(`🎨 主题已切换为 ${next.replace('theme-','')}`);
+    }
+
+    // ---------- 事件 ----------
+    function bindEvents() {
+        // 触发按钮
+        const btn = document.getElementById('globalSearchBtn');
+        if (btn) btn.addEventListener('click', openCmdk);
+
+        // 全局快捷键 Ctrl+K / Cmd+K
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+                e.preventDefault();
+                const overlay = document.getElementById('cmdkOverlay');
+                if (overlay && overlay.classList.contains('show')) closeCmdk();
+                else openCmdk();
+                return;
+            }
+            if (e.key === 'Escape') {
+                closeCmdk();
+                const onboard = document.getElementById('onboardOverlay');
+                if (onboard && onboard.classList.contains('show')) onboard.classList.remove('show');
+            }
+            // 命令面板内导航
+            const overlay = document.getElementById('cmdkOverlay');
+            if (overlay && overlay.classList.contains('show')) {
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    cmdkState.selected = Math.min(cmdkState.selected + 1, cmdkState.items.length - 1);
+                    updateActive();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    cmdkState.selected = Math.max(cmdkState.selected - 1, 0);
+                    updateActive();
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    executeCmdk(cmdkState.selected);
+                }
+            }
+        });
+
+        // 命令面板输入
+        const input = document.getElementById('cmdkInput');
+        if (input) {
+            input.addEventListener('input', () => {
+                cmdkState.items = buildCmdkItems(input.value);
+                cmdkState.selected = 0;
+                renderCmdk();
+            });
+        }
+        // 点遮罩关闭
+        const overlay = document.getElementById('cmdkOverlay');
+        if (overlay) overlay.addEventListener('click', e => { if (e.target === overlay) closeCmdk(); });
+
+        // 新手引导按钮
+        const startBtn = document.getElementById('onboardStart');
+        if (startBtn) startBtn.addEventListener('click', () => {
+            hideOnboard();
+            setTimeout(() => {
+                showBanner('💡 提示：按 Ctrl+K（Mac 为 ⌘K）随时唤起全局命令面板');
+                openCmdk();
+            }, 300);
+        });
+        const skipBtn = document.getElementById('onboardSkip');
+        if (skipBtn) skipBtn.addEventListener('click', hideOnboard);
+    }
+
+    // 暴露
+    window._v5Shell = { showOnboard, hideOnboard, openCmdk, closeCmdk, showBanner, cycleTheme };
+
+    // 初始化
+    function init() {
+        bindEvents();
+        // 恢复主题
+        try {
+            const saved = localStorage.getItem('wx_theme_v5');
+            if (saved) { document.body.classList.add(saved); }
+            else { document.body.classList.add('theme-emerald'); }
+        } catch { document.body.classList.add('theme-emerald'); }
+        // 首次访问显示新手引导
+        if (shouldShowOnboard()) {
+            setTimeout(() => showOnboard(), 600);
+        } else {
+            // 已访问过的用户：显示更新提示
+            const lastSeen = localStorage.getItem('wx_v5_last_seen');
+            const today = new Date().toISOString().slice(0,10);
+            if (lastSeen !== today) {
+                setTimeout(() => showBanner('✨ 已升级至 v5：新增全局命令面板（Ctrl+K）、统一产物中心、贴图卡片重构'), 800);
+                try { localStorage.setItem('wx_v5_last_seen', today); } catch {}
+            }
+        }
+    }
+    if (document.readyState !== 'loading') init();
+    else document.addEventListener('DOMContentLoaded', init);
 })();

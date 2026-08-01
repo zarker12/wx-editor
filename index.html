@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>公众号文章排版助手</title>
-    <link rel="stylesheet" href="styles.css?v=14">
+    <link rel="stylesheet" href="styles.css?v=15">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -25,6 +25,9 @@
                 <div class="nav-section-label">工作流</div>
                 <button class="nav-item active" data-tab="editor">
                     <span class="nav-icon">✎</span><span>排版</span>
+                </button>
+                <button class="nav-item" data-tab="inbox">
+                    <span class="nav-icon">📥</span><span>信息中枢</span>
                 </button>
                 <button class="nav-item" data-tab="create">
                     <span class="nav-icon">✍</span><span>创作</span>
@@ -57,6 +60,11 @@
                 <span class="logo-text">排版助手</span>
             </div>
             <div class="header-actions">
+                <button class="global-search-trigger" id="globalSearchBtn" title="全局搜索 · Ctrl+K">
+                    <span>🔍</span>
+                    <span>搜索一切...</span>
+                    <span class="kbd">⌘K</span>
+                </button>
                 <button class="btn btn-ghost" id="userBtn" title="登录/用户中心" style="display:none;">
                     <span class="btn-icon">👤</span>
                     <span id="userName">登录</span>
@@ -86,6 +94,50 @@
             </div>
         </header>
 
+        <!-- Tab: 信息中枢 -->
+        <div class="tab-content" id="tab-inbox">
+            <main class="app-main" style="padding:28px 36px;overflow-y:auto;">
+                <div style="max-width:1100px;margin:0 auto;">
+                    <!-- 标题区 -->
+                    <div style="margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;">
+                        <div>
+                            <h2 style="font-family:var(--font-serif);font-size:24px;font-weight:600;color:#1F2937;margin:0 0 4px;letter-spacing:0.5px;">信息中枢</h2>
+                            <p style="color:#6B7280;font-size:13px;margin:0;">聚合所有信源，统一筛选，一键带入创作</p>
+                        </div>
+                        <button id="inboxRefreshBtn" type="button" style="padding:8px 16px;background:linear-gradient(135deg,#F59E0B,#10B981);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">🔄 刷新全部</button>
+                    </div>
+
+                    <!-- 信源切换 tabs -->
+                    <div id="inboxSourceTabs" style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;padding:6px;background:#fff;border:1px solid #E5E7EB;border-radius:10px;">
+                        <button data-inbox-source="all" class="inbox-source-btn active" type="button" style="padding:7px 14px;background:#10B981;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">全部</button>
+                        <button data-inbox-source="wechat" class="inbox-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#07C160;border:1px solid #07C160;border-radius:6px;font-size:12px;cursor:pointer;">📢 公众号</button>
+                        <button data-inbox-source="wechat-hot" class="inbox-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#DC2626;border:1px solid #DC2626;border-radius:6px;font-size:12px;cursor:pointer;">🔥 爆文榜</button>
+                        <button data-inbox-source="weibo" class="inbox-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#E11D48;border:1px solid #E11D48;border-radius:6px;font-size:12px;cursor:pointer;">微博热搜</button>
+                        <button data-inbox-source="36kr" class="inbox-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#1E40AF;border:1px solid #1E40AF;border-radius:6px;font-size:12px;cursor:pointer;">36氪</button>
+                        <button data-inbox-source="douyin" class="inbox-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#111;border:1px solid #111;border-radius:6px;font-size:12px;cursor:pointer;">抖音热点</button>
+                        <button data-inbox-source="recommend" class="inbox-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#3B82F6;border:1px solid #3B82F6;border-radius:6px;font-size:12px;cursor:pointer;">综合资讯</button>
+                    </div>
+
+                    <!-- 筛选栏 -->
+                    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
+                        <input type="text" id="inboxSearchInput" placeholder="🔍 搜索关键词..." style="flex:1;min-width:200px;padding:9px 14px;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#D1D5DB'">
+                        <select id="inboxTimeFilter" style="padding:9px 12px;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;outline:none;background:#fff;cursor:pointer;">
+                            <option value="all">全部时间</option>
+                            <option value="1h">近1小时</option>
+                            <option value="24h">近24小时</option>
+                            <option value="7d">近7天</option>
+                        </select>
+                        <span id="inboxCount" style="font-size:12px;color:#9CA3AF;padding:6px 10px;background:#F3F4F6;border-radius:6px;">0 条</span>
+                    </div>
+
+                    <!-- 信息卡片列表 -->
+                    <div id="inboxList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;">
+                        <div style="grid-column:1/-1;padding:40px;text-align:center;color:#9CA3AF;font-size:14px;">点击「刷新全部」加载信息</div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
         <!-- Tab: 订阅 -->
         <div class="tab-content" id="tab-subscribe">
             <main class="main-content" style="background:#F9FAFB;">
@@ -112,28 +164,62 @@
             </main>
         </div>
 
-        <!-- Tab: 产物 -->
+        <!-- Tab: 产物中心 -->
         <div class="tab-content" id="tab-products">
-            <main class="main-content" style="background:#F9FAFB;">
-                <section style="flex:1;display:flex;flex-direction:column;padding:32px 40px;overflow-y:auto;">
-                    <div class="dash-panel">
-                        <h2>📦 我的产物</h2>
-                        <p class="dash-sub">所有草稿与导出文件集中管理。草稿保存在浏览器本地，重要内容请下载备份。</p>
-                        <div class="dash-cards">
-                            <div class="dash-card"><div class="num" id="dashDraftCount">0</div><div class="label">本地草稿</div></div>
-                            <div class="dash-card"><div class="num" id="dashWordCount">0</div><div class="label">当前字数</div></div>
-                        </div>
-                        <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
-                            <button id="dashSaveDraftBtn" type="button" style="padding:10px 18px;background:#10B981;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">💾 保存当前为草稿</button>
-                            <button id="dashDownloadMdBtn" type="button" style="padding:10px 18px;background:#3B82F6;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">📥 下载为 .md</button>
-                            <button id="dashManageDraftBtn" type="button" style="padding:10px 18px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">📋 管理草稿列表</button>
-                        </div>
+            <main class="app-main" style="padding:24px 32px;overflow-y:auto;">
+                <div style="max-width:1200px;margin:0 auto;">
+                    <!-- 标题 + 操作 -->
+                    <div style="margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;">
                         <div>
-                            <div style="font-size:13px;color:#374151;font-weight:600;margin-bottom:10px;">最近草稿</div>
-                            <div id="dashDraftList" style="display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto;"></div>
+                            <h2 style="font-family:var(--font-serif);font-size:24px;font-weight:600;color:#1F2937;margin:0 0 4px;letter-spacing:0.5px;">📦 产物中心</h2>
+                            <p style="color:#6B7280;font-size:13px;margin:0;">统一管理文章 / 卡片 / 音频产物，支持搜索、标签、版本历史与衍生闭环</p>
+                        </div>
+                        <div style="display:flex;gap:8px;">
+                            <button id="prodImportBtn" type="button" style="padding:8px 14px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600;">📥 导入文件</button>
+                            <button id="prodExportBtn" type="button" style="padding:8px 14px;background:#fff;color:#3B82F6;border:1px solid #3B82F6;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600;">📤 导出全部</button>
+                            <button id="prodCleanupBtn" type="button" style="padding:8px 14px;background:#fff;color:#DC2626;border:1px solid #DC2626;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600;">🧹 清理回收站</button>
                         </div>
                     </div>
-                </section>
+
+                    <!-- 类型统计卡 -->
+                    <div id="prodStats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px;"></div>
+
+                    <!-- 工具栏 -->
+                    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:10px;">
+                        <div id="prodTypeFilter" style="display:flex;gap:4px;flex-wrap:wrap;">
+                            <button data-prod-type="all" class="prod-filter-btn active" type="button" style="padding:6px 12px;background:#10B981;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">全部</button>
+                            <button data-prod-type="article" class="prod-filter-btn" type="button" style="padding:6px 12px;background:#fff;color:#3B82F6;border:1px solid #3B82F6;border-radius:6px;font-size:12px;cursor:pointer;">📝 文章</button>
+                            <button data-prod-type="card" class="prod-filter-btn" type="button" style="padding:6px 12px;background:#fff;color:#8B5CF6;border:1px solid #8B5CF6;border-radius:6px;font-size:12px;cursor:pointer;">🎴 卡片</button>
+                            <button data-prod-type="audio" class="prod-filter-btn" type="button" style="padding:6px 12px;background:#fff;color:#F59E0B;border:1px solid #F59E0B;border-radius:6px;font-size:12px;cursor:pointer;">🎙 音频</button>
+                            <button data-prod-type="trash" class="prod-filter-btn" type="button" style="padding:6px 12px;background:#fff;color:#9CA3AF;border:1px solid #9CA3AF;border-radius:6px;font-size:12px;cursor:pointer;">🗑 回收站</button>
+                        </div>
+                        <input type="text" id="prodSearchInput" placeholder="🔍 搜索标题/内容/标签..." style="flex:1;min-width:180px;padding:7px 12px;border:1px solid #D1D5DB;border-radius:6px;font-size:12px;outline:none;">
+                        <select id="prodSortSelect" style="padding:7px 10px;border:1px solid #D1D5DB;border-radius:6px;font-size:12px;cursor:pointer;background:#fff;">
+                            <option value="recent">最近更新</option>
+                            <option value="created">创建时间</option>
+                            <option value="name">名称</option>
+                            <option value="size">字数/大小</option>
+                        </select>
+                        <div style="display:flex;gap:2px;background:#F3F4F6;border-radius:6px;padding:2px;">
+                            <button data-view="grid" class="prod-view-btn active" type="button" title="网格视图" style="padding:6px 10px;background:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px;">▦</button>
+                            <button data-view="list" class="prod-view-btn" type="button" title="列表视图" style="padding:6px 10px;background:transparent;border:none;border-radius:5px;cursor:pointer;font-size:13px;">☰</button>
+                        </div>
+                    </div>
+
+                    <!-- 标签筛选条 -->
+                    <div id="prodTagBar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;min-height:0;"></div>
+
+                    <!-- 产物网格 -->
+                    <div id="prodList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">
+                        <div style="grid-column:1/-1;padding:60px 20px;text-align:center;color:#9CA3AF;font-size:14px;">加载中...</div>
+                    </div>
+
+                    <div id="prodEmpty" style="display:none;padding:60px 20px;text-align:center;color:#9CA3AF;font-size:14px;">
+                        <div style="font-size:48px;margin-bottom:12px;opacity:0.5;">📭</div>
+                        <div>暂无产物</div>
+                        <div style="font-size:12px;margin-top:6px;color:#D1D5DB;">去「创作」或「贴图卡片」生成你的第一个产物</div>
+                    </div>
+                </div>
             </main>
         </div>
 
@@ -206,45 +292,132 @@
                             <!-- 选题列表 -->
                             <div id="hotTopicsList" style="display:block;margin-top:8px;max-height:340px;overflow-y:auto;"></div>
 
-                            <!-- 参数 -->
-                            <div style="display:flex;gap:16px;margin-top:14px;flex-wrap:wrap;">
-                                <div style="flex:1;min-width:140px;">
-                                    <label style="display:block;font-size:12px;color:#6B7280;margin-bottom:6px;font-weight:600;">字数</label>
-                                    <select id="createWordCount" style="width:100%;padding:8px 10px;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;box-sizing:border-box;">
-                                        <option value="800">800 字（短文）</option>
-                                        <option value="1200" selected>1200 字（标准）</option>
-                                        <option value="1500">1500 字（长文）</option>
-                                    </select>
+                            <!-- ===== V2 创作蓝图系统 ===== -->
+                            <div style="margin-top:16px;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;background:#fff;">
+                                <!-- 模式切换：AI 一键 / 自定义 -->
+                                <div style="display:flex;border-bottom:1px solid #E5E7EB;">
+                                    <button id="blueprintModeAI" type="button" class="blueprint-mode-btn active" data-mode="ai" style="flex:1;padding:11px;background:linear-gradient(135deg,#10B981,#3B82F6);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;">🚀 AI 一键创作</button>
+                                    <button id="blueprintModeCustom" type="button" class="blueprint-mode-btn" data-mode="custom" style="flex:1;padding:11px;background:#fff;color:#6B7280;border:none;font-size:13px;font-weight:600;cursor:pointer;">✍ 自定义创作</button>
                                 </div>
-                                <div style="flex:1;min-width:140px;">
-                                    <label style="display:block;font-size:12px;color:#6B7280;margin-bottom:6px;font-weight:600;">内容方向</label>
-                                    <select id="createDirection" style="width:100%;padding:8px 10px;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;box-sizing:border-box;">
-                                        <option value="opinion" selected>观点评论</option>
-                                        <option value="experience">经验分享</option>
-                                        <option value="knowledge">知识科普</option>
-                                        <option value="emotion">情感共鸣</option>
-                                    </select>
+
+                                <!-- AI 模式面板 -->
+                                <div id="blueprintAIPanel" style="padding:18px;">
+                                    <!-- 内容类型（图标卡片选择） -->
+                                    <div style="margin-bottom:16px;">
+                                        <label style="display:block;font-size:12px;color:#374151;font-weight:700;margin-bottom:8px;">📝 内容类型</label>
+                                        <div id="blueprintTypeGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;">
+                                            <button type="button" class="bp-type-btn active" data-type="opinion" style="padding:10px 8px;border:1.5px solid #10B981;background:#ECFDF5;border-radius:8px;cursor:pointer;text-align:center;transition:all 0.2s;">
+                                                <div style="font-size:20px;">💬</div><div style="font-size:11px;color:#1F2937;font-weight:600;margin-top:4px;">观点评论</div>
+                                            </button>
+                                            <button type="button" class="bp-type-btn" data-type="experience" style="padding:10px 8px;border:1.5px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;text-align:center;transition:all 0.2s;">
+                                                <div style="font-size:20px;">🎯</div><div style="font-size:11px;color:#6B7280;font-weight:600;margin-top:4px;">经验分享</div>
+                                            </button>
+                                            <button type="button" class="bp-type-btn" data-type="knowledge" style="padding:10px 8px;border:1.5px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;text-align:center;transition:all 0.2s;">
+                                                <div style="font-size:20px;">📚</div><div style="font-size:11px;color:#6B7280;font-weight:600;margin-top:4px;">知识科普</div>
+                                            </button>
+                                            <button type="button" class="bp-type-btn" data-type="emotion" style="padding:10px 8px;border:1.5px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;text-align:center;transition:all 0.2s;">
+                                                <div style="font-size:20px;">💛</div><div style="font-size:11px;color:#6B7280;font-weight:600;margin-top:4px;">情感共鸣</div>
+                                            </button>
+                                            <button type="button" class="bp-type-btn" data-type="story" style="padding:10px 8px;border:1.5px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;text-align:center;transition:all 0.2s;">
+                                                <div style="font-size:20px;">📖</div><div style="font-size:11px;color:#6B7280;font-weight:600;margin-top:4px;">故事叙事</div>
+                                            </button>
+                                            <button type="button" class="bp-type-btn" data-type="insight" style="padding:10px 8px;border:1.5px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;text-align:center;transition:all 0.2s;">
+                                                <div style="font-size:20px;">🔍</div><div style="font-size:11px;color:#6B7280;font-weight:600;margin-top:4px;">行业洞察</div>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- 受众画像 -->
+                                    <div style="margin-bottom:16px;">
+                                        <label style="display:block;font-size:12px;color:#374151;font-weight:700;margin-bottom:8px;">👥 目标受众</label>
+                                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+                                            <button type="button" class="bp-aud-btn" data-aud="beginner" style="padding:9px;border:1.5px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;font-size:12px;color:#6B7280;font-weight:600;transition:all 0.2s;">🌱 小白</button>
+                                            <button type="button" class="bp-aud-btn active" data-aud="intermediate" style="padding:9px;border:1.5px solid #10B981;background:#ECFDF5;border-radius:8px;cursor:pointer;font-size:12px;color:#1F2937;font-weight:600;transition:all 0.2s;">💼 进阶</button>
+                                            <button type="button" class="bp-aud-btn" data-aud="expert" style="padding:9px;border:1.5px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;font-size:12px;color:#6B7280;font-weight:600;transition:all 0.2s;">🎓 专家</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- 调性滑块（双轴） -->
+                                    <div style="margin-bottom:16px;">
+                                        <label style="display:block;font-size:12px;color:#374151;font-weight:700;margin-bottom:10px;">🎛 语气调性</label>
+                                        <div style="display:flex;flex-direction:column;gap:10px;">
+                                            <div>
+                                                <div style="display:flex;justify-content:space-between;font-size:11px;color:#6B7280;margin-bottom:3px;"><span>严谨</span><span id="bpTone1Val" style="color:#10B981;font-weight:600;">50</span><span>活泼</span></div>
+                                                <input type="range" id="bpTone1" min="0" max="100" value="50" style="width:100%;accent-color:#10B981;">
+                                            </div>
+                                            <div>
+                                                <div style="display:flex;justify-content:space-between;font-size:11px;color:#6B7280;margin-bottom:3px;"><span>理性</span><span id="bpTone2Val" style="color:#10B981;font-weight:600;">50</span><span>感性</span></div>
+                                                <input type="range" id="bpTone2" min="0" max="100" value="50" style="width:100%;accent-color:#10B981;">
+                                            </div>
+                                            <div>
+                                                <div style="display:flex;justify-content:space-between;font-size:11px;color:#6B7280;margin-bottom:3px;"><span>正式</span><span id="bpTone3Val" style="color:#10B981;font-weight:600;">50</span><span>随性</span></div>
+                                                <input type="range" id="bpTone3" min="0" max="100" value="50" style="width:100%;accent-color:#10B981;">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- 结构模板 -->
+                                    <div style="margin-bottom:16px;">
+                                        <label style="display:block;font-size:12px;color:#374151;font-weight:700;margin-bottom:8px;">🏗 结构模板</label>
+                                        <select id="blueprintStructure" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;outline:none;background:#fff;cursor:pointer;">
+                                            <option value="pyramid" selected>金字塔（结论先行 → 论据展开）</option>
+                                            <option value="scqa">SCQA（情境 → 冲突 → 问题 → 答案）</option>
+                                            <option value="star">STAR（情境 → 任务 → 行动 → 结果）</option>
+                                            <option value="contrast">对比（正反 → 结论）</option>
+                                            <option value="progressive">递进（浅入深 → 升华）</option>
+                                            <option value="list">清单（要点罗列）</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- 长度 + 目标平台 -->
+                                    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+                                        <div style="flex:1;min-width:130px;">
+                                            <label style="display:block;font-size:12px;color:#374151;font-weight:700;margin-bottom:8px;">📏 长度</label>
+                                            <select id="blueprintLength" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;outline:none;background:#fff;cursor:pointer;">
+                                                <option value="800">短 · 朋友圈向</option>
+                                                <option value="1200" selected>中 · 公众号标准</option>
+                                                <option value="1500">长 · 深度长文</option>
+                                                <option value="2000">超长 · 行业报告</option>
+                                            </select>
+                                        </div>
+                                        <div style="flex:1;min-width:130px;">
+                                            <label style="display:block;font-size:12px;color:#374151;font-weight:700;margin-bottom:8px;">📱 目标平台</label>
+                                            <select id="blueprintPlatform" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;outline:none;background:#fff;cursor:pointer;">
+                                                <option value="wechat" selected>公众号</option>
+                                                <option value="xiaohongshu">小红书</option>
+                                                <option value="zhihu">知乎</option>
+                                                <option value="friends">朋友圈</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <!-- 蓝图预设 -->
+                                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+                                        <span style="font-size:11px;color:#9CA3AF;">预设：</span>
+                                        <button type="button" class="bp-preset-btn" data-preset="tech-deep" style="padding:5px 11px;background:#F3F4F6;color:#3B82F6;border:none;border-radius:12px;font-size:11px;cursor:pointer;">科技深度</button>
+                                        <button type="button" class="bp-preset-btn" data-preset="warm-story" style="padding:5px 11px;background:#F3F4F6;color:#F59E0B;border:none;border-radius:12px;font-size:11px;cursor:pointer;">温暖故事</button>
+                                        <button type="button" class="bp-preset-btn" data-preset="sharp-opinion" style="padding:5px 11px;background:#F3F4F6;color:#E11D48;border:none;border-radius:12px;font-size:11px;cursor:pointer;">犀利观点</button>
+                                        <button type="button" class="bp-preset-btn" data-preset="knowledge-pop" style="padding:5px 11px;background:#F3F4F6;color:#10B981;border:none;border-radius:12px;font-size:11px;cursor:pointer;">科普通俗</button>
+                                        <button id="bpSavePresetBtn" type="button" style="padding:5px 11px;background:#fff;color:#6B7280;border:1px dashed #D1D5DB;border-radius:12px;font-size:11px;cursor:pointer;">💾 存当前</button>
+                                    </div>
                                 </div>
-                                <div style="flex:1;min-width:140px;">
-                                    <label style="display:block;font-size:12px;color:#6B7280;margin-bottom:6px;font-weight:600;">风格</label>
-                                    <select id="createStyle" style="width:100%;padding:8px 10px;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;box-sizing:border-box;">
-                                        <option value="deep" selected>深度思考</option>
-                                        <option value="casual">轻松随性</option>
-                                        <option value="story">故事叙事</option>
-                                        <option value="sharp">观点犀利</option>
-                                        <option value="warm">温暖治愈</option>
-                                    </select>
-                                </div>
-                                <div style="flex:1;min-width:140px;">
-                                    <label style="display:block;font-size:12px;color:#6B7280;margin-bottom:6px;font-weight:600;">章节数</label>
-                                    <select id="createSections" style="width:100%;padding:8px 10px;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;box-sizing:border-box;">
-                                        <option value="3">3 章节</option>
-                                        <option value="4" selected>4 章节</option>
-                                        <option value="5">5 章节</option>
-                                    </select>
+
+                                <!-- 自定义模式面板（默认隐藏） -->
+                                <div id="blueprintCustomPanel" style="display:none;padding:18px;">
+                                    <p style="font-size:12px;color:#6B7280;margin:0 0 12px;line-height:1.6;">直接在下方编辑区写作，选中文字可调用 AI 辅助操作（续写/润色/扩写/缩写/改标题）。</p>
+                                    <!-- AI 辅助工具栏 -->
+                                    <div id="aiAssistToolbar" style="display:none;position:fixed;z-index:9999;background:#1F2937;border-radius:8px;padding:4px;gap:2px;box-shadow:0 8px 24px rgba(0,0,0,0.2);">
+                                        <button type="button" class="ai-assist-btn" data-action="continue" style="padding:6px 10px;background:transparent;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;">续写</button>
+                                        <button type="button" class="ai-assist-btn" data-action="polish" style="padding:6px 10px;background:transparent;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;">润色</button>
+                                        <button type="button" class="ai-assist-btn" data-action="expand" style="padding:6px 10px;background:transparent;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;">扩写</button>
+                                        <button type="button" class="ai-assist-btn" data-action="shorten" style="padding:6px 10px;background:transparent;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;">缩写</button>
+                                        <button type="button" class="ai-assist-btn" data-action="title" style="padding:6px 10px;background:transparent;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;">改标题</button>
+                                    </div>
+                                    <div style="font-size:11px;color:#9CA3AF;padding:8px 10px;background:#FEF3C7;border-radius:6px;margin-bottom:10px;">💡 提示：选中任意文字，会浮现 AI 辅助工具栏</div>
                                 </div>
                             </div>
 
+                            <!-- 生成按钮（两种模式共用） -->
                             <div style="display:flex;gap:10px;margin-top:16px;">
                                 <button id="createGenerateBtn" type="button" style="flex:1;padding:11px 20px;background:linear-gradient(135deg,#10B981,#3B82F6);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">🚀 生成文章</button>
                                 <button id="createRegenerateBtn" type="button" disabled style="padding:11px 18px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;cursor:not-allowed;">↻ 重新生成</button>
@@ -642,6 +815,21 @@
                     </div>
                 </div>
 
+                <!-- 产物详情抽屉 -->
+                <div id="prodDetailDrawer" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9998;justify-content:flex-end;">
+                    <div id="prodDetailPanel" style="background:#fff;width:520px;max-width:92vw;height:100vh;overflow-y:auto;box-shadow:-12px 0 32px rgba(0,0,0,0.18);display:flex;flex-direction:column;">
+                        <div id="prodDetailHeader" style="padding:18px 22px;border-bottom:1px solid #E5E7EB;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#10B981,#3B82F6);color:#fff;flex-shrink:0;">
+                            <div style="flex:1;min-width:0;">
+                                <div id="prodDetailType" style="font-size:11px;opacity:0.9;letter-spacing:1px;text-transform:uppercase;">产物</div>
+                                <h3 id="prodDetailTitle" style="margin:4px 0 0;font-size:17px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">—</h3>
+                            </div>
+                            <button id="prodDetailClose" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:18px;flex-shrink:0;">&times;</button>
+                        </div>
+                        <div id="prodDetailBody" style="padding:20px 22px;flex:1;overflow-y:auto;"></div>
+                        <div id="prodDetailActions" style="padding:14px 22px;border-top:1px solid #E5E7EB;background:#F9FAFB;display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;"></div>
+                    </div>
+                </div>
+
                 <div class="editor-toolbar">
                     <div class="toolbar-group" data-group="block">
                         <div class="toolbar-group-label">段落</div>
@@ -796,6 +984,13 @@
                                 <div>
                                     <div class="mode-title">文章长图</div>
                                     <div class="mode-desc">整篇文章，自动分页</div>
+                                </div>
+                            </button>
+                            <button class="mode-btn" data-mode="content-cards" data-tooltip="根据标题/文章自动生成 3:4 贴图卡片系列，Canvas 合成文字，多风格">
+                                <span class="mode-icon">🎴</span>
+                                <div>
+                                    <div class="mode-title">贴图卡片</div>
+                                    <div class="mode-desc">金句/标题/封面卡，Canvas 合成</div>
                                 </div>
                             </button>
                         </div>
@@ -966,6 +1161,65 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- V3 贴图卡片面板 -->
+                <div id="contentCardsPanel" style="display:none;flex:1;flex-direction:column;padding:24px 32px;overflow-y:auto;">
+                    <div style="max-width:1100px;margin:0 auto;width:100%;">
+                        <div style="margin-bottom:18px;">
+                            <h2 style="font-family:var(--font-serif);font-size:22px;font-weight:600;color:#1F2937;margin:0 0 4px;">🎴 贴图卡片生成</h2>
+                            <p style="color:#6B7280;font-size:13px;margin:0 0 14px;">输入标题或文章，自动生成 3:4 贴图卡片系列（封面卡+内容卡+总结卡），Canvas 合成文字，多风格可选。</p>
+                        </div>
+
+                        <!-- 输入区 -->
+                        <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:16px;margin-bottom:16px;">
+                            <label style="display:block;font-size:12px;color:#374151;font-weight:600;margin-bottom:6px;">标题或文章内容</label>
+                            <textarea id="ccInput" rows="3" placeholder="输入标题（如：AI 到底改变了什么？）或粘贴文章全文..." style="width:100%;padding:10px 12px;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical;font-family:inherit;outline:none;" onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#D1D5DB'"></textarea>
+                            <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center;">
+                                <div>
+                                    <span style="font-size:11px;color:#6B7280;margin-right:6px;">卡片类型：</span>
+                                    <select id="ccCardType" style="padding:6px 10px;border:1px solid #D1D5DB;border-radius:6px;font-size:12px;outline:none;background:#fff;">
+                                        <option value="cover">封面卡（标题+副标题+钩子）</option>
+                                        <option value="content" selected>内容卡（标题+副标题+描述）</option>
+                                        <option value="summary">总结卡（标题+关键词+收尾）</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <span style="font-size:11px;color:#6B7280;margin-right:6px;">风格：</span>
+                                    <select id="ccStyle" style="padding:6px 10px;border:1px solid #D1D5DB;border-radius:6px;font-size:12px;outline:none;background:#fff;">
+                                        <option value="tech-dark">科技暗</option>
+                                        <option value="business-minimal" selected>商务极简</option>
+                                        <option value="finance-dark">金融暗</option>
+                                        <option value="science-fresh">科学清新</option>
+                                        <option value="lifestyle-warm">生活暖</option>
+                                        <option value="retro-magazine">复古杂志</option>
+                                        <option value="chinese-ink">水墨</option>
+                                        <option value="japanese-muted">日系</option>
+                                        <option value="trendy-poster">潮流海报</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <span style="font-size:11px;color:#6B7280;margin-right:6px;">配色：</span>
+                                    <select id="ccAccent" style="padding:6px 10px;border:1px solid #D1D5DB;border-radius:6px;font-size:12px;outline:none;background:#fff;">
+                                        <option value="ai">AI 蓝</option>
+                                        <option value="cloud" selected>云计算青</option>
+                                        <option value="robot">机器人橙</option>
+                                        <option value="health">医疗绿</option>
+                                        <option value="brain">脑科学紫</option>
+                                        <option value="finance">金融金</option>
+                                        <option value="edu">教育靛</option>
+                                        <option value="entertain">娱乐粉</option>
+                                    </select>
+                                </div>
+                                <button id="ccGenerateBtn" type="button" style="margin-left:auto;padding:9px 18px;background:linear-gradient(135deg,#10B981,#3B82F6);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">🎨 生成卡片</button>
+                            </div>
+                        </div>
+
+                        <!-- 卡片预览区 -->
+                        <div id="ccPreview" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">
+                            <div style="grid-column:1/-1;padding:40px;text-align:center;color:#9CA3AF;font-size:13px;">输入内容后点「生成卡片」</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         </div><!-- /.app-main -->
@@ -1068,6 +1322,79 @@ services:
     <script src="themes/magazine.js"></script>
     <script src="themes/fresh.js"></script>
     <script src="themes/vibrant.js"></script>
-    <script src="script.js?v=50"></script>
+    <script src="script.js?v=55"></script>
+
+    <!-- V5 全局命令面板 -->
+    <div class="cmdk-overlay" id="cmdkOverlay">
+        <div class="cmdk-panel" role="dialog" aria-label="全局命令面板">
+            <div class="cmdk-input-wrap">
+                <span class="cmdk-icon">🔍</span>
+                <input type="text" id="cmdkInput" class="cmdk-input" placeholder="搜索导航 / 产物 / 动作..." autocomplete="off">
+                <span class="cmdk-kbd">ESC</span>
+            </div>
+            <div class="cmdk-results" id="cmdkResults"></div>
+            <div class="cmdk-footer">
+                <span><kbd>↑↓</kbd> 选择</span>
+                <span><kbd>↵</kbd> 执行</span>
+                <span><kbd>ESC</kbd> 关闭</span>
+                <span style="margin-left:auto;color:#9CA3AF;">v5 内容生产系统</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- V5 新手引导 -->
+    <div class="onboard-overlay" id="onboardOverlay">
+        <div class="onboard-card" role="dialog" aria-label="新手引导">
+            <div class="onboard-head">
+                <h2>👋 欢迎使用 内容生产系统 v5</h2>
+                <p>从信息获取到产物管理，一站式创作者工作流</p>
+            </div>
+            <div class="onboard-body">
+                <div class="onboard-step">
+                    <div class="step-num">1</div>
+                    <div class="step-body">
+                        <div class="step-title"><span class="step-icon">📥</span> 信息中枢</div>
+                        <div class="step-desc">聚合公众号订阅、微博热搜、36氪、抖音热点等所有信源，统一筛选与搜索，一键带入创作</div>
+                    </div>
+                </div>
+                <div class="onboard-step">
+                    <div class="step-num">2</div>
+                    <div class="step-body">
+                        <div class="step-title"><span class="step-icon">✍</span> 创作蓝图</div>
+                        <div class="step-desc">AI 一键创作 / 自定义双模式。内容类型、受众画像、调性滑块、结构模板、目标平台五维蓝图彻底重构版式</div>
+                    </div>
+                </div>
+                <div class="onboard-step">
+                    <div class="step-num">3</div>
+                    <div class="step-body">
+                        <div class="step-title"><span class="step-icon">✎</span> 排版发布</div>
+                        <div class="step-desc">6 大主题风格，自动排版 / 模板排版，一键复制到公众号</div>
+                    </div>
+                </div>
+                <div class="onboard-step">
+                    <div class="step-num">4</div>
+                    <div class="step-body">
+                        <div class="step-title"><span class="step-icon">🎴</span> 贴图卡片</div>
+                        <div class="step-desc">根据标题 / 文章自动生成 3:4 系列卡片（封面+内容+总结），Canvas 合成多风格</div>
+                    </div>
+                </div>
+                <div class="onboard-step">
+                    <div class="step-num">5</div>
+                    <div class="step-body">
+                        <div class="step-title"><span class="step-icon">📦</span> 产物中心</div>
+                        <div class="step-desc">统一管理文章 / 卡片 / 音频产物，支持搜索、标签、版本历史与衍生闭环</div>
+                    </div>
+                </div>
+            </div>
+            <div class="onboard-foot">
+                <button class="skip-btn" id="onboardSkip">跳过，不再显示</button>
+                <button class="start-btn" id="onboardStart">🚀 开始使用（按 Ctrl+K 唤起命令面板）</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- V5 全局通知条 -->
+    <div class="global-banner" id="globalBanner"></div>
+
 </body>
 </html>
