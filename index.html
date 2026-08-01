@@ -978,7 +978,55 @@
                 <h3 style="margin:0;font-size:17px;color:#111;">📢 公众号订阅管理</h3>
                 <button id="subsModalCloseBtn" type="button" style="background:none;border:none;font-size:20px;color:#9CA3AF;cursor:pointer;">×</button>
             </div>
-            <p style="font-size:12px;color:#6B7280;margin:0 0 14px;line-height:1.5;">添加 WeWe RSS / Mp2RSS 输出的 RSS/Atom 链接，保存后可一键同步文章。部署到 Cloudflare 后由 Cron 每 2 小时自动同步。</p>
+            <p style="font-size:12px;color:#6B7280;margin:0 0 10px;line-height:1.5;">添加 WeWe RSS / Mp2RSS 输出的 RSS/Atom 链接，保存后可一键同步文章。部署到 Cloudflare 后由 Cron 每 2 小时自动同步。</p>
+
+            <!-- 教程：如何获取 RSS 链接 -->
+            <details style="margin:0 0 14px;border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;">
+                <summary style="padding:10px 12px;background:#F9FAFB;cursor:pointer;font-size:13px;color:#07C160;font-weight:600;list-style:none;display:flex;align-items:center;gap:6px;">
+                    📖 如何获取公众号 RSS 链接？（点击展开教程）
+                </summary>
+                <div style="padding:14px;background:#fff;font-size:12px;color:#374151;line-height:1.7;">
+
+                    <div style="margin-bottom:14px;">
+                        <div style="font-weight:700;color:#07C160;margin-bottom:4px;">方案 1：Mp2RSS 托管版（最简单，推荐新手）</div>
+                        <div>不用部署任何东西，注册后直接拿 RSS 链接。</div>
+                        <div style="margin-top:4px;">① 打开 <b>mp2rss.cn</b>（或搜「Mp2RSS」）→ 注册</div>
+                        <div>② 搜索或添加你想订阅的公众号</div>
+                        <div>③ 复制生成的 RSS 链接（形如 <code style="background:#F3F4F6;padding:1px 4px;border-radius:3px;">https://mp2rss.cn/feed/xxxxx.xml</code>）</div>
+                        <div style="margin-top:4px;color:#6B7280;">公众号版本免费，够个人用。</div>
+                    </div>
+
+                    <div style="margin-bottom:14px;">
+                        <div style="font-weight:700;color:#07C160;margin-bottom:4px;">方案 2：WeWe RSS（自建，稳定）</div>
+                        <div>开源工具，Docker 一行命令部署，需要微信读书 cookie。</div>
+                        <div style="margin-top:4px;">① 部署：<code style="background:#F3F4F6;padding:1px 4px;border-radius:3px;">docker run -d -p 4000:4000 -e LOG_LEVEL=debug cooderl/wewe-rss</code></div>
+                        <div>② 访问 <code style="background:#F3F4F6;padding:1px 4px;border-radius:3px;">http://localhost:4000</code> → 添加公众号 → 填微信读书 cookie</div>
+                        <div>③ 在「账号管理」复制对应公众号的 Atom 链接</div>
+                        <div style="margin-top:4px;color:#6B7280;">也可部署到 Railway / Hugging Face 免费容器（不必买服务器）。</div>
+                    </div>
+
+                    <div style="margin-bottom:14px;">
+                        <div style="font-weight:700;color:#07C160;margin-bottom:4px;">方案 3：RSSHub（开源，支持公众号热榜）</div>
+                        <div>开源 RSS 生成器，公共实例免费但不稳定，建议自建。</div>
+                        <div style="margin-top:4px;">① 部署：<code style="background:#F3F4F6;padding:1px 4px;border-radius:3px;">docker run -d -p 1200:1200 diygod/rsshub</code></div>
+                        <div>② 访问 <code style="background:#F3F4F6;padding:1px 4px;border-radius:3px;">http://localhost:1200</code></div>
+                        <div>③ 链接格式：<code style="background:#F3F4F6;padding:1px 4px;border-radius:3px;">http://你的IP:1200/wechat/公众号id</code></div>
+                        <div style="margin-top:4px;color:#6B7280;">也可临时用公共实例 <code style="background:#F3F4F6;padding:1px 4px;border-radius:3px;">https://rsshub.app/wechat/announce</code> 测试。</div>
+                    </div>
+
+                    <div style="margin-bottom:4px;">
+                        <div style="font-weight:700;color:#07C160;margin-bottom:4px;">方案 4：直接粘贴已有的任意 RSS 链接</div>
+                        <div>如果你已有公众号的 RSS/Atom 链接（任何来源），直接填到下方「RSS/Atom 链接」框即可，系统会自动识别 RSS 2.0 与 Atom 两种格式。</div>
+                    </div>
+
+                    <div style="margin-top:14px;padding:10px;background:#FEF3C7;border-radius:6px;font-size:11px;color:#92400E;line-height:1.6;">
+                        <b>添加后做什么？</b><br>
+                        填好「公众号名称」+「RSS 链接」→ 点「添加」→ 点下方「🔄 立即同步所有订阅」抓取文章。<br>
+                        部署到 Cloudflare 后，Cron 每 2 小时会自动同步，无需手动刷新。
+                    </div>
+                </div>
+            </details>
+
             <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
                 <input type="text" id="subNameInput" placeholder="公众号名称" style="flex:1;min-width:120px;padding:8px 10px;border:1px solid #D1D5DB;border-radius:6px;font-size:13px;box-sizing:border-box;outline:none;" onfocus="this.style.borderColor='#07C160'" onblur="this.style.borderColor='#D1D5DB'">
                 <input type="text" id="subRssInput" placeholder="RSS/Atom 链接 https://..." style="flex:2;min-width:200px;padding:8px 10px;border:1px solid #D1D5DB;border-radius:6px;font-size:13px;box-sizing:border-box;outline:none;" onfocus="this.style.borderColor='#07C160'" onblur="this.style.borderColor='#D1D5DB'">
