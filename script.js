@@ -3081,17 +3081,29 @@ function updateSidebarAiStatus() {
 // ===== 订阅 Dashboard =====
 async function refreshSubscribeDash() {
     try {
-        const subs = (typeof loadSubscriptions === 'function') ? await loadSubscriptions() : [];
+        const api = window._subsApi;
+        const subs = api ? await api.loadSubscriptions() : [];
         const subCount = document.getElementById('dashSubCount');
         const artCount = document.getElementById('dashArticleCount');
         const syncState = document.getElementById('dashSyncState');
         const list = document.getElementById('dashArticlesList');
         if (subCount) subCount.textContent = subs.length;
-        const status = (typeof _subsBackendStatus !== 'undefined') ? _subsBackendStatus : 'unknown';
+        const status = api ? api.getBackendStatus() : 'unknown';
         if (syncState) syncState.textContent = status === 'ok' ? '云端' : '本地';
-        // 文章数：尝试取缓存
+        // 文章数：优先调后端 /api/articles，失败取本地缓存
         let arts = [];
-        try { arts = JSON.parse(localStorage.getItem('wx_editor_subs_articles_cache_v1') || '[]'); } catch {}
+        if (status === 'ok') {
+            try {
+                const r = await fetch('/api/articles?size=200');
+                if (r.ok) {
+                    const d = await r.json();
+                    arts = d.rows || [];
+                }
+            } catch (e) { console.warn('articles fetch', e); }
+        }
+        if (arts.length === 0) {
+            try { arts = JSON.parse(localStorage.getItem('wx_editor_subs_articles_cache_v1') || '[]'); } catch {}
+        }
         if (artCount) artCount.textContent = arts.length;
         if (list) {
             if (arts.length === 0) {
@@ -3100,7 +3112,7 @@ async function refreshSubscribeDash() {
                 list.innerHTML = arts.slice(0, 10).map(a => `
                     <div style="padding:10px 12px;border:1px solid #E5E7EB;border-radius:8px;background:#fff;">
                         <div style="font-size:13px;color:#1F2937;font-weight:500;margin-bottom:4px;">${(a.title||'').replace(/</g,'&lt;')}</div>
-                        <div style="font-size:11px;color:#9CA3AF;">${(a.source||'')} · ${a.time||''}</div>
+                        <div style="font-size:11px;color:#9CA3AF;">${(a.source||'')} · ${(a.pub_date||a.time||'').slice(0,16)}</div>
                     </div>`).join('');
             }
         }
@@ -3136,7 +3148,7 @@ function refreshProductsDash() {
 }
 
 // ===== 设置 Dashboard =====
-function refreshSettingsDash() {
+async function refreshSettingsDash() {
     const ov = document.getElementById('dashSettingsOverview');
     if (!ov) return;
     try {
@@ -3144,9 +3156,10 @@ function refreshSettingsDash() {
         const rows = [];
         rows.push(`<div>AI 模型：<b>${s && s.provider ? s.provider : '未配置'}</b></div>`);
         rows.push(`<div>API Key：<b>${s && s.apiKey ? '已配置（' + s.apiKey.slice(0,4) + '...' + s.apiKey.slice(-2) + '）' : '未配置'}</b></div>`);
-        const subs = JSON.parse(localStorage.getItem('wx_editor_subscriptions_v1') || '[]');
+        const subs = window._subsApi ? await window._subsApi.loadSubscriptions() : [];
         rows.push(`<div>已订阅公众号：<b>${subs.length}</b> 个</div>`);
-        rows.push(`<div>存储模式：<b>${(typeof _subsBackendStatus !== 'undefined' && _subsBackendStatus==='ok') ? '云端（D1）' : '本地（localStorage）'}</b></div>`);
+        const st = window._subsApi ? window._subsApi.getBackendStatus() : 'unknown';
+        rows.push(`<div>存储模式：<b>${st === 'ok' ? '云端（D1）' : '本地（localStorage）'}</b></div>`);
         ov.innerHTML = rows.join('');
     } catch (e) { ov.textContent = '配置读取失败：' + e.message; }
 }
@@ -3155,13 +3168,12 @@ function refreshSettingsDash() {
 function bindDashButtons() {
     const $ = id => document.getElementById(id);
     $('dashManageSubsBtn') && $('dashManageSubsBtn').addEventListener('click', () => {
-        const m = $('subsModal'); if (m) { m.style.display = 'flex'; if (typeof renderSubsList==='function') renderSubsList(); }
+        const m = $('subsModal'); if (m) { m.style.display = 'flex'; if (window._subsApi) window._subsApi.renderSubsList(); }
     });
     $('dashSyncBtn') && $('dashSyncBtn').addEventListener('click', async (e) => {
         const b = e.currentTarget; b.disabled=true; b.textContent='⏳ 同步中...';
         try {
-            const r = (typeof syncAllSubscriptions==='function') ? await syncAllSubscriptions() : {synced:'local'};
-            showToast(r.synced === 'local' ? '本地模式：已抓取并缓存' : `同步成功 ${r.synced} 个源`);
+            const r = window._dashSync ? await window._dashSync() : {synced:'local'};
             refreshSubscribeDash();
         } catch(err){ showToast('同步失败：'+err.message); }
         finally { b.disabled=false; b.textContent='🔄 立即同步'; }
@@ -6596,6 +6608,28 @@ ${bgLine}
             }
         });
     }
+
+    // ===== 暴露到 window，供 dashboard（外层作用域）调用 =====
+    window._subsApi = {
+        detectBackend: detectSubsBackend,
+        loadSubscriptions: loadSubscriptions,
+        addSubscription: addSubscription,
+        removeSubscription: removeSubscription,
+        renderSubsList: renderSubsList,
+        syncAllSubscriptions: syncAllSubscriptions,
+        getBackendStatus: () => _subsBackendStatus
+    };
+
+    // dashboard 同步按钮调用统一入口
+    window._dashSync = async function() {
+        const r = await syncAllSubscriptions();
+        if (r.synced === 'local') {
+            showToast('本地模式：已抓取并缓存文章');
+        } else {
+            showToast(`同步完成：成功 ${r.synced} 个源，新增 ${r.total} 篇${r.failed ? '，失败 ' + r.failed : ''}`);
+        }
+        return r;
+    };
 
 
     // 统一渲染选题列表
