@@ -1,0 +1,15 @@
+name = "wx-editor-cron"
+main = "cron.js"
+compatibility_date = "2024-09-01"
+
+# Cron：每 2 小时同步一次 RSS
+[triggers]
+crons = ["0 */2 * * *"]
+
+# D1 绑定（与 Pages 项目共用同一个数据库）
+[[d1_databases]]
+binding = "DB"
+database_name = "wechat-articles"
+database_id = "在此填入 wrangler d1 create 返回的 ID（与根目录 wrangler.toml 一致）"
+
+# 部署：cd worker && wrangler deploy

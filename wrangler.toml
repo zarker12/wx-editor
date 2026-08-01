@@ -1,0 +1,16 @@
+name = "wx-editor"
+compatibility_date = "2024-09-01"
+pages_build_output_dir = "."
+
+# ===== D1 数据库绑定 =====
+# 部署后 Pages Function 通过 env.DB 访问
+[[d1_databases]]
+binding = "DB"
+database_name = "wechat-articles"
+database_id = "在此填入 wrangler d1 create 返回的 ID"
+
+# 注意：Pages 项目不支持在 wrangler.toml 里直接配 Cron Triggers。
+# 定时同步由独立的 Cron Worker 执行（见 worker/wrangler.toml）。
+# 手动同步可调用 POST /api/sync （见 functions/api/sync.js）
+
+# 本地开发代理：wrangler pages dev .  --persist-to .wrangler/state

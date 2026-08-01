@@ -92,6 +92,8 @@
                                 <button data-source="douyin" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#111;border:1px solid #111;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">🎵 抖音热点</button>
                                 <button data-source="36kr" class="topic-source-btn active" type="button" style="padding:7px 14px;background:#1E40AF;color:#fff;border:1px solid #1E40AF;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">📊 36氪科技</button>
                                 <button data-source="recommend" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#3B82F6;border:1px solid #3B82F6;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">🌐 综合资讯</button>
+                                <button data-source="wechat" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#07C160;border:1px solid #07C160;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">📢 公众号订阅</button>
+                                <button id="manageSubsBtn" type="button" title="管理公众号订阅" style="padding:7px 10px;background:#fff;color:#07C160;border:1px solid #07C160;border-radius:6px;font-size:12px;cursor:pointer;">⚙ 订阅</button>
                                 <button id="refreshTopicsBtn" type="button" style="padding:7px 12px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:6px;font-size:12px;cursor:pointer;margin-left:auto;">🔄 刷新</button>
                             </div>
 
@@ -871,12 +873,33 @@
         </div>
     </div>
 
+    <!-- 公众号订阅管理弹窗（全局，脱离 tab 容器；须在 script.js 之前，确保绑定事件时元素已存在） -->
+    <div id="subsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+        <div style="background:#fff;border-radius:12px;padding:24px;max-width:560px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <h3 style="margin:0;font-size:17px;color:#111;">📢 公众号订阅管理</h3>
+                <button id="subsModalCloseBtn" type="button" style="background:none;border:none;font-size:20px;color:#9CA3AF;cursor:pointer;">×</button>
+            </div>
+            <p style="font-size:12px;color:#6B7280;margin:0 0 14px;line-height:1.5;">添加 WeWe RSS / Mp2RSS 输出的 RSS/Atom 链接，保存后可一键同步文章。部署到 Cloudflare 后由 Cron 每 2 小时自动同步。</p>
+            <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+                <input type="text" id="subNameInput" placeholder="公众号名称" style="flex:1;min-width:120px;padding:8px 10px;border:1px solid #D1D5DB;border-radius:6px;font-size:13px;box-sizing:border-box;outline:none;" onfocus="this.style.borderColor='#07C160'" onblur="this.style.borderColor='#D1D5DB'">
+                <input type="text" id="subRssInput" placeholder="RSS/Atom 链接 https://..." style="flex:2;min-width:200px;padding:8px 10px;border:1px solid #D1D5DB;border-radius:6px;font-size:13px;box-sizing:border-box;outline:none;" onfocus="this.style.borderColor='#07C160'" onblur="this.style.borderColor='#D1D5DB'">
+                <button id="addSubBtn" type="button" style="padding:8px 16px;background:#07C160;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600;">添加</button>
+            </div>
+            <div id="subsList" style="margin-bottom:14px;"></div>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <button id="syncSubsBtn" type="button" style="flex:1;padding:9px 16px;background:#07C160;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600;">🔄 立即同步所有订阅</button>
+            </div>
+            <div id="subsBackendHint" style="margin-top:10px;font-size:11px;color:#9CA3AF;display:none;"></div>
+        </div>
+    </div>
+
     <script src="themes/minimal.js"></script>
     <script src="themes/luxury.js"></script>
     <script src="themes/cyber.js"></script>
     <script src="themes/magazine.js"></script>
     <script src="themes/fresh.js"></script>
     <script src="themes/vibrant.js"></script>
-    <script src="script.js?v=45"></script>
+    <script src="script.js?v=47"></script>
 </body>
 </html>

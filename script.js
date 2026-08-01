@@ -6162,6 +6162,264 @@ ${bgLine}
         return allItems.slice(0, 20);
     }
 
+    // ===== 公众号订阅模块（前端：localStorage 持久化 + 后端 API 同步 + 降级直抓）=====
+    // 部署到 Cloudflare 后由 Pages Functions + D1 提供持久化与搜索；
+    // 本地开发（_server.js）无后端时降级为前端直接用 rss2json 代理抓取订阅的 RSS。
+    const SUBS_STORAGE_KEY = 'wx_editor_subscriptions_v1';
+    const SUBS_CACHE_KEY = 'wx_editor_subs_articles_cache_v1';
+
+    function getLocalSubs() {
+        try { return JSON.parse(localStorage.getItem(SUBS_STORAGE_KEY) || '[]'); } catch { return []; }
+    }
+    function saveLocalSubs(subs) {
+        try { localStorage.setItem(SUBS_STORAGE_KEY, JSON.stringify(subs)); } catch {}
+    }
+
+    // 后端可用性探测（带缓存，避免每次切换都探测）
+    let _subsBackendStatus = 'unknown'; // 'unknown' | 'ok' | 'offline'
+    async function detectSubsBackend() {
+        if (_subsBackendStatus !== 'unknown') return _subsBackendStatus;
+        try {
+            const ctrl = AbortSignal.timeout(4000);
+            const res = await fetch('/api/subscriptions', { signal: ctrl });
+            _subsBackendStatus = res.ok ? 'ok' : 'offline';
+        } catch { _subsBackendStatus = 'offline'; }
+        return _subsBackendStatus;
+    }
+
+    // 获取订阅列表：优先后端，降级 localStorage
+    async function loadSubscriptions() {
+        const status = await detectSubsBackend();
+        if (status === 'ok') {
+            try {
+                const res = await fetch('/api/subscriptions');
+                const data = await res.json();
+                // 同步到 localStorage（便于离线查看）
+                const local = (data.rows || []).map(r => ({ id: r.id, name: r.name, rss_url: r.rss_url, last_synced_at: r.last_synced_at }));
+                saveLocalSubs(local);
+                return local;
+            } catch (e) { console.warn('加载订阅失败', e); }
+        }
+        return getLocalSubs();
+    }
+
+    // 添加订阅：后端 + localStorage 双写
+    async function addSubscription(name, rssUrl) {
+        const status = await detectSubsBackend();
+        if (status === 'ok') {
+            const res = await fetch('/api/subscriptions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, rss_url: rssUrl })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || '添加失败');
+        }
+        // 本地也存一份（双写）
+        const local = getLocalSubs();
+        if (!local.find(s => s.rss_url === rssUrl)) {
+            local.push({ name, rss_url: rssUrl, _localOnly: status !== 'ok' });
+            saveLocalSubs(local);
+        }
+        return { ok: true };
+    }
+
+    // 删除订阅
+    async function removeSubscription(sub) {
+        const status = await detectSubsBackend();
+        if (status === 'ok' && sub.id) {
+            await fetch('/api/subscriptions?id=' + encodeURIComponent(sub.id), { method: 'DELETE' });
+        }
+        const local = getLocalSubs().filter(s => s.rss_url !== sub.rss_url);
+        saveLocalSubs(local);
+    }
+
+    // 渲染订阅列表（管理弹窗内）
+    async function renderSubsList() {
+        const listEl = document.getElementById('subsList');
+        if (!listEl) return;
+        const subs = await loadSubscriptions();
+        const hint = document.getElementById('subsBackendHint');
+        const status = _subsBackendStatus;
+        if (hint) {
+            if (status === 'ok') {
+                hint.style.display = 'block';
+                hint.textContent = '✓ 已连接后端（Cloudflare D1），订阅将持久化存储';
+                hint.style.color = '#065F46';
+            } else {
+                hint.style.display = 'block';
+                hint.textContent = '⚠ 后端未部署：当前订阅仅保存在本地浏览器，部署 Cloudflare 后可持久化与自动同步';
+                hint.style.color = '#92400E';
+            }
+        }
+        if (subs.length === 0) {
+            listEl.innerHTML = '<div style="padding:16px;text-align:center;color:#9CA3AF;font-size:13px;border:1px dashed #E5E7EB;border-radius:8px;">暂无订阅，请在上方添加公众号 RSS 链接</div>';
+            return;
+        }
+        listEl.innerHTML = subs.map(s => `
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #E5E7EB;border-radius:8px;margin-bottom:6px;">
+                <span style="flex:1;font-size:13px;color:#1F2937;font-weight:600;">${escapeHtml(s.name)}</span>
+                <span style="flex:2;font-size:11px;color:#9CA3AF;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(s.rss_url)}">${escapeHtml(s.rss_url)}</span>
+                ${s.last_synced_at ? `<span style="font-size:10px;color:#07C160;">已同步</span>` : ''}
+                <button type="button" data-rss="${escapeHtml(s.rss_url)}" class="del-sub-btn" style="padding:3px 8px;background:#fff;color:#E11D48;border:1px solid #E11D48;border-radius:4px;font-size:11px;cursor:pointer;">删除</button>
+            </div>
+        `).join('');
+        listEl.querySelectorAll('.del-sub-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const rss = btn.dataset.rss;
+                const sub = subs.find(s => s.rss_url === rss);
+                if (sub) {
+                    await removeSubscription(sub);
+                    renderSubsList();
+                    showToast('已删除订阅');
+                }
+            });
+        });
+    }
+
+    function escapeHtml(s) {
+        return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // 获取公众号订阅文章（供 switchTopicSource 调用）
+    // 优先：后端 API 查询 D1（部署后）；降级：前端用 rss2json 代理直抓订阅的 RSS（本地可用）
+    async function fetchWechatSubsArticles() {
+        const subs = await loadSubscriptions();
+        if (!subs || subs.length === 0) {
+            // 无订阅：返回空列表（由 renderTopicList 显示空状态），并提示去添加
+            setTimeout(() => showToast('暂无公众号订阅，点"⚙ 订阅"添加'), 200);
+            return [];
+        }
+        const status = _subsBackendStatus;
+        let items = [];
+        if (status === 'ok') {
+            // 后端可用：查询 D1
+            try {
+                const res = await fetch('/api/articles?size=30');
+                const data = await res.json();
+                items = (data.rows || []).map(r => ({
+                    title: r.title,
+                    cat: guessCategory(r.title || ''),
+                    source: r.source,
+                    desc: (r.content || '').slice(0, 80),
+                    time: r.pub_date ? formatPubDate(r.pub_date) : '未知时间',
+                    link: r.url,
+                    _isReal: true
+                }));
+                return items;
+            } catch (e) {
+                console.warn('[公众号订阅] 后端查询失败，降级前端直抓', e);
+            }
+        }
+        // 降级：前端用 rss2json 代理直抓每个订阅的 RSS（绕过 CORS）
+        const results = await Promise.allSettled(subs.map(s => fetchRSSNews(s.rss_url, s.name)));
+        results.forEach(r => {
+            if (r.status === 'fulfilled' && r.value && r.value.length) {
+                items = items.concat(r.value.slice(0, 8));
+            }
+        });
+        if (items.length === 0) {
+            // 抓取失败：用缓存（如果有）
+            try {
+                const cache = JSON.parse(localStorage.getItem(SUBS_CACHE_KEY) || '[]');
+                if (cache.length) {
+                    setTimeout(() => showToast('实时抓取失败，显示最近缓存'), 200);
+                    return cache;
+                }
+            } catch {}
+            throw new Error('公众号订阅抓取失败');
+        }
+        // 缓存一份
+        try { localStorage.setItem(SUBS_CACHE_KEY, JSON.stringify(items.slice(0, 50))); } catch {}
+        return items.slice(0, 30);
+    }
+
+    function formatPubDate(d) {
+        try {
+            const date = new Date(d);
+            if (isNaN(date)) return '未知时间';
+            const now = new Date();
+            const diff = (now - date) / 3600000;
+            if (diff < 1) return `${Math.floor(diff * 60)}分钟前`;
+            if (diff < 24) return `${Math.floor(diff)}小时前`;
+            return `${date.getMonth() + 1}月${date.getDate()}日`;
+        } catch { return '未知时间'; }
+    }
+
+    // 手动同步：调后端 /api/sync；本地降级时提示
+    async function syncAllSubscriptions() {
+        const status = await detectSubsBackend();
+        if (status === 'ok') {
+            const res = await fetch('/api/sync', { method: 'POST' });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || '同步失败');
+            return data; // {ok, synced, failed, total}
+        }
+        // 本地降级：触发一次 fetchWechatSubsArticles（直抓 + 缓存）
+        await fetchWechatSubsArticles();
+        return { ok: true, synced: 'local', failed: 0, total: 0, note: '本地模式：已直抓并缓存，部署后端后可持久化' };
+    }
+
+    // 绑定订阅管理弹窗事件
+    function bindSubsModalEvents() {
+        const modal = document.getElementById('subsModal');
+        const manageBtn = document.getElementById('manageSubsBtn');
+        const closeBtn = document.getElementById('subsModalCloseBtn');
+        const addBtn = document.getElementById('addSubBtn');
+        const nameInput = document.getElementById('subNameInput');
+        const rssInput = document.getElementById('subRssInput');
+        const syncBtn = document.getElementById('syncSubsBtn');
+        if (!modal || !manageBtn) return;
+
+        manageBtn.addEventListener('click', async () => {
+            modal.style.display = 'flex';
+            await renderSubsList();
+        });
+        const close = () => { modal.style.display = 'none'; };
+        closeBtn.addEventListener('click', close);
+        modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+        addBtn.addEventListener('click', async () => {
+            const name = nameInput.value.trim();
+            const rssUrl = rssInput.value.trim();
+            if (!name) { showToast('请输入公众号名称'); return; }
+            if (!rssUrl) { showToast('请输入 RSS 链接'); return; }
+            if (!/^https?:\/\//i.test(rssUrl)) { showToast('RSS 链接需以 http(s) 开头'); return; }
+            addBtn.disabled = true; addBtn.textContent = '添加中...';
+            try {
+                await addSubscription(name, rssUrl);
+                nameInput.value = ''; rssInput.value = '';
+                showToast('订阅已添加');
+                await renderSubsList();
+                _subsBackendStatus = 'unknown'; // 重置探测，下次刷新
+            } catch (e) {
+                showToast('添加失败：' + e.message);
+            } finally {
+                addBtn.disabled = false; addBtn.textContent = '添加';
+            }
+        });
+
+        syncBtn.addEventListener('click', async () => {
+            syncBtn.disabled = true; syncBtn.textContent = '⏳ 同步中...';
+            try {
+                const r = await syncAllSubscriptions();
+                if (r.synced === 'local') {
+                    showToast('本地模式：已抓取并缓存文章');
+                } else {
+                    showToast(`同步完成：成功 ${r.synced} 个源，新增 ${r.total} 篇${r.failed ? '，失败 ' + r.failed : ''}`);
+                }
+                // 同步后刷新当前列表（如果在公众号订阅 tab）
+                if (topicCenterState.currentSource === 'wechat') {
+                    await switchTopicSource('wechat');
+                }
+            } catch (e) {
+                showToast('同步失败：' + e.message);
+            } finally {
+                syncBtn.disabled = false; syncBtn.textContent = '🔄 立即同步所有订阅';
+            }
+        });
+    }
+
 
     // 统一渲染选题列表
     function renderTopicList() {
@@ -6196,8 +6454,9 @@ ${bgLine}
                 const catInfo = TOPIC_CATEGORIES[it.cat] || TOPIC_CATEGORIES.society;
                 const safeTitle = (it.title || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
                 const safeDesc = (it.desc || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+                const safeLink = (it.link || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
                 const itemTime = it.time || timeLabel;
-                return `<div style="padding:10px 12px;margin-bottom:6px;border:1px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;transition:all 0.15s;" data-topic="${safeTitle}" data-desc="${safeDesc}" data-source="${it.source || ''}" class="topic-item">
+                return `<div style="padding:10px 12px;margin-bottom:6px;border:1px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;transition:all 0.15s;" data-topic="${safeTitle}" data-desc="${safeDesc}" data-source="${it.source || ''}" data-link="${safeLink}" class="topic-item">
                     <div style="display:flex;align-items:center;margin-bottom:4px;">
                         <span style="color:#9CA3AF;font-size:11px;margin-right:8px;min-width:20px;">${i + 1}.</span>
                         <span style="flex:1;font-size:13px;color:#1F2937;font-weight:500;">${safeTitle}</span>
@@ -6220,7 +6479,8 @@ ${bgLine}
                 // 记录选中资讯的摘要到 workflowState，供文章生成时作为背景信息
                 window.workflowState.newsContext = el.dataset.desc || '';
                 window.workflowState.newsSource = el.dataset.source || '';
-                setCreateStatus(`已选择话题：${el.dataset.topic}${el.dataset.desc ? '（含资讯背景）' : ''}`, true);
+                window.workflowState.newsLink = el.dataset.link || '';
+                setCreateStatus(`已选择话题：${el.dataset.topic}${el.dataset.desc ? '（含资讯背景）' : ''}${el.dataset.link ? '（可点状态栏原文链接阅读）' : ''}`, true);
             });
         });
     }
@@ -6238,7 +6498,8 @@ ${bgLine}
                 weibo: '#E11D48',
                 douyin: '#111',
                 '36kr': '#1E40AF',
-                recommend: '#3B82F6'
+                recommend: '#3B82F6',
+                wechat: '#07C160'
             };
             const c = colors[source] || '#3B82F6';
             if (isActive) {
@@ -6255,7 +6516,7 @@ ${bgLine}
         });
 
         // 加载列表
-        setCreateStatus(`正在加载${({weibo:'微博热搜',douyin:'抖音热点','36kr':'36氪科技',recommend:'推荐选题'})[source]}...`, true);
+        setCreateStatus(`正在加载${({weibo:'微博热搜',douyin:'抖音热点','36kr':'36氪科技',recommend:'推荐选题',wechat:'公众号订阅'})[source] || '数据'}...`, true);
 
         let items = [];
         try {
@@ -6266,6 +6527,9 @@ ${bgLine}
             } else if (source === '36kr') {
                 // 36氪：真实 RSS 抓取
                 items = await fetchRSSNews('https://36kr.com/feed', '36氪');
+            } else if (source === 'wechat') {
+                // 公众号订阅：优先调后端 API（D1），失败降级前端直抓 RSS
+                items = await fetchWechatSubsArticles();
             } else {
                 // 推荐选题 → 综合资讯：聚合 36氪+IT之家+少数派 RSS
                 items = await fetchAggregatedNews();
@@ -6343,6 +6607,9 @@ ${bgLine}
     // 初始化：默认加载推荐选题
     // 默认激活 36 氪（真实 RSS 资讯）
     setTimeout(() => switchTopicSource('36kr', true), 100);
+
+    // 公众号订阅管理弹窗事件绑定
+    bindSubsModalEvents();
 
     // 生成按钮状态控制：无 API Key 时禁用并引导配置（不再静默返回 mock 垃圾）
     function updateCreateGenerateBtnState() {
