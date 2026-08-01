@@ -28,7 +28,7 @@ export async function onRequestPost({ request, env }) {
         const info = await env.DB.prepare(
             'INSERT OR IGNORE INTO subscriptions (name, rss_url) VALUES (?, ?)'
         ).bind(name, rssUrl).run();
-        return jsonResponse({ ok: true, id: info.meta.last_row_id, name, rss_url });
+        return jsonResponse({ ok: true, id: info.meta.last_row_id, name, rss_url: rssUrl });
     } catch (e) {
         return jsonResponse({ error: '数据库错误: ' + e.message }, 500);
     }
