@@ -110,8 +110,12 @@ body {
 
 .app-container {
     display: grid;
-    grid-template-columns: 232px 1fr;
+    grid-template-columns: var(--sidebar-w, 232px) 1fr;
     min-height: 100vh;
+    transition: grid-template-columns 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.app-container.sidebar-collapsed {
+    --sidebar-w: 60px;
 }
 
 /* ===== Sidebar (左侧导航) — 深墨绿 + 琥珀金 杂志风 ===== */
@@ -129,9 +133,66 @@ body {
     top: 0;
     height: 100vh;
     overflow-y: auto;
+    overflow-x: hidden;
     border-right: 1px solid rgba(245, 158, 11, 0.08);
     font-family: var(--font-sans);
+    transition: padding 0.32s cubic-bezier(0.4, 0, 0.2, 1);
 }
+/* 收起态 */
+.app-container.sidebar-collapsed .app-sidebar { padding: 26px 8px 16px; }
+.app-container.sidebar-collapsed .logo-text,
+.app-container.sidebar-collapsed .nav-label,
+.app-container.sidebar-collapsed .nav-section-label,
+.app-container.sidebar-collapsed .sidebar-footer .ai-status-row span:last-child,
+.app-container.sidebar-collapsed .sidebar-version,
+.app-container.sidebar-collapsed .sidebar-collapse-btn .icon-collapse { display: none; }
+.app-container.sidebar-collapsed .sidebar-collapse-btn .icon-expand { display: block; }
+.app-container.sidebar-collapsed .nav-item { justify-content: center; padding: 11px 0; }
+.app-container.sidebar-collapsed .nav-item .nav-icon { width: auto; }
+.app-container.sidebar-collapsed .sidebar-footer { text-align: center; }
+.app-container.sidebar-collapsed .sidebar-logo { justify-content: center; }
+
+/* 收起/展开按钮 */
+.sidebar-collapse-btn {
+    position: absolute;
+    top: 30px;
+    right: -12px;
+    width: 24px; height: 24px;
+    background: #0B1F1A;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 50%;
+    color: #F59E0B;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.sidebar-collapse-btn:hover { background: #F59E0B; color: #0B1F1A; transform: scale(1.1); }
+.sidebar-collapse-btn .icon-expand { display: none; }
+
+/* 收起态下 hover 显示文字气泡（由 JS 注入 body，避免被侧栏 overflow 裁切） */
+.sidebar-tip {
+    position: fixed;
+    z-index: 9999;
+    background: #1F2937;
+    color: #FCD34D;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity 0.16s ease, transform 0.16s ease;
+    font-family: var(--font-sans);
+    letter-spacing: 0.5px;
+}
+.sidebar-tip.show { opacity: 1; transform: translateX(0); }
+
+/* 窄屏自适应由下方 1024px / 640px 媒体查询统一处理（与新折叠系统协同） */
 
 /* 顶部细金线点缀 */
 .app-sidebar::before {
@@ -371,14 +432,19 @@ body {
 }
 
 .logo-icon {
-    font-size: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
     background: var(--accent-gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #fff;
+    box-shadow: 0 4px 12px -2px rgba(16, 185, 129, 0.45);
     font-style: normal;
     font-weight: 600;
 }
+.logo-icon svg { display: block; }
 
 .logo-text {
     font-family: var(--font-serif);
@@ -387,6 +453,13 @@ body {
     color: var(--text-primary);
     letter-spacing: 1px;
 }
+
+/* SVG 图标统一尺寸与颜色继承 */
+.hdr-ico { display: block; flex-shrink: 0; }
+.btn-icon { display: inline-flex; align-items: center; justify-content: center; font-style: normal; }
+.btn-icon .hdr-ico { transition: transform 0.2s ease; }
+.btn:hover .btn-icon .hdr-ico { transform: scale(1.12); }
+.tool-ico { display: block; }
 
 .header-actions {
     display: flex;
@@ -1797,16 +1870,15 @@ body {
     letter-spacing: 0.3px;
 }
 
-/* 响应式：平板以下侧边栏变窄，手机隐藏侧边栏改用底部栏 */
+/* 响应式：平板以下侧边栏自动收起（与新折叠系统协同，不直接覆写 grid-template-columns） */
 @media (max-width: 1024px) {
-    .app-container { grid-template-columns: 72px 1fr; }
-    .app-sidebar { padding: 16px 8px; }
-    .sidebar-logo .logo-text,
-    .nav-item span:not(.nav-icon),
-    .nav-section-label,
-    .sidebar-footer { display: none; }
-    .nav-item { justify-content: center; padding: 11px 0; }
-    .nav-item.active::before { display: none; }
+    .app-container:not(.sidebar-collapsed) { --sidebar-w: 60px; }
+    .app-container:not(.sidebar-collapsed) .logo-text,
+    .app-container:not(.sidebar-collapsed) .nav-label,
+    .app-container:not(.sidebar-collapsed) .nav-section-label,
+    .app-container:not(.sidebar-collapsed) .sidebar-footer .ai-status-row span:last-child,
+    .app-container:not(.sidebar-collapsed) .sidebar-version { display: none; }
+    .app-container:not(.sidebar-collapsed) .nav-item { justify-content: center; padding: 11px 0; }
 }
 @media (max-width: 640px) {
     .app-container { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }

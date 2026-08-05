@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>公众号文章排版助手</title>
-    <link rel="stylesheet" href="styles.css?v=16">
+    <link rel="stylesheet" href="styles.css?v=17">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -16,39 +16,43 @@
 <body>
     <div class="app-container">
         <!-- ===== 左侧导航 ===== -->
-        <aside class="app-sidebar">
+        <aside class="app-sidebar" id="appSidebar">
             <div class="sidebar-logo">
-                <span class="logo-icon">✎</span>
-                <span class="logo-text">排版助手</span>
+                <span class="logo-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></span>
+                <span class="logo-text">内容工坊</span>
             </div>
+            <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" type="button" title="收起/展开 (Ctrl+B)" aria-label="收起侧栏">
+                <svg class="icon-collapse" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                <svg class="icon-expand" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
             <nav class="app-nav">
                 <div class="nav-section-label">工作流</div>
-                <button class="nav-item active" data-tab="editor">
-                    <span class="nav-icon">✎</span><span>排版</span>
+                <button class="nav-item active" data-tab="editor" data-tip="排版">
+                    <span class="nav-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg></span><span class="nav-label">排版</span>
                 </button>
-                <button class="nav-item" data-tab="inbox">
-                    <span class="nav-icon">📥</span><span>信息中枢</span>
+                <button class="nav-item" data-tab="inbox" data-tip="信息中枢">
+                    <span class="nav-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></span><span class="nav-label">信息中枢</span>
                 </button>
-                <button class="nav-item" data-tab="create">
-                    <span class="nav-icon">✍</span><span>创作</span>
+                <button class="nav-item" data-tab="create" data-tip="创作">
+                    <span class="nav-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg></span><span class="nav-label">创作</span>
                 </button>
-                <button class="nav-item" data-tab="subscribe">
-                    <span class="nav-icon">📰</span><span>订阅</span>
+                <button class="nav-item" data-tab="subscribe" data-tip="订阅">
+                    <span class="nav-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg></span><span class="nav-label">订阅</span>
                 </button>
-                <button class="nav-item" data-tab="image">
-                    <span class="nav-icon">🖼</span><span>图片</span>
+                <button class="nav-item" data-tab="image" data-tip="图片">
+                    <span class="nav-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span><span class="nav-label">图片</span>
                 </button>
                 <div class="nav-section-label">资产</div>
-                <button class="nav-item" data-tab="products">
-                    <span class="nav-icon">📦</span><span>产物</span>
+                <button class="nav-item" data-tab="products" data-tip="产物">
+                    <span class="nav-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span><span class="nav-label">产物</span>
                 </button>
-                <button class="nav-item" data-tab="settings">
-                    <span class="nav-icon">⚙️</span><span>设置</span>
+                <button class="nav-item" data-tab="settings" data-tip="设置">
+                    <span class="nav-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span><span class="nav-label">设置</span>
                 </button>
             </nav>
             <div class="sidebar-footer">
-                <div><span class="ai-status-dot" id="sidebarAiDot"></span><span id="sidebarAiText">AI 未配置</span></div>
-                <div style="margin-top:6px;opacity:0.7;">v2.0 · Cloudflare Ready</div>
+                <div class="ai-status-row"><span class="ai-status-dot" id="sidebarAiDot"></span><span id="sidebarAiText">AI 未配置</span></div>
+                <div class="sidebar-version">v5.1 · Cloudflare Ready</div>
             </div>
         </aside>
 
@@ -56,39 +60,39 @@
         <div class="app-main">
         <header class="header">
             <div class="logo">
-                <span class="logo-icon">✎</span>
+                <span class="logo-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></span>
                 <span class="logo-text">排版助手</span>
             </div>
             <div class="header-actions">
                 <button class="global-search-trigger" id="globalSearchBtn" title="全局搜索 · Ctrl+K">
-                    <span>🔍</span>
+                    <svg class="hdr-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     <span>搜索一切...</span>
                     <span class="kbd">⌘K</span>
                 </button>
                 <button class="btn btn-ghost" id="userBtn" title="登录/用户中心" style="display:none;">
-                    <span class="btn-icon">👤</span>
+                    <span class="btn-icon"><svg class="hdr-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
                     <span id="userName">登录</span>
                 </button>
                 <button class="btn btn-ghost" id="aiSettingsBtn" title="配置 AI API Key">
-                    <span class="btn-icon">⚙️</span>
+                    <span class="btn-icon"><svg class="hdr-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
                     AI 设置
                 </button>
                 <button class="btn btn-ghost" id="draftBtn" title="保存草稿 / 下载本地">
-                    <span class="btn-icon">💾</span>
+                    <span class="btn-icon"><svg class="hdr-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></span>
                     草稿
                 </button>
                 <!-- 以下按钮仅在排版助手 tab 显示 -->
                 <button class="btn btn-ghost" id="clearBtn" data-tab-visible="editor">清空</button>
                 <button class="btn btn-outline" id="copyHtmlBtn" data-tab-visible="editor">
-                    <span class="btn-icon">⟨/⟩</span>
+                    <span class="btn-icon"><svg class="hdr-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span>
                     复制HTML
                 </button>
-                <button class="btn btn-primary" id="aiWorkflowBtn" data-tab-visible="editor" style="background:linear-gradient(135deg,#10B981,#3B82F6);border-color:transparent;">
-                    <span class="btn-icon">🚀</span>
+                <button class="btn btn-primary" id="aiWorkflowBtn" data-tab-visible="editor">
+                    <span class="btn-icon"><svg class="hdr-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8L20 10.7l-5.1 1.9L13 18.5l-1.9-5.9L6 10.7l5.1-1.9z"/><path d="M19 3v4"/><path d="M21 5h-4"/></svg></span>
                     AI 一键创作
                 </button>
                 <button class="btn btn-primary" id="copyBtn" data-tab-visible="editor">
-                    <span class="btn-icon">⎘</span>
+                    <span class="btn-icon"><svg class="hdr-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span>
                     复制全文
                 </button>
             </div>
@@ -876,8 +880,8 @@
                     <div class="toolbar-divider"></div>
                     <div class="toolbar-group" data-group="insert">
                         <div class="toolbar-group-label">插入</div>
-                        <button class="tool-btn" data-action="link" data-tooltip="插入链接">🔗</button>
-                        <button class="tool-btn" data-action="image" data-tooltip="插入图片">🖼</button>
+                        <button class="tool-btn" data-action="link" data-tooltip="插入链接"><svg class="tool-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button>
+                        <button class="tool-btn" data-action="image" data-tooltip="插入图片"><svg class="tool-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></button>
                     </div>
                     <div class="toolbar-divider"></div>
                     <div class="toolbar-group" data-group="history">
@@ -1330,7 +1334,7 @@ services:
     <script src="themes/magazine.js"></script>
     <script src="themes/fresh.js"></script>
     <script src="themes/vibrant.js"></script>
-    <script src="script.js?v=57"></script>
+    <script src="script.js?v=58"></script>
 
     <!-- V5 全局命令面板 -->
     <div class="cmdk-overlay" id="cmdkOverlay">

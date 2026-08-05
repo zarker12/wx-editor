@@ -12,7 +12,7 @@ const smartFormatBtn = document.getElementById('smartFormatBtn');
 let currentStyle = 'minimal';
 let currentColor = 'emerald';
 let currentSize = 'medium';
-let currentSpacing = 'compact';
+let currentSpacing = 'normal';
 let currentFont = 'serif';
 let currentTracking = 'tight';
 
@@ -903,6 +903,12 @@ function compressForWechat(html) {
     // 6. 移除 br 标签（微信会自动处理段落间距，额外的br会导致行距翻倍）
     //    但保留合法的 br（如用户原文中明确需要换行的），这里处理的是装饰性空span产生的多余br
     result = result.replace(/<br\s*\/?>\s*<\/(div|p|section)>/gi, '</$1>');
+    // 7. 【关键修复】给间距/行高相关属性加 !important，抵抗公众号编辑器默认样式覆盖
+    //    公众号粘贴时会用自己的 p/section 默认 margin 和 line-height，不加 important 会导致
+    //    预览框合适的间距在公众号里变宽（被叠加默认段距）或变窄（被重置为0）
+    result = result.replace(/(margin(?:-top|-bottom|-left|-right)?):\s*([^;"]+);/gi, '$1:$2 !important;');
+    result = result.replace(/(line-height):\s*([^;"]+);/gi, '$1:$2 !important;');
+    result = result.replace(/(padding(?:-top|-bottom|-left|-right)?):\s*([^;"]+);/gi, '$1:$2 !important;');
     return result.trim();
 }
 
@@ -2606,6 +2612,94 @@ editor.addEventListener('paste', handlePaste);
 editor.addEventListener('dragover', handleDragOver);
 editor.addEventListener('dragleave', handleDragLeave);
 editor.addEventListener('drop', handleDrop);
+
+// ===== 侧边栏收起/展开（支持 localStorage 持久化 + Ctrl+B 快捷键）=====
+(function setupSidebarCollapse() {
+    const collapseBtn = document.getElementById('sidebarCollapseBtn');
+    const container = document.querySelector('.app-container');
+    if (!collapseBtn || !container) return;
+
+    const STORAGE_KEY = 'mp_sidebar_collapsed';
+    // 屏幕过窄时强制收起，且不恢复（避免恢复后挤压编辑区）
+    const FORCE_COLLAPSE_BREAKPOINT = 1024;
+
+    function applyState(collapsed, persist) {
+        container.classList.toggle('sidebar-collapsed', collapsed);
+        collapseBtn.setAttribute('aria-expanded', String(!collapsed));
+        if (persist) {
+            try { localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0'); } catch (e) {}
+        }
+    }
+
+    // 1) 恢复上次状态（窄屏强制收起）
+    const isNarrow = window.innerWidth <= FORCE_COLLAPSE_BREAKPOINT;
+    let saved = null;
+    try { saved = localStorage.getItem(STORAGE_KEY); } catch (e) {}
+    const initialCollapsed = isNarrow ? true : (saved === '1');
+    applyState(initialCollapsed, false);
+
+    // 2) 点击切换
+    collapseBtn.addEventListener('click', () => {
+        const collapsed = !container.classList.contains('sidebar-collapsed');
+        applyState(collapsed, true);
+    });
+
+    // 3) Ctrl+B / Cmd+B 快捷键
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+            // 不在编辑框内时才触发，避免拦截编辑器内的加粗
+            const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+            if (tag === 'input' || tag === 'textarea' || (e.target && e.target.isContentEditable)) return;
+            e.preventDefault();
+            const collapsed = !container.classList.contains('sidebar-collapsed');
+            applyState(collapsed, true);
+        }
+    });
+
+    // 4) 窗口尺寸变化时自适应：跨越断点时自动收起
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+        if (resizeTimer) clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            if (window.innerWidth <= FORCE_COLLAPSE_BREAKPOINT && !container.classList.contains('sidebar-collapsed')) {
+                applyState(true, false);
+            }
+        }, 150);
+    });
+
+    // 5) 收起态下 hover 显示文字气泡（注入 body，避免被侧栏 overflow-x:hidden 裁切）
+    const tip = document.createElement('div');
+    tip.className = 'sidebar-tip';
+    tip.setAttribute('role', 'tooltip');
+    document.body.appendChild(tip);
+    let tipTarget = null;
+
+    function positionTip(el) {
+        const r = el.getBoundingClientRect();
+        tip.style.left = (r.right + 10) + 'px';
+        tip.style.top = (r.top + r.height / 2 - tip.offsetHeight / 2) + 'px';
+    }
+    container.querySelectorAll('.nav-item[data-tip]').forEach(item => {
+        item.addEventListener('mouseenter', () => {
+            if (!container.classList.contains('sidebar-collapsed')) return;
+            tipTarget = item;
+            tip.textContent = item.getAttribute('data-tip') || '';
+            tip.classList.add('show');
+            positionTip(item);
+        });
+        item.addEventListener('mouseleave', () => {
+            tipTarget = null;
+            tip.classList.remove('show');
+        });
+        item.addEventListener('focus', () => {
+            if (!container.classList.contains('sidebar-collapsed')) return;
+            tip.textContent = item.getAttribute('data-tip') || '';
+            tip.classList.add('show');
+            positionTip(item);
+        });
+        item.addEventListener('blur', () => tip.classList.remove('show'));
+    });
+})();
 
 styleButtons.forEach(btn => btn.addEventListener('click', () => setStyle(btn.dataset.style)));
 colorButtons.forEach(btn => btn.addEventListener('click', () => setColor(btn.dataset.color)));
