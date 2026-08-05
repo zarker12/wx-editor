@@ -1,24 +1,25 @@
 :root {
-    --accent-500: #10B981;
-    --accent-400: #34D399;
-    --accent-600: #059669;
-    --accent-gradient: linear-gradient(135deg, #10B981 0%, #34D399 100%);
-    --accent-soft: rgba(16, 185, 129, 0.1);
-    --accent-soft2: rgba(16, 185, 129, 0.08);
+    /* 暖调编辑室 Warm Editorial Newsroom —— 暖纸 + 墨黑 + 单一翡翠 */
+    --accent-500: #047857;
+    --accent-400: #10B981;
+    --accent-600: #065F46;
+    --accent-gradient: linear-gradient(135deg, #047857 0%, #10B981 100%);
+    --accent-soft: rgba(4, 120, 87, 0.08);
+    --accent-soft2: rgba(4, 120, 87, 0.05);
 
-    --text-primary: #1F2937;
-    --text-secondary: #6B7280;
-    --text-tertiary: #9CA3AF;
-    --text-article: #374151;
-    --text-article-strong: #1F2937;
+    --text-primary: #1A1815;
+    --text-secondary: #57534E;
+    --text-tertiary: #A8A29E;
+    --text-article: #292524;
+    --text-article-strong: #1A1815;
 
-    --bg-page: #F9FAFB;
+    --bg-page: #F7F4ED;
     --bg-surface: #FFFFFF;
     --bg-elevated: #FFFFFF;
-    --bg-hover: #F3F4F6;
+    --bg-hover: #F1ECE2;
 
-    --border-light: #F3F4F6;
-    --border-default: #E5E7EB;
+    --border-light: #ECE6DA;
+    --border-default: #DDD5C6;
 
     --font-serif: 'Noto Serif SC', 'Songti SC', 'SimSun', 'STSong', '华文宋体', Georgia, 'Times New Roman', serif;
     --font-sans: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', '微软雅黑', 'SimHei', 'Helvetica Neue', Arial, sans-serif;
@@ -26,13 +27,18 @@
     --font-body: var(--font-sans);
     --font-article: var(--font-sans);
 
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
-    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.05);
-    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.06);
+    --shadow-sm: 0 1px 2px rgba(60, 50, 30, 0.04);
+    --shadow-md: 0 4px 14px rgba(60, 50, 30, 0.06);
+    --shadow-lg: 0 16px 40px -8px rgba(60, 50, 30, 0.12);
 
     --radius-sm: 6px;
     --radius-md: 10px;
     --radius-lg: 16px;
+
+    /* z-index 分层：抽屉 < 搜索面板 < 模态 */
+    --z-drawer: 1200;
+    --z-cmdk: 1500;
+    --z-modal: 9999;
 }
 
 /* ===== Theme Colors ===== */
@@ -106,6 +112,12 @@ body {
     min-height: 100vh;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+    /* 暖纸纹理：极淡的渐变 + 噪点感，营造编辑室氛围 */
+    background-image:
+        radial-gradient(circle at 12% 6%, rgba(4, 120, 87, 0.04), transparent 38%),
+        radial-gradient(circle at 92% 94%, rgba(120, 53, 15, 0.03), transparent 45%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.5), transparent 120px);
+    background-attachment: fixed;
 }
 
 .app-container {
@@ -529,17 +541,63 @@ body {
     flex: 1;
     gap: 0;
     overflow: hidden;
+    min-width: 0;
 }
 
-/* ===== Sidebar ===== */
-.sidebar {
-    width: 240px;
+/* ===== 样式抽屉（原固定侧栏，改为按需呼出，释放编辑+预览宽度）===== */
+.settings-drawer { position: relative; }
+.settings-drawer-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(26, 24, 21, 0.42);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.28s ease, visibility 0.28s;
+    z-index: var(--z-drawer);
+}
+.sidebar.settings-panel {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: 288px;
+    max-width: 88vw;
     background: var(--bg-surface);
-    border-right: 1px solid var(--border-light);
-    padding: 28px 20px;
-    overflow-y: auto;
+    border-right: 1px solid var(--border-default);
+    box-shadow: 16px 0 40px -12px rgba(60, 50, 30, 0.22);
+    transform: translateX(-100%);
+    transition: transform 0.34s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: calc(var(--z-drawer) + 1);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+}
+.settings-drawer.open .settings-drawer-backdrop { opacity: 1; visibility: visible; }
+.settings-drawer.open .settings-panel { transform: translateX(0); }
+.settings-panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--border-light);
     flex-shrink: 0;
 }
+.settings-panel-title {
+    font-family: var(--font-serif);
+    font-size: 16px; font-weight: 600; color: var(--text-primary);
+    letter-spacing: 2px;
+}
+.settings-panel-close {
+    width: 30px; height: 30px; border: none; background: transparent;
+    color: var(--text-tertiary); border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.18s;
+}
+.settings-panel-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+.settings-panel-body {
+    padding: 18px 20px 24px;
+    overflow-y: auto; flex: 1;
+}
+
+/* 兼容旧 .sidebar 内的 .section 结构 */
+.sidebar .section { margin-bottom: 22px; }
 
 .section {
     margin-bottom: 28px;
@@ -550,11 +608,11 @@ body {
 }
 
 .section h4 {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     color: var(--text-tertiary);
-    text-transform: none;
-    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
     margin-bottom: 14px;
     padding-left: 2px;
     display: flex;
@@ -946,16 +1004,45 @@ body {
     transition: all 0.15s ease;
     font-family: var(--font-body);
 }
-
 .import-label:hover,
 .smart-btn:hover {
     border-color: var(--accent-500);
     color: var(--accent-600);
     background: var(--accent-soft2);
 }
-
 .import-icon {
-    font-size: 14px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--text-tertiary);
+    transition: color 0.15s ease;
+}
+.import-label:hover .import-icon,
+.smart-btn:hover .import-icon { color: var(--accent-500); }
+.link-icon { display: inline-flex; align-items: center; color: var(--text-tertiary); }
+
+/* 样式抽屉触发按钮 */
+.settings-toggle {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 13px;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-soft2);
+    border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 500;
+    color: var(--accent-600);
+    cursor: pointer;
+    transition: all 0.18s ease;
+    font-family: var(--font-body);
+    flex-shrink: 0;
+}
+.settings-toggle:hover {
+    background: var(--accent-500);
+    border-color: var(--accent-500);
+    color: #fff;
+    box-shadow: 0 3px 10px -2px rgba(4, 120, 87, 0.35);
+}
+.settings-toggle.open {
+    background: var(--accent-600);
+    border-color: var(--accent-600);
+    color: #fff;
 }
 
 .link-section {
@@ -1557,23 +1644,27 @@ body {
 
 .preview-label {
     padding: 14px 24px;
-    font-size: 12px;
+    font-size: 10px;
     color: var(--text-tertiary);
     text-transform: uppercase;
-    letter-spacing: 1px;
-    font-weight: 500;
+    letter-spacing: 2px;
+    font-weight: 600;
     background: var(--bg-surface);
     border-bottom: 1px solid var(--border-light);
+    display: flex; align-items: center; gap: 8px;
+}
+.preview-label::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent-500);
 }
 
 .preview-container {
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 28px 20px;
+    padding: 32px 20px;
     display: flex;
     justify-content: center;
-    /* 移动端避免被侧边栏挤压 */
     -webkit-overflow-scrolling: touch;
 }
 
@@ -1581,15 +1672,12 @@ body {
     width: 100%;
     max-width: 480px;
     background: var(--bg-surface);
-    border-radius: 20px;
+    border-radius: 22px;
     box-shadow: var(--shadow-lg);
-    /* 改为可见溢出：让内容自适应高度，外层 preview-container 统一滚动
-       避免 phone-frame 与 wechat-content 双滚动条问题 */
     overflow: visible;
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
-    /* 高度自适应内容，不再硬性约束 */
     height: auto;
 }
 
@@ -1738,42 +1826,26 @@ body {
     transform: translateX(-50%) translateY(0);
 }
 
+/* 中等宽度：header 按钮收起文字仅留图标，搜索框缩窄，防止溢出重叠 */
+@media (max-width: 980px) {
+    .header { padding: 12px 18px; gap: 10px; }
+    .header-actions { gap: 6px; }
+    .header .btn .btn-icon + * { display: none; }
+    .header .btn { padding: 8px 10px; }
+    .global-search-trigger > span:not(.kbd) { display: none; }
+    .global-search-trigger { padding: 8px 10px; }
+    .global-search-trigger .kbd { display: none; }
+}
+
 /* ===== Responsive ===== */
+/* 编辑+预览两栏：≤1200px 改为上下堆叠，避免窄屏挤压重叠 */
 @media (max-width: 1200px) {
     .main-content {
         flex-direction: column;
         overflow-y: auto;
         overflow-x: hidden;
     }
-
-    .sidebar {
-        width: 100%;
-        border-right: none;
-        border-bottom: 1px solid var(--border-light);
-        padding: 16px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-        flex-shrink: 0;
-    }
-
-    .section {
-        margin-bottom: 0;
-    }
-
-    .style-list,
-    .color-list {
-        flex-direction: row;
-        flex-wrap: wrap;
-    }
-
-    .font-options {
-        flex-direction: row;
-        flex-wrap: wrap;
-    }
-
-    /* 移动端：预览区不再被限制 max-height，改用 50vh 让两栏各占一半高度
-       整页滚动由 main-content 统一管理 */
+    .editor-section { flex: 0 0 auto; min-height: 52vh; }
     .preview-section {
         flex: 1 1 50vh;
         min-height: 50vh;
@@ -1781,10 +1853,7 @@ body {
         border-left: none;
         border-top: 1px solid var(--border-light);
     }
-
-    .phone-frame {
-        max-width: 360px;
-    }
+    .phone-frame { max-width: 380px; }
 }
 
 /* 侧边栏面板/卡片（订阅、产物、设置 tab 共用）— 杂志风精修 */
