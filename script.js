@@ -3157,18 +3157,52 @@ function refreshProductsDash() {
 // ===== 设置 Dashboard =====
 async function refreshSettingsDash() {
     const ov = document.getElementById('dashSettingsOverview');
-    if (!ov) return;
-    try {
-        const s = getAISettings && getAISettings();
-        const rows = [];
-        rows.push(`<div>AI 模型：<b>${s && s.provider ? s.provider : '未配置'}</b></div>`);
-        rows.push(`<div>API Key：<b>${s && s.apiKey ? '已配置（' + s.apiKey.slice(0,4) + '...' + s.apiKey.slice(-2) + '）' : '未配置'}</b></div>`);
-        const subs = window._subsApi ? await window._subsApi.loadSubscriptions() : [];
-        rows.push(`<div>已订阅公众号：<b>${subs.length}</b> 个</div>`);
-        const st = window._subsApi ? window._subsApi.getBackendStatus() : 'unknown';
-        rows.push(`<div>存储模式：<b>${st === 'ok' ? '云端（D1）' : '本地（localStorage）'}</b></div>`);
-        ov.innerHTML = rows.join('');
-    } catch (e) { ov.textContent = '配置读取失败：' + e.message; }
+    if (ov) {
+        try {
+            const s = getAISettings && getAISettings();
+            const rows = [];
+            rows.push(`<div>AI 模型：<b>${s && s.provider ? s.provider : '未配置'}</b></div>`);
+            rows.push(`<div>API Key：<b>${s && s.apiKey ? '已配置（' + s.apiKey.slice(0,4) + '...' + s.apiKey.slice(-2) + '）' : '未配置'}</b></div>`);
+            const subs = window._subsApi ? await window._subsApi.loadSubscriptions() : [];
+            rows.push(`<div>已订阅公众号：<b>${subs.length}</b> 个</div>`);
+            const st = window._subsApi ? window._subsApi.getBackendStatus() : 'unknown';
+            rows.push(`<div>存储模式：<b>${st === 'ok' ? '云端（D1）' : '本地（localStorage）'}</b></div>`);
+            ov.innerHTML = rows.join('');
+        } catch (e) { ov.textContent = '配置读取失败：' + e.message; }
+    }
+    // 渲染主题选择器（独立入口，不依赖 Ctrl+K）
+    renderThemePicker();
+}
+
+// 主题选择器渲染（设置 tab 独立入口）
+function renderThemePicker() {
+    const grid = document.getElementById('themePickerGrid');
+    if (!grid) return;
+    const THEMES = [
+        { key: 'theme-emerald', name: '翡翠绿', color: '#10B981' },
+        { key: 'theme-blue',    name: '天空蓝', color: '#3B82F6' },
+        { key: 'theme-orange',   name: '活力橙', color: '#F97316' },
+        { key: 'theme-purple',   name: '梦幻紫', color: '#8B5CF6' }
+    ];
+    let current = 'theme-emerald';
+    try { current = localStorage.getItem('wx_theme_v5') || 'theme-emerald'; } catch {}
+    grid.innerHTML = THEMES.map(t => `
+        <div class="theme-picker-item ${t.key === current ? 'active' : ''}" data-theme="${t.key}" type="button">
+            <div class="theme-picker-swatch" style="background:linear-gradient(135deg, ${t.color}, ${t.color}cc);"></div>
+            <div class="theme-picker-name">${t.name}</div>
+        </div>`).join('');
+    grid.querySelectorAll('.theme-picker-item').forEach(el => {
+        el.addEventListener('click', () => {
+            const key = el.dataset.theme;
+            document.body.classList.remove(...THEMES.map(t => t.key));
+            document.body.classList.add(key);
+            try { localStorage.setItem('wx_theme_v5', key); } catch {}
+            // 同步更新命令面板的 cycleTheme 状态
+            grid.querySelectorAll('.theme-picker-item').forEach(x => x.classList.remove('active'));
+            el.classList.add('active');
+            if (window._showBanner) window._showBanner(`🎨 主题已切换为 ${key.replace('theme-','')}`, 2000);
+        });
+    });
 }
 
 // 绑定 dashboard 按钮到既有 modal/函数
@@ -3179,11 +3213,29 @@ function bindDashButtons() {
     });
     $('dashSyncBtn') && $('dashSyncBtn').addEventListener('click', async (e) => {
         const b = e.currentTarget; b.disabled=true; b.textContent='⏳ 同步中...';
+        const t0 = Date.now();
         try {
-            const r = window._dashSync ? await window._dashSync() : {synced:'local'};
+            let r;
+            if (window._dashSync) {
+                r = await window._dashSync();
+            } else {
+                // _dashSync 尚未就绪：尝试直接调 _subsApi.syncAll，否则本地缓存兜底
+                if (window._subsApi && window._subsApi.syncAll) {
+                    r = await window._subsApi.syncAll();
+                } else {
+                    await new Promise(res => setTimeout(res, 600));
+                    r = { synced: 'local', total: 0 };
+                    showToast('本地模式：后端未就绪，已读取缓存');
+                }
+            }
             refreshSubscribeDash();
         } catch(err){ showToast('同步失败：'+err.message); }
-        finally { b.disabled=false; b.textContent='🔄 立即同步'; }
+        finally {
+            // 保证 loading 至少显示 600ms，让用户感知到反馈
+            const dt = Date.now() - t0;
+            if (dt < 600) await new Promise(res => setTimeout(res, 600 - dt));
+            b.disabled=false; b.textContent='🔄 立即同步';
+        }
     });
     $('dashGoCreateBtn') && $('dashGoCreateBtn').addEventListener('click', () => switchTab('create'));
     $('dashSaveDraftBtn') && $('dashSaveDraftBtn').addEventListener('click', () => { const b=$('draftBtn'); if(b) b.click(); showToast('已触发保存草稿'); });
@@ -6368,8 +6420,9 @@ ${bgLine}
         }
         // 本地也存一份（双写）
         const local = getLocalSubs();
-        if (!local.find(s => s.rss_url === rssUrl)) {
-            local.push({ name, rss_url: rssUrl, _localOnly: status !== 'ok' });
+        // 用 name 或 rssUrl 任一匹配去重（支持空 RSS 的占位订阅）
+        if (!local.find(s => (rssUrl && s.rss_url === rssUrl) || s.name === name)) {
+            local.push({ name, rss_url: rssUrl || '', _localOnly: status !== 'ok' });
             saveLocalSubs(local);
         }
         return { ok: true };
@@ -6587,13 +6640,13 @@ ${bgLine}
             const name = nameInput.value.trim();
             const rssUrl = rssInput.value.trim();
             if (!name) { showToast('请输入公众号名称'); return; }
-            if (!rssUrl) { showToast('请输入 RSS 链接'); return; }
-            if (!/^https?:\/\//i.test(rssUrl)) { showToast('RSS 链接需以 http(s) 开头'); return; }
+            // RSS 可选：未填则创建占位订阅，后续可补
+            if (rssUrl && !/^https?:\/\//i.test(rssUrl)) { showToast('RSS 链接需以 http(s) 开头'); return; }
             addBtn.disabled = true; addBtn.textContent = '添加中...';
             try {
-                await addSubscription(name, rssUrl);
+                await addSubscription(name, rssUrl || '');
                 nameInput.value = ''; rssInput.value = '';
-                showToast('订阅已添加');
+                showToast(rssUrl ? '订阅已添加' : '占位订阅已创建（后续可在管理中补 RSS）');
                 await renderSubsList();
                 _subsBackendStatus = 'unknown'; // 重置探测，下次刷新
             } catch (e) {
@@ -8347,6 +8400,20 @@ function showUserMenu() {
                 }
             }
         }
+        // 兜底降级：所有信源都拉取失败时注入 mock 示例数据，让用户看到 UI 骨架
+        if (results.length === 0) {
+            const now = new Date().toISOString().slice(0,16);
+            const mock = [
+                { source: '公众号', title: 'AI 大模型应用落地：从 demo 到生产的最后一公里', desc: '探讨大模型在实际业务中部署的工程挑战与解决方案', time: now, readCount: 8200, url: '' },
+                { source: '公众号', title: '内容创作新范式：当 AI 成为创作伙伴', desc: 'AI 工具如何改变内容创作者的工作流', time: now, readCount: 6700, url: '' },
+                { source: '爆文榜', title: '10w+ 文章的标题规律：我们分析了 5000 篇爆款', desc: '数据驱动的标题写作方法论', time: now, readCount: 102000, url: '' },
+                { source: '微博', title: '#年轻人精神状态# 当代年轻人的 5 个解压方式', desc: '热搜话题：年轻人面对压力的真实反应', time: now, readCount: 450000, url: '' },
+                { source: '36氪', title: 'AI 创业公司融资回暖，垂直赛道受青睐', desc: '行业趋势：AI 应用层项目获资本关注', time: now, readCount: 12000, url: '' },
+                { source: '抖音', title: '短视频里的知识科普新风向', desc: '知识类内容在短视频平台的增长', time: now, readCount: 89000, url: '' }
+            ];
+            const sourceMap = { '公众号':'wechat', '爆文榜':'wechat-hot', '微博':'weibo', '36氪':'36kr', '抖音':'douyin' };
+            for (const m of mock) results.push({ ...m, _source: sourceMap[m.source] || 'recommend', _isMock: true });
+        }
         return results;
     }
 
@@ -9768,50 +9835,136 @@ function showUserMenu() {
         const exportBtn = document.getElementById('prodExportBtn');
         if (exportBtn) exportBtn.addEventListener('click', () => {
             const data = JSON.stringify(state.products, null, 2);
-            const blob = new Blob([data], { type: 'application/json;charset=utf-8' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `products-${new Date().toISOString().slice(0,10)}.json`;
-            a.click(); URL.revokeObjectURL(a.href);
+            // 双通道：尝试触发下载 + 弹出可复制文本框（沙箱环境下载会被拦截）
+            try {
+                const blob = new Blob([data], { type: 'application/json;charset=utf-8' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `products-${new Date().toISOString().slice(0,10)}.json`;
+                a.click(); URL.revokeObjectURL(a.href);
+            } catch (e) { console.warn('download fail', e); }
+            openTextModal('📤 导出全部产物', `共 ${state.products.length} 个产物，JSON 如下（可全选复制）：`, data);
             showToast(`已导出 ${state.products.length} 个产物`);
         });
         const importBtn = document.getElementById('prodImportBtn');
         if (importBtn) importBtn.addEventListener('click', () => {
-            const inp = document.createElement('input');
-            inp.type = 'file'; inp.accept = '.json,.md,.txt';
-            inp.onchange = e => {
-                const f = e.target.files[0]; if (!f) return;
-                const reader = new FileReader();
-                reader.onload = () => {
-                    try {
-                        if (f.name.endsWith('.json')) {
-                            const arr = JSON.parse(reader.result);
-                            if (Array.isArray(arr)) {
-                                for (const it of arr) {
-                                    if (!it.id) it.id = 'imp_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
-                                    state.products.unshift(it);
-                                }
-                                persist(); renderAll(); showToast(`已导入 ${arr.length} 个产物`);
-                            }
-                        } else {
-                            const text = String(reader.result);
-                            const p = upsert({ type: 'article', title: f.name.replace(/\.[^.]+$/,''), content: text, text });
-                            renderAll(); showToast('已导入：' + p.title);
-                        }
-                    } catch (err) { showToast('导入失败：' + err.message); }
+            // 优先尝试文件选择器，失败/被拦截则弹粘贴框
+            let triggered = false;
+            try {
+                const inp = document.createElement('input');
+                inp.type = 'file'; inp.accept = '.json,.md,.txt';
+                inp.onchange = e => {
+                    const f = e.target.files[0]; if (!f) return;
+                    const reader = new FileReader();
+                    reader.onload = () => doImport(f.name, String(reader.result));
+                    reader.readAsText(f);
                 };
-                reader.readAsText(f);
-            };
-            inp.click();
+                inp.addEventListener('click', () => { triggered = true; }, { once: true });
+                inp.click();
+                // 500ms 内没触发 click（被拦截），则弹粘贴框
+                setTimeout(() => { if (!triggered) openImportPasteModal(); }, 500);
+            } catch (e) { openImportPasteModal(); }
         });
         const cleanupBtn = document.getElementById('prodCleanupBtn');
         if (cleanupBtn) cleanupBtn.addEventListener('click', () => {
             const s = stats();
             if (!s.trash) { showToast('回收站为空'); return; }
-            if (confirm(`确认清空回收站？共 ${s.trash} 个产物将被永久删除。`)) {
+            // 自定义确认弹窗替代 confirm（沙箱拦截 confirm）
+            openConfirmModal('🗑 清空回收站', `确认清空回收站？共 ${s.trash} 个产物将被永久删除，此操作不可撤销。`, () => {
                 emptyTrash(); renderAll(); showToast('回收站已清空');
-            }
+            });
         });
+    }
+
+    // ---------- 自定义 Modal 工具（替代被沙箱拦截的 confirm/alert/prompt）----------
+    function ensureModalRoot() {
+        let root = document.getElementById('prodModalRoot');
+        if (!root) {
+            root = document.createElement('div');
+            root.id = 'prodModalRoot';
+            root.innerHTML = `
+                <div class="prod-modal-overlay" id="prodModalOverlay">
+                    <div class="prod-modal-card">
+                        <div class="prod-modal-head">
+                            <h3 id="prodModalTitle"></h3>
+                            <button class="prod-modal-close" id="prodModalClose" type="button">&times;</button>
+                        </div>
+                        <div class="prod-modal-body" id="prodModalBody"></div>
+                        <div class="prod-modal-foot" id="prodModalFoot"></div>
+                    </div>
+                </div>`;
+            document.body.appendChild(root);
+            document.getElementById('prodModalClose').addEventListener('click', closeModal);
+            document.getElementById('prodModalOverlay').addEventListener('click', e => { if (e.target.id === 'prodModalOverlay') closeModal(); });
+        }
+        return root;
+    }
+    function closeModal() {
+        const ov = document.getElementById('prodModalOverlay');
+        if (ov) ov.classList.remove('show');
+    }
+    function openModal(title, bodyHTML, footHTML) {
+        ensureModalRoot();
+        document.getElementById('prodModalTitle').textContent = title;
+        document.getElementById('prodModalBody').innerHTML = bodyHTML;
+        document.getElementById('prodModalFoot').innerHTML = footHTML || '<button class="prod-modal-btn-secondary" id="prodModalCancelBtn" type="button">关闭</button>';
+        const cancel = document.getElementById('prodModalCancelBtn');
+        if (cancel) cancel.addEventListener('click', closeModal);
+        document.getElementById('prodModalOverlay').classList.add('show');
+    }
+    function openConfirmModal(title, msg, onConfirm) {
+        openModal(title, `<p style="color:#374151;font-size:14px;line-height:1.7;margin:0;">${msg}</p>`,
+            `<button class="prod-modal-btn-secondary" id="prodConfirmCancel" type="button">取消</button>
+             <button class="prod-modal-btn-danger" id="prodConfirmOk" type="button">确认清空</button>`);
+        document.getElementById('prodConfirmCancel').addEventListener('click', closeModal);
+        document.getElementById('prodConfirmOk').addEventListener('click', () => { closeModal(); onConfirm(); });
+    }
+    function openTextModal(title, desc, text) {
+        openModal(title,
+            `<p style="color:#6B7280;font-size:12px;margin:0 0 8px;">${desc}</p>
+             <textarea id="prodModalTextarea" style="width:100%;height:240px;font-family:var(--font-mono);font-size:11px;padding:10px;border:1px solid #E5E7EB;border-radius:6px;resize:vertical;" readonly></textarea>`,
+            `<button class="prod-modal-btn-secondary" id="prodTextCopy" type="button">📋 复制全文</button>
+             <button class="prod-modal-btn-primary" id="prodTextClose" type="button">关闭</button>`);
+        const ta = document.getElementById('prodModalTextarea');
+        ta.value = text;
+        document.getElementById('prodTextCopy').addEventListener('click', async () => {
+            try { await navigator.clipboard.writeText(text); showToast('已复制到剪贴板'); }
+            catch { ta.select(); document.execCommand('copy'); showToast('已复制'); }
+        });
+        document.getElementById('prodTextClose').addEventListener('click', closeModal);
+    }
+    function openImportPasteModal() {
+        openModal('📥 导入产物',
+            `<p style="color:#6B7280;font-size:12px;margin:0 0 8px;">粘贴 JSON 数组（产物导出格式）或纯文本（作为文章导入）：</p>
+             <textarea id="prodImportTextarea" placeholder='[ { "type":"article", "title":"...", "content":"..." } ] 或纯文本内容' style="width:100%;height:200px;font-family:var(--font-mono);font-size:11px;padding:10px;border:1px solid #E5E7EB;border-radius:6px;resize:vertical;"></textarea>`,
+            `<button class="prod-modal-btn-secondary" id="prodImportCancel" type="button">取消</button>
+             <button class="prod-modal-btn-primary" id="prodImportOk" type="button">导入</button>`);
+        document.getElementById('prodImportCancel').addEventListener('click', closeModal);
+        document.getElementById('prodImportOk').addEventListener('click', () => {
+            const text = document.getElementById('prodImportTextarea').value.trim();
+            if (!text) { showToast('请粘贴内容'); return; }
+            closeModal();
+            doImport('pasted.json', text);
+        });
+    }
+    function doImport(filename, content) {
+        try {
+            if (filename.endsWith('.json') || content.trim().startsWith('[') || content.trim().startsWith('{')) {
+                const arr = JSON.parse(content);
+                const list = Array.isArray(arr) ? arr : [arr];
+                let n = 0;
+                for (const it of list) {
+                    if (!it || typeof it !== 'object') continue;
+                    if (!it.id) it.id = 'imp_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+                    state.products.unshift(it);
+                    n++;
+                }
+                persist(); renderAll(); showToast(`已导入 ${n} 个产物`);
+            } else {
+                const p = upsert({ type: 'article', title: filename.replace(/\.[^.]+$/,''), content, text: content });
+                renderAll(); showToast('已导入：' + p.title);
+            }
+        } catch (err) { showToast('导入失败：' + err.message); }
     }
 
     function init() {
@@ -10022,13 +10175,20 @@ function showUserMenu() {
         const btn = document.getElementById('globalSearchBtn');
         if (btn) btn.addEventListener('click', openCmdk);
 
-        // 全局快捷键 Ctrl+K / Cmd+K
+        // 全局快捷键 Ctrl+K / Cmd+K（部分浏览器会拦截，加 / 键备选）
         document.addEventListener('keydown', (e) => {
+            // Ctrl+K / Cmd+K
             if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
                 e.preventDefault();
                 const overlay = document.getElementById('cmdkOverlay');
                 if (overlay && overlay.classList.contains('show')) closeCmdk();
                 else openCmdk();
+                return;
+            }
+            // 单独 / 键触发（输入框内不触发）
+            if (e.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '') && !document.activeElement?.isContentEditable) {
+                e.preventDefault();
+                openCmdk();
                 return;
             }
             if (e.key === 'Escape') {

@@ -2631,7 +2631,75 @@ body {
     border: 1px solid #E5E7EB;
 }
 
-/* ===== V5 主题精修：玻璃拟态按钮、微光晕 ===== */
+/* ===== V5.1 产物中心自定义 Modal（替代被沙箱拦截的 confirm/alert） ===== */
+.prod-modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(11, 31, 26, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 10002;
+    display: none;
+    align-items: center; justify-content: center;
+    padding: 20px;
+    animation: cmdkFade 0.18s ease-out;
+}
+.prod-modal-overlay.show { display: flex; }
+.prod-modal-card {
+    width: 560px; max-width: 92vw; max-height: 86vh;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.32);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    animation: cmdkSlideUp 0.22s cubic-bezier(0.22,1,0.36,1);
+}
+.prod-modal-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 20px; border-bottom: 1px solid #F3F4F6;
+}
+.prod-modal-head h3 {
+    margin: 0; font-size: 16px; font-weight: 600; color: #1F2937;
+    font-family: var(--font-serif);
+}
+.prod-modal-close {
+    background: transparent; border: none; font-size: 22px;
+    color: #9CA3AF; cursor: pointer; padding: 0 4px; line-height: 1;
+    border-radius: 4px; transition: all 0.15s;
+}
+.prod-modal-close:hover { background: #F3F4F6; color: #1F2937; }
+.prod-modal-body { padding: 18px 20px; overflow-y: auto; flex: 1; }
+.prod-modal-foot {
+    padding: 12px 20px; border-top: 1px solid #F3F4F6;
+    display: flex; justify-content: flex-end; gap: 8px;
+}
+.prod-modal-btn-secondary, .prod-modal-btn-primary, .prod-modal-btn-danger {
+    padding: 8px 16px; border-radius: 7px; font-size: 13px;
+    font-weight: 600; cursor: pointer; border: none; transition: all 0.15s;
+}
+.prod-modal-btn-secondary { background: #F3F4F6; color: #4B5563; }
+.prod-modal-btn-secondary:hover { background: #E5E7EB; }
+.prod-modal-btn-primary { background: var(--accent-gradient); color: #fff; }
+.prod-modal-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16,185,129,0.25); }
+.prod-modal-btn-danger { background: #DC2626; color: #fff; }
+.prod-modal-btn-danger:hover { background: #B91C1C; }
+
+/* ===== V5.1 主题选择器（设置 tab 独立入口） ===== */
+.theme-picker-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px;
+}
+.theme-picker-item {
+    border: 2px solid #E5E7EB; border-radius: 10px; padding: 12px;
+    cursor: pointer; transition: all 0.18s; text-align: center;
+    background: #fff;
+}
+.theme-picker-item:hover { border-color: #9CA3AF; transform: translateY(-2px); }
+.theme-picker-item.active { border-color: var(--accent-500); box-shadow: 0 0 0 3px var(--accent-soft); }
+.theme-picker-swatch {
+    width: 100%; height: 36px; border-radius: 6px; margin-bottom: 6px;
+}
+.theme-picker-name { font-size: 12px; color: #374151; font-weight: 600; }
+
+
 .btn-primary {
     position: relative;
     overflow: hidden;
