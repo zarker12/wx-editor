@@ -1144,9 +1144,10 @@ function setStyle(style) {
     const theme = getStyleTheme();
 
     if (theme.defaultColor) {
-        document.body.classList.remove(`theme-${currentColor}`);
+        document.body.className = document.body.className.replace(/\btheme-\S+/g, '').trim();
         currentColor = theme.defaultColor;
         document.body.classList.add(`theme-${currentColor}`);
+        try { localStorage.setItem('wx_theme_v5', `theme-${currentColor}`); } catch {}
         colorButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.color === currentColor));
     }
 
@@ -1161,9 +1162,10 @@ function setStyle(style) {
 }
 
 function setColor(color) {
-    document.body.classList.remove(`theme-${currentColor}`);
+    document.body.className = document.body.className.replace(/\btheme-\S+/g, '').trim();
     currentColor = color;
     document.body.classList.add(`theme-${color}`);
+    try { localStorage.setItem('wx_theme_v5', `theme-${color}`); } catch {}
     colorButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.color === color));
     syncEditorToTheme();
     updatePreview();
@@ -3194,7 +3196,8 @@ function renderThemePicker() {
     grid.querySelectorAll('.theme-picker-item').forEach(el => {
         el.addEventListener('click', () => {
             const key = el.dataset.theme;
-            document.body.classList.remove(...THEMES.map(t => t.key));
+            // 清除所有 theme-* class（含排版 tab 的 brown/black/beige），避免叠加
+            document.body.className = document.body.className.replace(/\btheme-\S+/g, '').trim();
             document.body.classList.add(key);
             try { localStorage.setItem('wx_theme_v5', key); } catch {}
             // 同步更新命令面板的 cycleTheme 状态
@@ -10163,7 +10166,8 @@ function showUserMenu() {
         const current = THEMES.find(t => body.classList.contains(t)) || 'theme-emerald';
         const idx = THEMES.indexOf(current);
         const next = THEMES[(idx + 1) % THEMES.length];
-        body.classList.remove(current);
+        // 清除所有 theme-* class（含排版 tab 的 brown/black/beige），避免叠加
+        body.className = body.className.replace(/\btheme-\S+/g, '').trim();
         body.classList.add(next);
         try { localStorage.setItem('wx_theme_v5', next); } catch {}
         showBanner(`🎨 主题已切换为 ${next.replace('theme-','')}`);
@@ -10249,8 +10253,9 @@ function showUserMenu() {
         // 恢复主题
         try {
             const saved = localStorage.getItem('wx_theme_v5');
-            if (saved) { document.body.classList.add(saved); }
-            else { document.body.classList.add('theme-emerald'); }
+            // 清除所有 theme-* class，避免与排版 tab 主题色选择器叠加
+            document.body.className = document.body.className.replace(/\btheme-\S+/g, '').trim();
+            document.body.classList.add(saved || 'theme-emerald');
         } catch { document.body.classList.add('theme-emerald'); }
         // 首次访问显示新手引导
         if (shouldShowOnboard()) {
