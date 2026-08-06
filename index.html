@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>公众号文章排版助手</title>
-    <link rel="stylesheet" href="styles.css?v=20">
+    <link rel="stylesheet" href="styles.css?v=21">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -528,66 +528,12 @@
                 <div class="section">
                     <h4>排版主题</h4>
                     <div class="style-list">
-                        <button class="style-btn active" data-style="minimal" data-tooltip="极简白：干净清爽，渐变标题">
-                            <div class="style-thumb" data-theme="minimal">
-                                <span class="thumb-h1"></span>
-                                <span class="thumb-line thumb-line-1"></span>
-                                <span class="thumb-line thumb-line-2"></span>
-                                <span class="thumb-line thumb-line-3 short"></span>
-                            </div>
-                            <span class="style-indicator"></span>
-                            <span class="style-name">极简白</span>
-                        </button>
-                        <button class="style-btn" data-style="luxury" data-tooltip="黑金奢：奢华质感，金色点缀">
-                            <div class="style-thumb" data-theme="luxury">
-                                <span class="thumb-h1"></span>
-                                <span class="thumb-line thumb-line-1"></span>
-                                <span class="thumb-line thumb-line-2"></span>
-                                <span class="thumb-line thumb-line-3 short"></span>
-                            </div>
-                            <span class="style-indicator"></span>
-                            <span class="style-name">黑金奢</span>
-                        </button>
-                        <button class="style-btn" data-style="cyber" data-tooltip="科技感：赛博朋克，代码风格">
-                            <div class="style-thumb" data-theme="cyber">
-                                <span class="thumb-h1"></span>
-                                <span class="thumb-line thumb-line-1"></span>
-                                <span class="thumb-code"></span>
-                                <span class="thumb-line thumb-line-2 short"></span>
-                            </div>
-                            <span class="style-indicator"></span>
-                            <span class="style-name">科技感</span>
-                        </button>
-                        <button class="style-btn" data-style="magazine" data-tooltip="杂志风：精致排版，视觉冲击">
-                            <div class="style-thumb" data-theme="magazine">
-                                <span class="thumb-h1"></span>
-                                <span class="thumb-h2"></span>
-                                <span class="thumb-line thumb-line-1"></span>
-                                <span class="thumb-line thumb-line-2 short"></span>
-                            </div>
-                            <span class="style-indicator"></span>
-                            <span class="style-name">杂志风</span>
-                        </button>
-                        <button class="style-btn" data-style="fresh" data-tooltip="清新绿：自然舒适，适合阅读">
-                            <div class="style-thumb" data-theme="fresh">
-                                <span class="thumb-h2"></span>
-                                <span class="thumb-line thumb-line-1"></span>
-                                <span class="thumb-quote"></span>
-                                <span class="thumb-line thumb-line-2 short"></span>
-                            </div>
-                            <span class="style-indicator"></span>
-                            <span class="style-name">清新绿</span>
-                        </button>
-                        <button class="style-btn" data-style="vibrant" data-tooltip="活力橙：温暖明快，橙色渐变">
-                            <div class="style-thumb" data-theme="vibrant">
-                                <span class="thumb-h2"></span>
-                                <span class="thumb-line thumb-line-1"></span>
-                                <span class="thumb-quote"></span>
-                                <span class="thumb-line thumb-line-2 short"></span>
-                            </div>
-                            <span class="style-indicator"></span>
-                            <span class="style-name">活力橙</span>
-                        </button>
+                        <button class="style-btn active" data-style="minimal" data-tooltip="极简白：干净清爽，渐变标题"><span class="style-name">极简白</span></button>
+                        <button class="style-btn" data-style="luxury" data-tooltip="黑金奢：奢华质感，金色点缀"><span class="style-name">黑金奢</span></button>
+                        <button class="style-btn" data-style="cyber" data-tooltip="科技感：赛博朋克，代码风格"><span class="style-name">科技感</span></button>
+                        <button class="style-btn" data-style="magazine" data-tooltip="杂志风：精致排版，视觉冲击"><span class="style-name">杂志风</span></button>
+                        <button class="style-btn" data-style="fresh" data-tooltip="清新绿：自然舒适，适合阅读"><span class="style-name">清新绿</span></button>
+                        <button class="style-btn" data-style="vibrant" data-tooltip="活力橙：温暖明快，橙色渐变"><span class="style-name">活力橙</span></button>
                     </div>
                 </div>
 
@@ -628,18 +574,9 @@
                 <div class="section">
                     <h4>字体</h4>
                     <div class="font-options">
-                        <button class="font-btn active" data-font="serif">
-                            <span class="font-sample">宋</span>
-                            衬线体
-                        </button>
-                        <button class="font-btn" data-font="sans">
-                            <span class="font-sample">黑</span>
-                            无衬线
-                        </button>
-                        <button class="font-btn" data-font="mono">
-                            <span class="font-sample">M</span>
-                            等宽体
-                        </button>
+                        <button class="font-btn active" data-font="serif"><span class="font-sample">宋</span>衬线</button>
+                        <button class="font-btn" data-font="sans"><span class="font-sample">黑</span>无衬线</button>
+                        <button class="font-btn" data-font="mono"><span class="font-sample">M</span>等宽</button>
                     </div>
                 </div>
 
@@ -1326,7 +1263,7 @@ services:
     <script src="themes/magazine.js"></script>
     <script src="themes/fresh.js"></script>
     <script src="themes/vibrant.js"></script>
-    <script src="script.js?v=60"></script>
+    <script src="script.js?v=61"></script>
 
     <!-- V5 全局命令面板 -->
     <div class="cmdk-overlay" id="cmdkOverlay">

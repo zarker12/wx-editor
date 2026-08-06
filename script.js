@@ -900,15 +900,27 @@ function compressForWechat(html) {
     // 5. 移除 span leaf 标记的空 span（这些在公众号中会产生额外间距）
     result = result.replace(/<span[^>]*leaf[^>]*>\s*<\/span>/gi, '');
     result = result.replace(/<span[^>]*leaf[^>]*>\s*<br\s*\/?>\s*<\/span>/gi, '');
-    // 6. 移除 br 标签（微信会自动处理段落间距，额外的br会导致行距翻倍）
-    //    但保留合法的 br（如用户原文中明确需要换行的），这里处理的是装饰性空span产生的多余br
+
+    // 6.【关键修复】彻底移除独立 <br> —— 微信粘贴时会为每个 <p> 自动加段距，
+    //    任何残留 <br> 都会被解析为额外空行，导致段距翻倍。
+    //    用户需要的换行应通过 <p> 段落分隔实现，而非 <br>。
+    //    仅保留 <pre><code> 内的 <br>（代码块需要原样换行）。
+    result = result.replace(/(<pre[^>]*>[\s\S]*?<\/pre>)|<br\s*\/?>/gi, (m, pre) => pre || '');
+
+    // 7. 移除 <br> 后清理空段落（避免残留空 <p></p> 产生额外间距）
+    result = result.replace(/<p[^>]*>\s*<\/p>/gi, '');
     result = result.replace(/<br\s*\/?>\s*<\/(div|p|section)>/gi, '</$1>');
-    // 7. 【关键修复】给间距/行高相关属性加 !important，抵抗公众号编辑器默认样式覆盖
-    //    公众号粘贴时会用自己的 p/section 默认 margin 和 line-height，不加 important 会导致
-    //    预览框合适的间距在公众号里变宽（被叠加默认段距）或变窄（被重置为0）
-    result = result.replace(/(margin(?:-top|-bottom|-left|-right)?):\s*([^;"]+);/gi, '$1:$2 !important;');
-    result = result.replace(/(line-height):\s*([^;"]+);/gi, '$1:$2 !important;');
-    result = result.replace(/(padding(?:-top|-bottom|-left|-right)?):\s*([^;"]+);/gi, '$1:$2 !important;');
+
+    // 8.【核心加固】给间距/行高/padding 加 !important，抵抗公众号编辑器默认样式覆盖。
+    //    公众号粘贴时会注入自己的 p/section 默认 margin(1em) 和 line-height(1.75)，
+    //    不加 important 预览合适的间距在公众号里会被叠加成 2 倍。
+    //    正则覆盖带分号和结尾引号两种形式，避免漏匹配。
+    result = result.replace(/(margin(?:-top|-bottom|-left|-right)?):\s*([^;"]+)(;|(?="))/gi, '$1:$2 !important$3');
+    result = result.replace(/(line-height):\s*([^;"]+)(;|(?="))/gi, '$1:$2 !important$3');
+    result = result.replace(/(padding(?:-top|-bottom|-left|-right)?):\s*([^;"]+)(;|(?="))/gi, '$1:$2 !important$3');
+
+    // 9.【重复 !important 防护】避免重复添加
+    result = result.replace(/!important\s+!important/gi, '!important');
     return result.trim();
 }
 
@@ -2612,6 +2624,132 @@ editor.addEventListener('paste', handlePaste);
 editor.addEventListener('dragover', handleDragOver);
 editor.addEventListener('dragleave', handleDragLeave);
 editor.addEventListener('drop', handleDrop);
+
+// ===== 编辑器回车/删除行为规范化 =====
+// 解决问题：
+//  1. 标题后回车延续标题序列（浏览器默认，保留），但删除后段落不收回
+//  2. 图片插入后与上下文间距失控（多余空 <p>、孤立 <br>）
+//  3. 删除时残留空段落堆积
+editor.addEventListener('keyup', (e) => {
+    // 仅在可能改变结构的按键后规范化
+    const structural = e.key === 'Enter' || e.key === 'Backspace' || e.key === 'Delete';
+    if (!structural) return;
+    normalizeEditorStructure();
+});
+editor.addEventListener('input', (e) => {
+    // input 事件中做轻量规范化（拖拽/粘贴/快捷插入后）
+    if (e.inputType === 'insertFromPaste' || e.inputType === 'insertFromDrop' || e.inputType === 'insertParagraph') {
+        normalizeEditorStructure();
+    }
+});
+
+// 规范化编辑器结构：清理空段落、孤立 br、相邻图片/标题间多余空段
+function normalizeEditorStructure() {
+    const root = editor;
+    let changed = false;
+
+    // 判断一个 <p> 是否"视觉为空"：无文字、无图片/视频/iframe
+    // 注意：含 <br> 或纯空白的 <p> 仍算空（contenteditable 常残留 <br>）
+    const isVisualEmpty = (p) => {
+        if (p.querySelector('img,video,iframe')) return false;
+        const text = p.textContent.replace(/\u200B/g, '').trim();
+        const noBr = p.innerHTML.replace(/<br\s*\/?>/gi, '').trim();
+        return text === '' && noBr === '';
+    };
+
+    // 1. 移除视觉为空的 <p>（仅含空白/br）
+    const empties = root.querySelectorAll('p');
+    empties.forEach(p => {
+        if (isVisualEmpty(p)) {
+            p.remove();
+            changed = true;
+        }
+    });
+
+    // 2. 清理段落/块内末尾孤立的 <br>（contenteditable 残留，导致图片与下文多余间距）
+    root.querySelectorAll('p, div, h1, h2, h3, li, blockquote').forEach(el => {
+        let last = el.lastChild;
+        while (last && last.nodeType === 3 && !last.textContent.trim()) {
+            el.removeChild(last);
+            changed = true;
+            last = el.lastChild;
+        }
+        if (last && last.nodeType === 1 && last.tagName === 'BR') {
+            el.removeChild(last);
+            changed = true;
+        }
+    });
+
+    // 3. 图片必须独占段落：若图片与文字混在同一个 <p>，拆分为独立 <p>
+    root.querySelectorAll('p').forEach(p => {
+        const imgs = p.querySelectorAll('img');
+        imgs.forEach(img => {
+            const hasText = p.textContent.trim().length > 0;
+            if (hasText || imgs.length > 1) {
+                const imgP = document.createElement('p');
+                imgP.appendChild(img.cloneNode(false));
+                p.parentNode.insertBefore(imgP, p.nextSibling);
+                img.remove();
+                changed = true;
+            }
+        });
+    });
+
+    // 4. 移除相邻的重复空段落（连续空段堆积时合并为单个）
+    const ps = root.querySelectorAll('p');
+    let prevEmpty = false;
+    ps.forEach(p => {
+        const isEmpty = isVisualEmpty(p);
+        if (isEmpty && prevEmpty) {
+            p.remove();
+            changed = true;
+        } else {
+            prevEmpty = isEmpty;
+        }
+    });
+
+    // 5. 若编辑器完全空了，保留一个占位 <p>（避免无法聚焦输入）
+    if (root.children.length === 0 || (root.children.length === 1 && root.children[0].tagName !== 'P')) {
+        const placeholder = document.createElement('p');
+        placeholder.innerHTML = '<br>';
+        root.appendChild(placeholder);
+        changed = true;
+    }
+
+    if (changed) {
+        debouncedUpdatePreview();
+    }
+}
+
+// 回车键拦截：在图片后回车，确保生成新 <p> 而非延续图片所在块
+editor.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return;
+    const anchor = sel.anchorNode;
+    if (!anchor) return;
+    // 找到最近的块级元素
+    let block = anchor.nodeType === 3 ? anchor.parentElement : anchor;
+    while (block && block !== editor && !['P','DIV','H1','H2','H3','LI','BLOCKQUOTE'].includes(block.tagName)) {
+        block = block.parentElement;
+    }
+    if (!block || block === editor) return;
+    // 若光标在图片所在块，阻止默认，手动插入新空段落
+    const img = block.tagName === 'P' ? block.querySelector('img') : null;
+    if (img && block.textContent.trim() === '') {
+        e.preventDefault();
+        const newP = document.createElement('p');
+        newP.innerHTML = '<br>';
+        block.parentNode.insertBefore(newP, block.nextSibling);
+        // 移动光标到新段落
+        const range = document.createRange();
+        range.setStart(newP, 0);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        debouncedUpdatePreview();
+    }
+});
 
 // ===== 侧边栏收起/展开（支持 localStorage 持久化 + Ctrl+B 快捷键）=====
 (function setupSidebarCollapse() {
