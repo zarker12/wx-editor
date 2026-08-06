@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>公众号文章排版助手</title>
-    <link rel="stylesheet" href="styles.css?v=19">
+    <link rel="stylesheet" href="styles.css?v=20">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -499,17 +499,32 @@
         <!-- Tab 2: 排版助手 -->
         <div class="tab-content active" id="tab-editor">
         <main class="main-content">
-            <!-- 样式设置抽屉（默认收起，按需呼出，释放编辑+预览宽度） -->
-            <div class="settings-drawer" id="settingsDrawer" aria-hidden="true">
-                <div class="settings-drawer-backdrop" data-close-settings></div>
-                <aside class="sidebar settings-panel" id="settingsPanel">
-                    <div class="settings-panel-header">
-                        <span class="settings-panel-title">样式</span>
-                        <button class="settings-panel-close" type="button" data-close-settings aria-label="关闭样式面板">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                        </button>
-                    </div>
-                    <div class="settings-panel-body">
+            <section class="editor-section">
+            <!-- 导入栏：导入MD · 链接解析 · 自动排版 · 一键配图 -->
+            <div class="import-bar">
+                <label class="import-label" for="fileInput">
+                    <span class="import-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
+                    <span>导入MD</span>
+                </label>
+                <input type="file" id="fileInput" accept=".md,.markdown,.txt" style="display:none;">
+                <div class="import-divider"></div>
+                <div class="import-link">
+                    <span class="link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>
+                    <input type="text" id="urlInput" placeholder="粘贴文章链接，自动解析排版..." />
+                    <button class="link-btn" id="parseUrlBtn" type="button">解析</button>
+                </div>
+                <div class="import-spacer"></div>
+                <button class="smart-btn" id="smartFormatBtn" type="button" data-tooltip="自动排版：识别标题/引用/代码块/列表，本地规则 + AI 增强">
+                    <span class="import-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8L20 10.7l-5.1 1.9L13 18.5l-1.9-5.9L6 10.7l5.1-1.9z"/></svg></span>
+                    <span>自动排版</span>
+                </button>
+                <button class="smart-btn smart-btn-accent" id="gotoImageBtn" type="button" data-tooltip="一键配图：AI 理解文章，生成配图自动插入">
+                    <span class="import-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>
+                    <span>一键配图</span>
+                </button>
+            </div>
+            <!-- 样式工具条（常驻上方，紧凑横向布局：主题/颜色/字体/字号/间距/字距） -->
+            <div class="style-bar" id="styleBar">
                 <div class="section">
                     <h4>排版主题</h4>
                     <div class="style-list">
@@ -654,47 +669,7 @@
                         <button class="tracking-btn" data-tracking="loose">松</button>
                     </div>
                 </div>
-                    </div><!-- /.settings-panel-body -->
-                </aside>
-            </div><!-- /.settings-drawer -->
-
-            <section class="editor-section">
-                <div class="import-bar">
-                    <button class="settings-toggle" id="settingsToggle" type="button" data-tooltip="样式面板 · 字体/颜色/间距">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="18" y2="18"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="16" cy="18" r="2"/></svg>
-                        <span class="settings-toggle-label">样式</span>
-                    </button>
-                    <div class="import-divider"></div>
-                    <div class="import-section">
-                        <label class="import-label" for="fileInput">
-                            <span class="import-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
-                            <span>导入MD</span>
-                        </label>
-                        <input type="file" id="fileInput" accept=".md,.markdown,.txt" style="display:none;">
-                    </div>
-                    <div class="import-divider"></div>
-                    <div class="import-section link-section">
-                        <div class="link-input-wrapper">
-                            <span class="link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>
-                            <input type="text" id="urlInput" placeholder="粘贴文章链接，自动解析排版..." />
-                            <button class="link-btn" id="parseUrlBtn">解析</button>
-                        </div>
-                    </div>
-                    <div class="import-divider"></div>
-                    <div class="import-section">
-                        <button class="smart-btn" id="smartFormatBtn" data-tooltip="自动排版：识别标题/引用/代码块/列表，本地规则 + AI 增强">
-                            <span class="import-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8L20 10.7l-5.1 1.9L13 18.5l-1.9-5.9L6 10.7l5.1-1.9z"/></svg></span>
-                            <span>自动排版</span>
-                        </button>
-                    </div>
-                    <div class="import-divider"></div>
-                    <div class="import-section">
-                        <button class="smart-btn" id="gotoImageBtn" data-tooltip="一键配图：AI 理解文章，生成配图自动插入">
-                            <span class="import-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>
-                            <span>一键配图</span>
-                        </button>
-                    </div>
-                </div>
+                    </div><!-- /.style-bar -->
 
                 <!-- AI 工作流进度面板 -->
                 <div id="aiWorkflowPanel" style="display:none;background:linear-gradient(135deg,#f0fdf4,#eff6ff);border:1px solid #d1fae5;border-radius:8px;padding:12px 16px;margin:8px 0 0;font-size:13px;color:#374151;">
@@ -1351,7 +1326,7 @@ services:
     <script src="themes/magazine.js"></script>
     <script src="themes/fresh.js"></script>
     <script src="themes/vibrant.js"></script>
-    <script src="script.js?v=59"></script>
+    <script src="script.js?v=60"></script>
 
     <!-- V5 全局命令面板 -->
     <div class="cmdk-overlay" id="cmdkOverlay">

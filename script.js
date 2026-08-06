@@ -2701,35 +2701,14 @@ editor.addEventListener('drop', handleDrop);
     });
 })();
 
-// ===== 样式设置抽屉（呼出/收起 + Esc 关闭 + 点击遮罩关闭）=====
-(function setupSettingsDrawer() {
-    const drawer = document.getElementById('settingsDrawer');
-    const toggle = document.getElementById('settingsToggle');
-    if (!drawer || !toggle) return;
-
-    function open() {
-        drawer.classList.add('open');
-        drawer.setAttribute('aria-hidden', 'false');
-        toggle.classList.add('open');
-        toggle.setAttribute('aria-expanded', 'true');
-    }
-    function close() {
-        drawer.classList.remove('open');
-        drawer.setAttribute('aria-hidden', 'true');
-        toggle.classList.remove('open');
-        toggle.setAttribute('aria-expanded', 'false');
-    }
-    toggle.addEventListener('click', () => {
-        drawer.classList.contains('open') ? close() : open();
-    });
-    drawer.querySelectorAll('[data-close-settings]').forEach(el => {
-        el.addEventListener('click', close);
-    });
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && drawer.classList.contains('open')) close();
-    });
-    // 暴露给外部（如选择样式后可选自动关闭）
-    window._settingsDrawer = { open, close, toggle: () => (drawer.classList.contains('open') ? close() : open()) };
+// ===== 样式工具条：可一键收起/展开（默认展开常驻上方）=====
+(function setupStyleBar() {
+    const bar = document.getElementById('styleBar');
+    if (!bar) return;
+    const STORAGE_KEY = 'mp_stylebar_collapsed';
+    let saved = null;
+    try { saved = localStorage.getItem(STORAGE_KEY); } catch (e) {}
+    if (saved === '1') bar.classList.add('collapsed');
 })();
 
 styleButtons.forEach(btn => btn.addEventListener('click', () => setStyle(btn.dataset.style)));
