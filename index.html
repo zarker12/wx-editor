@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>公众号文章排版助手</title>
-    <link rel="stylesheet" href="styles.css?v=21">
+    <link rel="stylesheet" href="styles.css?v=22">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -108,14 +108,14 @@
                             <h2 style="font-family:var(--font-serif);font-size:24px;font-weight:600;color:#1F2937;margin:0 0 4px;letter-spacing:0.5px;">信息中枢</h2>
                             <p style="color:#6B7280;font-size:13px;margin:0;">聚合所有信源，统一筛选，一键带入创作</p>
                         </div>
-                        <button id="inboxRefreshBtn" type="button" style="padding:8px 16px;background:linear-gradient(135deg,#F59E0B,#10B981);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">🔄 刷新全部</button>
+                        <button id="inboxRefreshBtn" type="button" style="padding:8px 16px;background:linear-gradient(135deg,#F59E0B,#10B981);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> 刷新全部</button>
                     </div>
 
                     <!-- 信源切换 tabs -->
                     <div id="inboxSourceTabs" style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;padding:6px;background:#fff;border:1px solid #E5E7EB;border-radius:10px;">
                         <button data-inbox-source="all" class="inbox-source-btn active" type="button" style="padding:7px 14px;background:#10B981;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">全部</button>
-                        <button data-inbox-source="wechat" class="inbox-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#07C160;border:1px solid #07C160;border-radius:6px;font-size:12px;cursor:pointer;">📢 公众号</button>
-                        <button data-inbox-source="wechat-hot" class="inbox-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#DC2626;border:1px solid #DC2626;border-radius:6px;font-size:12px;cursor:pointer;">🔥 爆文榜</button>
+                        <button data-inbox-source="wechat" class="inbox-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#07C160;border:1px solid #07C160;border-radius:6px;font-size:12px;cursor:pointer;">公众号</button>
+                        <button data-inbox-source="wechat-hot" class="inbox-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#DC2626;border:1px solid #DC2626;border-radius:6px;font-size:12px;cursor:pointer;">爆文榜</button>
                         <button data-inbox-source="weibo" class="inbox-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#E11D48;border:1px solid #E11D48;border-radius:6px;font-size:12px;cursor:pointer;">微博热搜</button>
                         <button data-inbox-source="36kr" class="inbox-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#1E40AF;border:1px solid #1E40AF;border-radius:6px;font-size:12px;cursor:pointer;">36氪</button>
                         <button data-inbox-source="douyin" class="inbox-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#111;border:1px solid #111;border-radius:6px;font-size:12px;cursor:pointer;">抖音热点</button>
@@ -124,7 +124,7 @@
 
                     <!-- 筛选栏 -->
                     <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
-                        <input type="text" id="inboxSearchInput" placeholder="🔍 搜索关键词..." style="flex:1;min-width:200px;padding:9px 14px;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#D1D5DB'">
+                        <input type="text" id="inboxSearchInput" placeholder="搜索关键词..." style="flex:1;min-width:200px;padding:9px 14px;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#D1D5DB'">
                         <select id="inboxTimeFilter" style="padding:9px 12px;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;outline:none;background:#fff;cursor:pointer;">
                             <option value="all">全部时间</option>
                             <option value="1h">近1小时</option>
@@ -147,7 +147,7 @@
             <main class="main-content" style="background:#F9FAFB;">
                 <section style="flex:1;display:flex;flex-direction:column;padding:32px 40px;overflow-y:auto;">
                     <div class="dash-panel">
-                        <h2>📰 公众号订阅</h2>
+                        <h2>公众号订阅</h2>
                         <p class="dash-sub">管理你订阅的微信公众号 RSS 源，一键同步最新文章。部署到 Cloudflare 后由 Cron 每 2 小时自动同步。</p>
                         <div class="dash-cards">
                             <div class="dash-card"><div class="num" id="dashSubCount">0</div><div class="label">已订阅公众号</div></div>
@@ -155,8 +155,8 @@
                             <div class="dash-card"><div class="num" id="dashSyncState">本地</div><div class="label">存储模式</div></div>
                         </div>
                         <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
-                            <button id="dashManageSubsBtn" type="button" style="padding:10px 18px;background:#07C160;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">⚙ 管理订阅</button>
-                            <button id="dashSyncBtn" type="button" style="padding:10px 18px;background:#fff;color:#07C160;border:1px solid #07C160;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">🔄 立即同步</button>
+                            <button id="dashManageSubsBtn" type="button" style="padding:10px 18px;background:#07C160;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>管理订阅</button>
+                            <button id="dashSyncBtn" type="button" style="padding:10px 18px;background:#fff;color:#07C160;border:1px solid #07C160;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>立即同步</button>
                             <button id="dashGoCreateBtn" type="button" style="padding:10px 18px;background:#fff;color:#3B82F6;border:1px solid #3B82F6;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">→ 去创作引用</button>
                         </div>
                         <div>
@@ -175,13 +175,13 @@
                     <!-- 标题 + 操作 -->
                     <div style="margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;">
                         <div>
-                            <h2 style="font-family:var(--font-serif);font-size:24px;font-weight:600;color:#1F2937;margin:0 0 4px;letter-spacing:0.5px;">📦 产物中心</h2>
+                            <h2 style="font-family:var(--font-serif);font-size:24px;font-weight:600;color:#1F2937;margin:0 0 4px;letter-spacing:0.5px;">产物中心</h2>
                             <p style="color:#6B7280;font-size:13px;margin:0;">统一管理文章 / 卡片 / 音频产物，支持搜索、标签、版本历史与衍生闭环</p>
                         </div>
                         <div style="display:flex;gap:8px;">
-                            <button id="prodImportBtn" type="button" style="padding:8px 14px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600;">📥 导入文件</button>
-                            <button id="prodExportBtn" type="button" style="padding:8px 14px;background:#fff;color:#3B82F6;border:1px solid #3B82F6;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600;">📤 导出全部</button>
-                            <button id="prodCleanupBtn" type="button" style="padding:8px 14px;background:#fff;color:#DC2626;border:1px solid #DC2626;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600;">🧹 清理回收站</button>
+                            <button id="prodImportBtn" type="button" style="padding:8px 14px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>导入文件</button>
+                            <button id="prodExportBtn" type="button" style="padding:8px 14px;background:#fff;color:#3B82F6;border:1px solid #3B82F6;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>导出全部</button>
+                            <button id="prodCleanupBtn" type="button" style="padding:8px 14px;background:#fff;color:#DC2626;border:1px solid #DC2626;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>清理回收站</button>
                         </div>
                     </div>
 
@@ -192,12 +192,12 @@
                     <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:10px;">
                         <div id="prodTypeFilter" style="display:flex;gap:4px;flex-wrap:wrap;">
                             <button data-prod-type="all" class="prod-filter-btn active" type="button" style="padding:6px 12px;background:#10B981;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;">全部</button>
-                            <button data-prod-type="article" class="prod-filter-btn" type="button" style="padding:6px 12px;background:#fff;color:#3B82F6;border:1px solid #3B82F6;border-radius:6px;font-size:12px;cursor:pointer;">📝 文章</button>
-                            <button data-prod-type="card" class="prod-filter-btn" type="button" style="padding:6px 12px;background:#fff;color:#8B5CF6;border:1px solid #8B5CF6;border-radius:6px;font-size:12px;cursor:pointer;">🎴 卡片</button>
-                            <button data-prod-type="audio" class="prod-filter-btn" type="button" style="padding:6px 12px;background:#fff;color:#F59E0B;border:1px solid #F59E0B;border-radius:6px;font-size:12px;cursor:pointer;">🎙 音频</button>
-                            <button data-prod-type="trash" class="prod-filter-btn" type="button" style="padding:6px 12px;background:#fff;color:#9CA3AF;border:1px solid #9CA3AF;border-radius:6px;font-size:12px;cursor:pointer;">🗑 回收站</button>
+                            <button data-prod-type="article" class="prod-filter-btn" type="button" style="padding:6px 12px;background:#fff;color:#3B82F6;border:1px solid #3B82F6;border-radius:6px;font-size:12px;cursor:pointer;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>文章</button>
+                            <button data-prod-type="card" class="prod-filter-btn" type="button" style="padding:6px 12px;background:#fff;color:#8B5CF6;border:1px solid #8B5CF6;border-radius:6px;font-size:12px;cursor:pointer;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>卡片</button>
+                            <button data-prod-type="audio" class="prod-filter-btn" type="button" style="padding:6px 12px;background:#fff;color:#F59E0B;border:1px solid #F59E0B;border-radius:6px;font-size:12px;cursor:pointer;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>音频</button>
+                            <button data-prod-type="trash" class="prod-filter-btn" type="button" style="padding:6px 12px;background:#fff;color:#9CA3AF;border:1px solid #9CA3AF;border-radius:6px;font-size:12px;cursor:pointer;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>回收站</button>
                         </div>
-                        <input type="text" id="prodSearchInput" placeholder="🔍 搜索标题/内容/标签..." style="flex:1;min-width:180px;padding:7px 12px;border:1px solid #D1D5DB;border-radius:6px;font-size:12px;outline:none;">
+                        <input type="text" id="prodSearchInput" placeholder="搜索标题/内容/标签..." style="flex:1;min-width:180px;padding:7px 12px;border:1px solid #D1D5DB;border-radius:6px;font-size:12px;outline:none;">
                         <select id="prodSortSelect" style="padding:7px 10px;border:1px solid #D1D5DB;border-radius:6px;font-size:12px;cursor:pointer;background:#fff;">
                             <option value="recent">最近更新</option>
                             <option value="created">创建时间</option>
@@ -219,7 +219,7 @@
                     </div>
 
                     <div id="prodEmpty" style="display:none;padding:60px 20px;text-align:center;color:#9CA3AF;font-size:14px;">
-                        <div style="font-size:48px;margin-bottom:12px;opacity:0.5;">📭</div>
+                        <div style="margin-bottom:12px;opacity:0.5;"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></div>
                         <div>暂无产物</div>
                         <div style="font-size:12px;margin-top:6px;color:#D1D5DB;">去「创作」或「贴图卡片」生成你的第一个产物</div>
                     </div>
@@ -232,11 +232,11 @@
             <main class="main-content" style="background:#F9FAFB;">
                 <section style="flex:1;display:flex;flex-direction:column;padding:32px 40px;overflow-y:auto;">
                     <div class="dash-panel">
-                        <h2>⚙️ 设置</h2>
+                        <h2>设置</h2>
                         <p class="dash-sub">配置 AI 模型、图片生成、订阅数据源。所有配置保存在浏览器本地。</p>
                         <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
-                            <button id="dashAiSettingsBtn" type="button" style="padding:10px 18px;background:#10B981;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">🤖 AI 模型设置</button>
-                            <button id="dashThemeBtn" type="button" style="padding:10px 18px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">🎨 主题色</button>
+                            <button id="dashAiSettingsBtn" type="button" style="padding:10px 18px;background:#10B981;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>AI 模型设置</button>
+                            <button id="dashThemeBtn" type="button" style="padding:10px 18px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>主题色</button>
                         </div>
                         <div style="padding:16px;border:1px solid #E5E7EB;border-radius:10px;background:#F9FAFB;">
                             <div style="font-size:13px;color:#374151;font-weight:600;margin-bottom:8px;">当前配置概览</div>
@@ -245,13 +245,13 @@
                         <!-- 主题色选择器（独立入口，不依赖 Ctrl+K） -->
                         <div style="margin-top:18px;padding:16px;border:1px solid #E5E7EB;border-radius:10px;background:#fff;">
                             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                                <div style="font-size:13px;color:#374151;font-weight:600;">🎨 主题色</div>
+                                <div style="font-size:13px;color:#374151;font-weight:600;">主题色</div>
                                 <span style="font-size:11px;color:#9CA3AF;">点击切换，自动持久化</span>
                             </div>
                             <div id="themePickerGrid" class="theme-picker-grid"></div>
                         </div>
                         <div style="margin-top:18px;padding:14px;border-radius:10px;background:linear-gradient(135deg,rgba(16,185,129,0.08),rgba(59,130,246,0.08));border:1px solid rgba(16,185,129,0.2);">
-                            <div style="font-size:13px;font-weight:600;color:#065F46;margin-bottom:4px;">☁️ Cloudflare 部署</div>
+                            <div style="font-size:13px;font-weight:600;color:#065F46;margin-bottom:4px;">Cloudflare 部署</div>
                             <div style="font-size:12px;color:#374151;line-height:1.6;">订阅与爆文榜单数据由 Pages Functions + D1 + Cron 提供，全部免费。当前为本地模式，部署后可持久化与自动同步。</div>
                         </div>
                     </div>
@@ -282,14 +282,14 @@
 
                             <!-- 选题来源（多源分级） -->
                             <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
-                                <button data-source="weibo" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#E11D48;border:1px solid #E11D48;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">🔥 微博热搜</button>
-                                <button data-source="douyin" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#111;border:1px solid #111;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">🎵 抖音热点</button>
-                                <button data-source="36kr" class="topic-source-btn active" type="button" style="padding:7px 14px;background:#1E40AF;color:#fff;border:1px solid #1E40AF;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">📊 36氪科技</button>
-                                <button data-source="recommend" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#3B82F6;border:1px solid #3B82F6;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">🌐 综合资讯</button>
-                                <button data-source="wechat" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#07C160;border:1px solid #07C160;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">📢 公众号订阅</button>
-                                <button data-source="wechat-hot" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#DC2626;border:1px solid #DC2626;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">🔥 微信爆文榜</button>
-                                <button id="manageSubsBtn" type="button" title="管理公众号订阅" style="padding:7px 10px;background:#fff;color:#07C160;border:1px solid #07C160;border-radius:6px;font-size:12px;cursor:pointer;">⚙ 订阅</button>
-                                <button id="refreshTopicsBtn" type="button" style="padding:7px 12px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:6px;font-size:12px;cursor:pointer;margin-left:auto;">🔄 刷新</button>
+                                <button data-source="weibo" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#E11D48;border:1px solid #E11D48;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>微博热搜</button>
+                                <button data-source="douyin" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#111;border:1px solid #111;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>抖音热点</button>
+                                <button data-source="36kr" class="topic-source-btn active" type="button" style="padding:7px 14px;background:#1E40AF;color:#fff;border:1px solid #1E40AF;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>36氪科技</button>
+                                <button data-source="recommend" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#3B82F6;border:1px solid #3B82F6;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>综合资讯</button>
+                                <button data-source="wechat" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#07C160;border:1px solid #07C160;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>公众号订阅</button>
+                                <button data-source="wechat-hot" class="topic-source-btn" type="button" style="padding:7px 14px;background:#fff;color:#DC2626;border:1px solid #DC2626;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>微信爆文榜</button>
+                                <button id="manageSubsBtn" type="button" title="管理公众号订阅" style="padding:7px 10px;background:#fff;color:#07C160;border:1px solid #07C160;border-radius:6px;font-size:12px;cursor:pointer;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>订阅</button>
+                                <button id="refreshTopicsBtn" type="button" style="padding:7px 12px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:6px;font-size:12px;cursor:pointer;margin-left:auto;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>刷新</button>
                             </div>
 
                             <!-- 分类筛选 -->
@@ -308,50 +308,50 @@
                             <div style="margin-top:16px;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;background:#fff;">
                                 <!-- 模式切换：AI 一键 / 自定义 -->
                                 <div style="display:flex;border-bottom:1px solid #E5E7EB;">
-                                    <button id="blueprintModeAI" type="button" class="blueprint-mode-btn active" data-mode="ai" style="flex:1;padding:11px;background:linear-gradient(135deg,#10B981,#3B82F6);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;">🚀 AI 一键创作</button>
-                                    <button id="blueprintModeCustom" type="button" class="blueprint-mode-btn" data-mode="custom" style="flex:1;padding:11px;background:#fff;color:#6B7280;border:none;font-size:13px;font-weight:600;cursor:pointer;">✍ 自定义创作</button>
+                                    <button id="blueprintModeAI" type="button" class="blueprint-mode-btn active" data-mode="ai" style="flex:1;padding:11px;background:linear-gradient(135deg,#10B981,#3B82F6);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.08-2.91a2.18 2.18 0 0 0-2.91-.08z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>AI 一键创作</button>
+                                    <button id="blueprintModeCustom" type="button" class="blueprint-mode-btn" data-mode="custom" style="flex:1;padding:11px;background:#fff;color:#6B7280;border:none;font-size:13px;font-weight:600;cursor:pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>自定义创作</button>
                                 </div>
 
                                 <!-- AI 模式面板 -->
                                 <div id="blueprintAIPanel" style="padding:18px;">
                                     <!-- 内容类型（图标卡片选择） -->
                                     <div style="margin-bottom:16px;">
-                                        <label style="display:block;font-size:12px;color:#374151;font-weight:700;margin-bottom:8px;">📝 内容类型</label>
+                                        <label style="display:block;font-size:12px;color:#374151;font-weight:700;margin-bottom:8px;">内容类型</label>
                                         <div id="blueprintTypeGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;">
                                             <button type="button" class="bp-type-btn active" data-type="opinion" style="padding:10px 8px;border:1.5px solid #10B981;background:#ECFDF5;border-radius:8px;cursor:pointer;text-align:center;transition:all 0.2s;">
-                                                <div style="font-size:20px;">💬</div><div style="font-size:11px;color:#1F2937;font-weight:600;margin-top:4px;">观点评论</div>
+                                                <div style="font-size:20px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div style="font-size:11px;color:#1F2937;font-weight:600;margin-top:4px;">观点评论</div>
                                             </button>
                                             <button type="button" class="bp-type-btn" data-type="experience" style="padding:10px 8px;border:1.5px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;text-align:center;transition:all 0.2s;">
-                                                <div style="font-size:20px;">🎯</div><div style="font-size:11px;color:#6B7280;font-weight:600;margin-top:4px;">经验分享</div>
+                                                <div style="font-size:20px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div><div style="font-size:11px;color:#6B7280;font-weight:600;margin-top:4px;">经验分享</div>
                                             </button>
                                             <button type="button" class="bp-type-btn" data-type="knowledge" style="padding:10px 8px;border:1.5px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;text-align:center;transition:all 0.2s;">
-                                                <div style="font-size:20px;">📚</div><div style="font-size:11px;color:#6B7280;font-weight:600;margin-top:4px;">知识科普</div>
+                                                <div style="font-size:20px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><div style="font-size:11px;color:#6B7280;font-weight:600;margin-top:4px;">知识科普</div>
                                             </button>
                                             <button type="button" class="bp-type-btn" data-type="emotion" style="padding:10px 8px;border:1.5px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;text-align:center;transition:all 0.2s;">
-                                                <div style="font-size:20px;">💛</div><div style="font-size:11px;color:#6B7280;font-weight:600;margin-top:4px;">情感共鸣</div>
+                                                <div style="font-size:20px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div><div style="font-size:11px;color:#6B7280;font-weight:600;margin-top:4px;">情感共鸣</div>
                                             </button>
                                             <button type="button" class="bp-type-btn" data-type="story" style="padding:10px 8px;border:1.5px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;text-align:center;transition:all 0.2s;">
-                                                <div style="font-size:20px;">📖</div><div style="font-size:11px;color:#6B7280;font-weight:600;margin-top:4px;">故事叙事</div>
+                                                <div style="font-size:20px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div><div style="font-size:11px;color:#6B7280;font-weight:600;margin-top:4px;">故事叙事</div>
                                             </button>
                                             <button type="button" class="bp-type-btn" data-type="insight" style="padding:10px 8px;border:1.5px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;text-align:center;transition:all 0.2s;">
-                                                <div style="font-size:20px;">🔍</div><div style="font-size:11px;color:#6B7280;font-weight:600;margin-top:4px;">行业洞察</div>
+                                                <div style="font-size:20px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div style="font-size:11px;color:#6B7280;font-weight:600;margin-top:4px;">行业洞察</div>
                                             </button>
                                         </div>
                                     </div>
 
                                     <!-- 受众画像 -->
                                     <div style="margin-bottom:16px;">
-                                        <label style="display:block;font-size:12px;color:#374151;font-weight:700;margin-bottom:8px;">👥 目标受众</label>
+                                        <label style="display:block;font-size:12px;color:#374151;font-weight:700;margin-bottom:8px;">目标受众</label>
                                         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-                                            <button type="button" class="bp-aud-btn" data-aud="beginner" style="padding:9px;border:1.5px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;font-size:12px;color:#6B7280;font-weight:600;transition:all 0.2s;">🌱 小白</button>
-                                            <button type="button" class="bp-aud-btn active" data-aud="intermediate" style="padding:9px;border:1.5px solid #10B981;background:#ECFDF5;border-radius:8px;cursor:pointer;font-size:12px;color:#1F2937;font-weight:600;transition:all 0.2s;">💼 进阶</button>
-                                            <button type="button" class="bp-aud-btn" data-aud="expert" style="padding:9px;border:1.5px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;font-size:12px;color:#6B7280;font-weight:600;transition:all 0.2s;">🎓 专家</button>
+                                            <button type="button" class="bp-aud-btn" data-aud="beginner" style="padding:9px;border:1.5px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;font-size:12px;color:#6B7280;font-weight:600;transition:all 0.2s;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.1-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.7 2z"/></svg>小白</button>
+                                            <button type="button" class="bp-aud-btn active" data-aud="intermediate" style="padding:9px;border:1.5px solid #10B981;background:#ECFDF5;border-radius:8px;cursor:pointer;font-size:12px;color:#1F2937;font-weight:600;transition:all 0.2s;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>进阶</button>
+                                            <button type="button" class="bp-aud-btn" data-aud="expert" style="padding:9px;border:1.5px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;font-size:12px;color:#6B7280;font-weight:600;transition:all 0.2s;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>专家</button>
                                         </div>
                                     </div>
 
                                     <!-- 调性滑块（双轴） -->
                                     <div style="margin-bottom:16px;">
-                                        <label style="display:block;font-size:12px;color:#374151;font-weight:700;margin-bottom:10px;">🎛 语气调性</label>
+                                        <label style="display:block;font-size:12px;color:#374151;font-weight:700;margin-bottom:10px;">语气调性</label>
                                         <div style="display:flex;flex-direction:column;gap:10px;">
                                             <div>
                                                 <div style="display:flex;justify-content:space-between;font-size:11px;color:#6B7280;margin-bottom:3px;"><span>严谨</span><span id="bpTone1Val" style="color:#10B981;font-weight:600;">50</span><span>活泼</span></div>
@@ -370,7 +370,7 @@
 
                                     <!-- 结构模板 -->
                                     <div style="margin-bottom:16px;">
-                                        <label style="display:block;font-size:12px;color:#374151;font-weight:700;margin-bottom:8px;">🏗 结构模板</label>
+                                        <label style="display:block;font-size:12px;color:#374151;font-weight:700;margin-bottom:8px;">结构模板</label>
                                         <select id="blueprintStructure" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;outline:none;background:#fff;cursor:pointer;">
                                             <option value="pyramid" selected>金字塔（结论先行 → 论据展开）</option>
                                             <option value="scqa">SCQA（情境 → 冲突 → 问题 → 答案）</option>
@@ -384,7 +384,7 @@
                                     <!-- 长度 + 目标平台 -->
                                     <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
                                         <div style="flex:1;min-width:130px;">
-                                            <label style="display:block;font-size:12px;color:#374151;font-weight:700;margin-bottom:8px;">📏 长度</label>
+                                            <label style="display:block;font-size:12px;color:#374151;font-weight:700;margin-bottom:8px;">长度</label>
                                             <select id="blueprintLength" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;outline:none;background:#fff;cursor:pointer;">
                                                 <option value="800">短 · 朋友圈向</option>
                                                 <option value="1200" selected>中 · 公众号标准</option>
@@ -393,7 +393,7 @@
                                             </select>
                                         </div>
                                         <div style="flex:1;min-width:130px;">
-                                            <label style="display:block;font-size:12px;color:#374151;font-weight:700;margin-bottom:8px;">📱 目标平台</label>
+                                            <label style="display:block;font-size:12px;color:#374151;font-weight:700;margin-bottom:8px;">目标平台</label>
                                             <select id="blueprintPlatform" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;outline:none;background:#fff;cursor:pointer;">
                                                 <option value="wechat" selected>公众号</option>
                                                 <option value="xiaohongshu">小红书</option>
@@ -410,7 +410,7 @@
                                         <button type="button" class="bp-preset-btn" data-preset="warm-story" style="padding:5px 11px;background:#F3F4F6;color:#F59E0B;border:none;border-radius:12px;font-size:11px;cursor:pointer;">温暖故事</button>
                                         <button type="button" class="bp-preset-btn" data-preset="sharp-opinion" style="padding:5px 11px;background:#F3F4F6;color:#E11D48;border:none;border-radius:12px;font-size:11px;cursor:pointer;">犀利观点</button>
                                         <button type="button" class="bp-preset-btn" data-preset="knowledge-pop" style="padding:5px 11px;background:#F3F4F6;color:#10B981;border:none;border-radius:12px;font-size:11px;cursor:pointer;">科普通俗</button>
-                                        <button id="bpSavePresetBtn" type="button" style="padding:5px 11px;background:#fff;color:#6B7280;border:1px dashed #D1D5DB;border-radius:12px;font-size:11px;cursor:pointer;">💾 存当前</button>
+                                        <button id="bpSavePresetBtn" type="button" style="padding:5px 11px;background:#fff;color:#6B7280;border:1px dashed #D1D5DB;border-radius:12px;font-size:11px;cursor:pointer;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>存当前</button>
                                     </div>
                                 </div>
 
@@ -425,13 +425,13 @@
                                         <button type="button" class="ai-assist-btn" data-action="shorten" style="padding:6px 10px;background:transparent;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;">缩写</button>
                                         <button type="button" class="ai-assist-btn" data-action="title" style="padding:6px 10px;background:transparent;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;">改标题</button>
                                     </div>
-                                    <div style="font-size:11px;color:#9CA3AF;padding:8px 10px;background:#FEF3C7;border-radius:6px;margin-bottom:10px;">💡 提示：选中任意文字，会浮现 AI 辅助工具栏</div>
+                                    <div style="font-size:11px;color:#9CA3AF;padding:8px 10px;background:#FEF3C7;border-radius:6px;margin-bottom:10px;">提示：选中任意文字，会浮现 AI 辅助工具栏</div>
                                 </div>
                             </div>
 
                             <!-- 生成按钮（两种模式共用） -->
                             <div style="display:flex;gap:10px;margin-top:16px;">
-                                <button id="createGenerateBtn" type="button" style="flex:1;padding:11px 20px;background:linear-gradient(135deg,#10B981,#3B82F6);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">🚀 生成文章</button>
+                                <button id="createGenerateBtn" type="button" style="flex:1;padding:11px 20px;background:linear-gradient(135deg,#10B981,#3B82F6);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.08-2.91a2.18 2.18 0 0 0-2.91-.08z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>生成文章</button>
                                 <button id="createRegenerateBtn" type="button" disabled style="padding:11px 18px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;cursor:not-allowed;">↻ 重新生成</button>
                             </div>
                         </div>
@@ -472,7 +472,7 @@
 
                         <!-- 空状态 -->
                         <div id="createEmptyState" style="text-align:center;padding:60px 20px;color:#9CA3AF;">
-                            <div style="font-size:48px;margin-bottom:16px;">📝</div>
+                            <div style="margin-bottom:16px;"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg></div>
                             <p style="font-size:15px;margin:0 0 20px;font-weight:500;color:#6B7280;">三步完成文章创作</p>
                             <div style="display:flex;gap:24px;justify-content:center;flex-wrap:wrap;max-width:500px;margin:0 auto;">
                                 <div style="text-align:center;">
@@ -624,8 +624,8 @@
 
                         <!-- Tab 切换 -->
                         <div style="display:flex;gap:0;margin-bottom:18px;border-bottom:1px solid #E5E7EB;">
-                            <button class="ai-settings-tab active" data-tab="text" style="padding:10px 16px;border:none;background:none;font-size:13px;font-weight:600;color:#10B981;border-bottom:2px solid #10B981;cursor:pointer;">📝 文章生成</button>
-                            <button class="ai-settings-tab" data-tab="image" style="padding:10px 16px;border:none;background:none;font-size:13px;font-weight:500;color:#6B7280;border-bottom:2px solid transparent;cursor:pointer;">🖼 图片生成</button>
+                            <button class="ai-settings-tab active" data-tab="text" style="padding:10px 16px;border:none;background:none;font-size:13px;font-weight:600;color:#10B981;border-bottom:2px solid #10B981;cursor:pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>文章生成</button>
+                            <button class="ai-settings-tab" data-tab="image" style="padding:10px 16px;border:none;background:none;font-size:13px;font-weight:500;color:#6B7280;border-bottom:2px solid transparent;cursor:pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>图片生成</button>
                         </div>
 
                         <!-- Tab 1: 文章生成 -->
@@ -660,7 +660,7 @@
                                     <label style="display:block;font-size:13px;color:#374151;margin-bottom:6px;font-weight:600;">模型名称</label>
                                     <div style="display:flex;gap:6px;">
                                         <input type="text" id="llmModelInput" placeholder="如：gpt-4o / glm-4 / deepseek-chat" style="flex:1;padding:8px 10px;border:1px solid #D1D5DB;border-radius:6px;font-size:13px;box-sizing:border-box;">
-                                        <button id="refreshLLMModelsBtn" type="button" style="padding:8px 12px;background:#3B82F6;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">🔄 刷新模型</button>
+                                        <button id="refreshLLMModelsBtn" type="button" style="padding:8px 12px;background:#3B82F6;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>刷新模型</button>
                                     </div>
                                     <div id="llmModelList" style="margin-top:8px;max-height:160px;overflow-y:auto;border:1px solid #E5E7EB;border-radius:6px;padding:4px;display:none;"></div>
                                 </div>
@@ -675,7 +675,7 @@
                                 </select>
                             </div>
                             <div style="margin-top:16px;padding-top:14px;border-top:1px dashed #E5E7EB;">
-                                <button id="llmTestBtn" type="button" style="padding:8px 16px;background:#10B981;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600;">🔗 测试 LLM 连接</button>
+                                <button id="llmTestBtn" type="button" style="padding:8px 16px;background:#10B981;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>测试 LLM 连接</button>
                                 <div id="llmTestResult" style="margin-top:8px;font-size:12px;line-height:1.6;"></div>
                             </div>
                         </div>
@@ -683,7 +683,7 @@
                         <!-- Tab 2: 图片生成 -->
                         <div class="ai-settings-panel" data-panel="image" style="display:none;">
                             <div style="padding:12px 14px;background:#F0FDF4;border:1px solid #D1FAE5;border-radius:8px;margin-bottom:14px;font-size:12px;color:#374151;line-height:1.6;">
-                                <strong>💡 说明：</strong>配置图片生成 API 后，配图将使用你的 API 生成（国内服务速度快 10-20 倍）。<br>
+                                <strong>说明：</strong>配置图片生成 API 后，配图将使用你的 API 生成（国内服务速度快 10-20 倍）。<br>
                                 <strong>不填则使用免费方案</strong>（Pollinations.ai，海外服务，速度较慢但免费）。
                             </div>
                             <div style="margin-bottom:14px;">
@@ -712,7 +712,7 @@
                                     <label style="display:block;font-size:13px;color:#374151;margin-bottom:6px;font-weight:600;">模型名称</label>
                                     <div style="display:flex;gap:6px;">
                                         <input type="text" id="imageModelInput" placeholder="自动根据提供商填入" style="flex:1;padding:8px 10px;border:1px solid #D1D5DB;border-radius:6px;font-size:13px;box-sizing:border-box;">
-                                        <button id="refreshImageModelsBtn" type="button" style="padding:8px 12px;background:#3B82F6;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;">🔄 刷新模型</button>
+                                        <button id="refreshImageModelsBtn" type="button" style="padding:8px 12px;background:#3B82F6;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>刷新模型</button>
                                     </div>
                                     <div id="imageModelList" style="margin-top:8px;max-height:160px;overflow-y:auto;border:1px solid #E5E7EB;border-radius:6px;padding:4px;display:none;"></div>
                                 </div>
@@ -721,7 +721,7 @@
                                 <strong>提示：</strong>智谱 CogView-3 和通义万相为国内服务，速度通常 3-8 秒/张，比 Pollinations 快 10-20 倍。推荐优先使用。
                             </div>
                             <div style="margin-top:14px;padding-top:14px;border-top:1px dashed #E5E7EB;">
-                                <button id="imageTestBtn" type="button" style="padding:8px 16px;background:#3B82F6;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600;">🔗 测试图片 API 连接</button>
+                                <button id="imageTestBtn" type="button" style="padding:8px 16px;background:#3B82F6;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>测试图片 API 连接</button>
                                 <div id="imageTestResult" style="margin-top:8px;font-size:12px;line-height:1.6;"></div>
                             </div>
                         </div>
@@ -744,8 +744,8 @@
 
                         <!-- 操作按钮 -->
                         <div style="display:flex;gap:8px;margin-bottom:16px;">
-                            <button id="saveDraftBtn" style="flex:1;padding:10px 14px;background:#10B981;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">💾 保存当前为草稿</button>
-                            <button id="downloadMdBtn" style="flex:1;padding:10px 14px;background:#3B82F6;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">📥 下载为 .md 文件</button>
+                            <button id="saveDraftBtn" style="flex:1;padding:10px 14px;background:#10B981;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>保存当前为草稿</button>
+                            <button id="downloadMdBtn" style="flex:1;padding:10px 14px;background:#3B82F6;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>下载为 .md 文件</button>
                         </div>
 
                         <!-- 草稿列表 -->
@@ -774,37 +774,27 @@
                 <div class="editor-toolbar">
                     <div class="toolbar-group" data-group="block">
                         <div class="toolbar-group-label">段落</div>
-                        <button class="tool-btn" data-action="h1" data-tooltip="一级标题 · Ctrl+Alt+1">H1</button>
-                        <button class="tool-btn" data-action="h2" data-tooltip="二级标题 · Ctrl+Alt+2">H2</button>
-                        <button class="tool-btn" data-action="h3" data-tooltip="三级标题 · Ctrl+Alt+3">H3</button>
-                        <button class="tool-btn" data-action="p" data-tooltip="正文段落">¶</button>
+                        <button class="tool-btn" data-action="h1" data-tooltip="一级标题 · Ctrl+Alt+1"><span class="tool-glyph">H<sub>1</sub></span></button>
+                        <button class="tool-btn" data-action="h2" data-tooltip="二级标题 · Ctrl+Alt+2"><span class="tool-glyph">H<sub>2</sub></span></button>
+                        <button class="tool-btn" data-action="h3" data-tooltip="三级标题 · Ctrl+Alt+3"><span class="tool-glyph">H<sub>3</sub></span></button>
+                        <button class="tool-btn" data-action="p" data-tooltip="正文段落"><svg class="tool-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="14" y2="18"/></svg></button>
                     </div>
                     <div class="toolbar-divider"></div>
                     <div class="toolbar-group" data-group="inline">
                         <div class="toolbar-group-label">字符</div>
-                        <button class="tool-btn" data-action="bold" data-tooltip="加粗 · Ctrl+B">
-                            <span class="tool-text-bold">B</span>
-                        </button>
-                        <button class="tool-btn" data-action="italic" data-tooltip="斜体 · Ctrl+I">
-                            <span class="tool-text-italic">I</span>
-                        </button>
-                        <button class="tool-btn" data-action="underline" data-tooltip="下划线 · Ctrl+U">
-                            <span class="tool-text-underline">U</span>
-                        </button>
-                        <button class="tool-btn" data-action="strikethrough" data-tooltip="删除线">
-                            <span class="tool-text-strike">S</span>
-                        </button>
-                        <button class="tool-btn" data-action="code" data-tooltip="行内代码">
-                            &lt;/&gt;
-                        </button>
+                        <button class="tool-btn" data-action="bold" data-tooltip="加粗 · Ctrl+B"><span class="tool-glyph tool-glyph-bold">B</span></button>
+                        <button class="tool-btn" data-action="italic" data-tooltip="斜体 · Ctrl+I"><span class="tool-glyph tool-glyph-italic">I</span></button>
+                        <button class="tool-btn" data-action="underline" data-tooltip="下划线 · Ctrl+U"><span class="tool-glyph tool-glyph-underline">U</span></button>
+                        <button class="tool-btn" data-action="strikethrough" data-tooltip="删除线"><span class="tool-glyph tool-glyph-strike">S</span></button>
+                        <button class="tool-btn" data-action="code" data-tooltip="行内代码"><svg class="tool-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></button>
                     </div>
                     <div class="toolbar-divider"></div>
                     <div class="toolbar-group" data-group="list">
                         <div class="toolbar-group-label">列表</div>
-                        <button class="tool-btn" data-action="list" data-tooltip="无序列表">•≡</button>
-                        <button class="tool-btn" data-action="olist" data-tooltip="有序列表">1≡</button>
-                        <button class="tool-btn" data-action="quote" data-tooltip="引用块">❝</button>
-                        <button class="tool-btn" data-action="divider" data-tooltip="分割线">—</button>
+                        <button class="tool-btn" data-action="list" data-tooltip="无序列表"><svg class="tool-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="3.5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="3.5" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg></button>
+                        <button class="tool-btn" data-action="olist" data-tooltip="有序列表"><svg class="tool-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4M4 10h2M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg></button>
+                        <button class="tool-btn" data-action="quote" data-tooltip="引用块"><svg class="tool-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2-2-2H4c-1.25 0-2 .75-2 2v8c0 1.25.75 2 2 2h2"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.756-2-2-2h-4c-1.25 0-2 .75-2 2v8c0 1.25.75 2 2 2h2"/></svg></button>
+                        <button class="tool-btn" data-action="divider" data-tooltip="分割线"><svg class="tool-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/></svg></button>
                     </div>
                     <div class="toolbar-divider"></div>
                     <div class="toolbar-group" data-group="insert">
@@ -815,8 +805,8 @@
                     <div class="toolbar-divider"></div>
                     <div class="toolbar-group" data-group="history">
                         <div class="toolbar-group-label">历史</div>
-                        <button class="tool-btn" data-action="undo" data-tooltip="撤销 · Ctrl+Z">↶</button>
-                        <button class="tool-btn" data-action="redo" data-tooltip="重做 · Ctrl+Y">↷</button>
+                        <button class="tool-btn" data-action="undo" data-tooltip="撤销 · Ctrl+Z"><svg class="tool-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>
+                        <button class="tool-btn" data-action="redo" data-tooltip="重做 · Ctrl+Y"><svg class="tool-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
                     </div>
                     <div class="toolbar-spacer"></div>
                 </div>
@@ -834,39 +824,44 @@
 
                 <div class="intro-card-editor">
                     <div class="intro-card-title">
-                        <span>底部名片</span>
+                        <span class="intro-title-text">
+                            <svg class="intro-title-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            底部名片
+                        </span>
                         <label class="intro-toggle">
                             <input type="checkbox" id="introEnabled" checked>
-                            <span>显示</span>
+                            <span class="intro-toggle-track"></span>
+                            <span class="intro-toggle-label">显示</span>
                         </label>
                     </div>
                     <div class="intro-fields">
                         <div class="intro-row">
-                            <span class="intro-icon">·</span>
+                            <span class="intro-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
                             <input type="text" id="introName" class="intro-input" value="你的名字" data-field="name">
                             <span class="intro-sep">｜</span>
                             <input type="text" id="introTitle" class="intro-input" value="一句话介绍你自己" data-field="title">
                         </div>
                         <div class="intro-row">
-                            <span class="intro-icon">·</span>
+                            <span class="intro-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span>
                             <span class="intro-label">关注：</span>
                             <input type="text" id="introFocus" class="intro-input" value="你关注的领域" data-field="focus">
                         </div>
                         <div class="intro-row">
-                            <span class="intro-icon">·</span>
+                            <span class="intro-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
                             <span class="intro-label">产出：</span>
                             <input type="text" id="introOutput" class="intro-input" value="你的内容方向" data-field="output">
                         </div>
                         <div class="intro-row intro-slogan-row">
+                            <span class="intro-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
                             <input type="text" id="introSlogan" class="intro-input intro-slogan" value="一句签名 / 更新频率 / 感谢关注" data-field="slogan">
                         </div>
                         <div class="intro-divider"></div>
                         <div class="intro-row">
-                            <span class="intro-icon">·</span>
+                            <span class="intro-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
                             <input type="text" id="introDisclaimer1" class="intro-input" value="个人观点，仅供参考" data-field="disclaimer1">
                         </div>
                         <div class="intro-row">
-                            <span class="intro-icon">·</span>
+                            <span class="intro-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></span>
                             <input type="text" id="introDisclaimer2" class="intro-input" value="素材来源网络，如有侵权请联系删除" data-field="disclaimer2">
                         </div>
                     </div>
@@ -907,28 +902,28 @@
                         <h4>生成模式</h4>
                         <div class="mode-tabs">
                             <button class="mode-btn" data-mode="article-illustration" data-tooltip="接收排版助手文章，生成封面+文中配图，可单独重新生成">
-                                <span class="mode-icon">🎯</span>
+                                <span class="mode-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
                                 <div>
                                     <div class="mode-title">文章配图</div>
                                     <div class="mode-desc">封面+文中配图，精细化</div>
                                 </div>
                             </button>
                             <button class="mode-btn active" data-mode="cover">
-                                <span class="mode-icon">📌</span>
+                                <span class="mode-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg></span>
                                 <div>
                                     <div class="mode-title">封面图</div>
                                     <div class="mode-desc">标题/短句，单张</div>
                                 </div>
                             </button>
                             <button class="mode-btn" data-mode="article">
-                                <span class="mode-icon">📄</span>
+                                <span class="mode-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
                                 <div>
                                     <div class="mode-title">文章长图</div>
                                     <div class="mode-desc">整篇文章，自动分页</div>
                                 </div>
                             </button>
                             <button class="mode-btn" data-mode="content-cards" data-tooltip="根据标题/文章自动生成 3:4 贴图卡片系列，Canvas 合成文字，多风格">
-                                <span class="mode-icon">🎴</span>
+                                <span class="mode-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>
                                 <div>
                                     <div class="mode-title">贴图卡片</div>
                                     <div class="mode-desc">金句/标题/封面卡，Canvas 合成</div>
@@ -1026,15 +1021,15 @@
                         <div class="input-actions">
                             <button class="btn btn-ghost" id="clearImageBtn">清空</button>
                             <button class="btn btn-primary" id="generateBtn">
-                                <span class="btn-icon">✨</span>
+                                <span class="btn-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8L20 10.7l-5.1 1.9L13 18.5l-1.9-5.9L6 10.7l5.1-1.9z"/></svg></span>
                                 生成图片
                             </button>
                             <button class="btn btn-outline" id="downloadBtn">
-                                <span class="btn-icon">⬇</span>
+                                <span class="btn-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg></span>
                                 下载图片
                             </button>
                             <button class="btn btn-outline" id="downloadAllBtn" style="display:none;">
-                                <span class="btn-icon">📦</span>
+                                <span class="btn-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span>
                                 打包下载全部
                             </button>
                         </div>
@@ -1047,7 +1042,7 @@
                         </div>
                         <div class="image-preview-wrap" id="imagePreviewWrap">
                             <div class="image-placeholder">
-                                <div class="placeholder-icon">🖼</div>
+                                <div class="placeholder-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
                                 <div class="placeholder-text">输入内容后点击生成图片</div>
                             </div>
                         </div>
@@ -1073,8 +1068,8 @@
 
                         <!-- 操作工具栏 -->
                         <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
-                            <button id="aiPlanImagesBtn" type="button" style="flex:1;min-width:180px;padding:11px 16px;background:linear-gradient(135deg,#10B981,#3B82F6);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">🎯 规划配图 Prompt</button>
-                            <button id="aiGenerateAllBtn" type="button" disabled style="padding:11px 16px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;cursor:not-allowed;">⚡ 一键生成全部</button>
+                            <button id="aiPlanImagesBtn" type="button" style="flex:1;min-width:180px;padding:11px 16px;background:linear-gradient(135deg,#10B981,#3B82F6);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>规划配图 Prompt</button>
+                            <button id="aiGenerateAllBtn" type="button" disabled style="padding:11px 16px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;cursor:not-allowed;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>一键生成全部</button>
                             <button id="aiApplyToEditorBtn" type="button" disabled style="padding:11px 16px;background:#fff;color:#6B7280;border:1px solid #D1D5DB;border-radius:8px;font-size:13px;cursor:not-allowed;">应用到排版助手 →</button>
                         </div>
 
@@ -1097,7 +1092,7 @@
 
                         <!-- 空状态 -->
                         <div id="aiEmptyState" style="text-align:center;padding:40px 20px;color:#9CA3AF;">
-                            <div style="font-size:36px;margin-bottom:8px;">🎯</div>
+                            <div style="margin-bottom:8px;"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
                             <p style="font-size:13px;margin:0;">点击「规划配图 Prompt」开始</p>
                         </div>
                     </div>
@@ -1107,7 +1102,7 @@
                 <div id="contentCardsPanel" style="display:none;flex:1;flex-direction:column;padding:24px 32px;overflow-y:auto;">
                     <div style="max-width:1100px;margin:0 auto;width:100%;">
                         <div style="margin-bottom:18px;">
-                            <h2 style="font-family:var(--font-serif);font-size:22px;font-weight:600;color:#1F2937;margin:0 0 4px;">🎴 贴图卡片生成</h2>
+                            <h2 style="font-family:var(--font-serif);font-size:22px;font-weight:600;color:#1F2937;margin:0 0 4px;">贴图卡片生成</h2>
                             <p style="color:#6B7280;font-size:13px;margin:0 0 14px;">输入标题或文章，自动生成 3:4 贴图卡片系列（封面卡+内容卡+总结卡），Canvas 合成文字，多风格可选。</p>
                         </div>
 
@@ -1151,7 +1146,7 @@
                                         <option value="entertain">娱乐粉</option>
                                     </select>
                                 </div>
-                                <button id="ccGenerateBtn" type="button" style="margin-left:auto;padding:9px 18px;background:linear-gradient(135deg,#10B981,#3B82F6);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">🎨 生成卡片</button>
+                                <button id="ccGenerateBtn" type="button" style="margin-left:auto;padding:9px 18px;background:linear-gradient(135deg,#10B981,#3B82F6);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>生成卡片</button>
                             </div>
                         </div>
 
@@ -1170,7 +1165,7 @@
     <div id="subsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
         <div style="background:#fff;border-radius:12px;padding:24px;max-width:560px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-                <h3 style="margin:0;font-size:17px;color:#111;">📢 公众号订阅管理</h3>
+                <h3 style="margin:0;font-size:17px;color:#111;">公众号订阅管理</h3>
                 <button id="subsModalCloseBtn" type="button" style="background:none;border:none;font-size:20px;color:#9CA3AF;cursor:pointer;">×</button>
             </div>
             <p style="font-size:12px;color:#6B7280;margin:0 0 10px;line-height:1.5;">添加 WeWe RSS / Wechat2RSS / RSSHub 输出的 RSS/Atom 链接，保存后可一键同步文章。部署到 Cloudflare 后由 Cron 每 2 小时自动同步。</p>
@@ -1178,12 +1173,12 @@
             <!-- 教程：如何获取 RSS 链接 -->
             <details style="margin:0 0 14px;border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;">
                 <summary style="padding:10px 12px;background:#F9FAFB;cursor:pointer;font-size:13px;color:#07C160;font-weight:600;list-style:none;display:flex;align-items:center;gap:6px;">
-                    📖 如何获取公众号 RSS 链接？（点击展开教程）
+                    如何获取公众号 RSS 链接？（点击展开教程）
                 </summary>
                 <div style="padding:14px;background:#fff;font-size:12px;color:#374151;line-height:1.7;">
 
                     <div style="margin-bottom:14px;padding:10px;background:#ECFDF5;border-radius:6px;border-left:3px solid #07C160;">
-                        <div style="font-weight:700;color:#07C160;margin-bottom:4px;">⭐ 方案 1：WeWe RSS（最稳定，推荐，免费开源）</div>
+                        <div style="font-weight:700;color:#07C160;margin-bottom:4px;">方案 1：WeWe RSS（最稳定，推荐，免费开源）</div>
                         <div>基于微信读书接口，目前最稳定的公众号 RSS 方案，GitHub 6500+ star。</div>
                         <div style="margin-top:6px;"><b>方式 A：Docker Compose 一键部署（推荐）</b></div>
                         <div style="margin-top:4px;">① 新建 <code style="background:#F3F4F6;padding:1px 4px;border-radius:3px;">docker-compose.yml</code>，内容：</div>
@@ -1214,7 +1209,7 @@ services:
                     </div>
 
                     <div style="margin-bottom:14px;">
-                        <div style="font-weight:700;color:#3B82F6;margin-bottom:4px;">📋 方案 2：Wechat2RSS（300+公众号已收录，免部署）</div>
+                        <div style="font-weight:700;color:#3B82F6;margin-bottom:4px;">方案 2：Wechat2RSS（300+公众号已收录，免部署）</div>
                         <div>开源公益项目，已收录 300+ 热门公众号，24 小时内更新。</div>
                         <div style="margin-top:4px;">① 打开 <a href="https://wechat2rss.xlab.app/list/" target="_blank" style="color:#3B82F6;">wechat2rss.xlab.app/list</a></div>
                         <div>② 搜索你想订阅的公众号</div>
@@ -1223,7 +1218,7 @@ services:
                     </div>
 
                     <div style="margin-bottom:14px;">
-                        <div style="font-weight:700;color:#8B5CF6;margin-bottom:4px;">🔧 方案 3：RSSHub 自建（支持公众号热榜）</div>
+                        <div style="font-weight:700;color:#8B5CF6;margin-bottom:4px;">方案 3：RSSHub 自建（支持公众号热榜）</div>
                         <div>开源 RSS 生成器，可同时做公众号 RSS 与爆文榜单数据源。</div>
                         <div style="margin-top:4px;">① 部署：<code style="background:#F3F4F6;padding:1px 4px;border-radius:3px;">docker run -d -p 1200:1200 diygod/rsshub</code></div>
                         <div>② 访问 <code style="background:#F3F4F6;padding:1px 4px;border-radius:3px;">http://localhost:1200</code></div>
@@ -1232,13 +1227,13 @@ services:
                     </div>
 
                     <div style="margin-bottom:4px;">
-                        <div style="font-weight:700;color:#6B7280;margin-bottom:4px;">✏️ 方案 4：直接粘贴任意 RSS 链接</div>
+                        <div style="font-weight:700;color:#6B7280;margin-bottom:4px;">方案 4：直接粘贴任意 RSS 链接</div>
                         <div>如果你已有公众号的 RSS/Atom 链接（任何来源），直接填到下方「RSS/Atom 链接」框即可，系统会自动识别 RSS 2.0 与 Atom 两种格式。</div>
                     </div>
 
                     <div style="margin-top:14px;padding:10px;background:#FEF3C7;border-radius:6px;font-size:11px;color:#92400E;line-height:1.6;">
                         <b>添加后做什么？</b><br>
-                        填好「公众号名称」+「RSS 链接」→ 点「添加」→ 点下方「🔄 立即同步所有订阅」抓取文章。<br>
+                        填好「公众号名称」+「RSS 链接」→ 点「添加」→ 点下方「立即同步所有订阅」抓取文章。<br>
                         部署到 Cloudflare 后，Cron 每 2 小时会自动同步，无需手动刷新。
                     </div>
                 </div>
@@ -1251,7 +1246,7 @@ services:
             </div>
             <div id="subsList" style="margin-bottom:14px;"></div>
             <div style="display:flex;gap:8px;align-items:center;">
-                <button id="syncSubsBtn" type="button" style="flex:1;padding:9px 16px;background:#07C160;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600;">🔄 立即同步所有订阅</button>
+                <button id="syncSubsBtn" type="button" style="flex:1;padding:9px 16px;background:#07C160;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>立即同步所有订阅</button>
             </div>
             <div id="subsBackendHint" style="margin-top:10px;font-size:11px;color:#9CA3AF;display:none;"></div>
         </div>
@@ -1263,13 +1258,13 @@ services:
     <script src="themes/magazine.js"></script>
     <script src="themes/fresh.js"></script>
     <script src="themes/vibrant.js"></script>
-    <script src="script.js?v=61"></script>
+    <script src="script.js?v=62"></script>
 
     <!-- V5 全局命令面板 -->
     <div class="cmdk-overlay" id="cmdkOverlay">
         <div class="cmdk-panel" role="dialog" aria-label="全局命令面板">
             <div class="cmdk-input-wrap">
-                <span class="cmdk-icon">🔍</span>
+                <span class="cmdk-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
                 <input type="text" id="cmdkInput" class="cmdk-input" placeholder="搜索导航 / 产物 / 动作..." autocomplete="off">
                 <span class="cmdk-kbd">ESC</span>
             </div>
@@ -1287,49 +1282,49 @@ services:
     <div class="onboard-overlay" id="onboardOverlay">
         <div class="onboard-card" role="dialog" aria-label="新手引导">
             <div class="onboard-head">
-                <h2>👋 欢迎使用 内容生产系统 v5</h2>
+                <h2>欢迎使用 内容生产系统 v5</h2>
                 <p>从信息获取到产物管理，一站式创作者工作流</p>
             </div>
             <div class="onboard-body">
                 <div class="onboard-step">
                     <div class="step-num">1</div>
                     <div class="step-body">
-                        <div class="step-title"><span class="step-icon">📥</span> 信息中枢</div>
+                        <div class="step-title"><span class="step-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></span> 信息中枢</div>
                         <div class="step-desc">聚合公众号订阅、微博热搜、36氪、抖音热点等所有信源，统一筛选与搜索，一键带入创作</div>
                     </div>
                 </div>
                 <div class="onboard-step">
                     <div class="step-num">2</div>
                     <div class="step-body">
-                        <div class="step-title"><span class="step-icon">✍</span> 创作蓝图</div>
+                        <div class="step-title"><span class="step-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></span> 创作蓝图</div>
                         <div class="step-desc">AI 一键创作 / 自定义双模式。内容类型、受众画像、调性滑块、结构模板、目标平台五维蓝图彻底重构版式</div>
                     </div>
                 </div>
                 <div class="onboard-step">
                     <div class="step-num">3</div>
                     <div class="step-body">
-                        <div class="step-title"><span class="step-icon">✎</span> 排版发布</div>
+                        <div class="step-title"><span class="step-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg></span> 排版发布</div>
                         <div class="step-desc">6 大主题风格，自动排版 / 模板排版，一键复制到公众号</div>
                     </div>
                 </div>
                 <div class="onboard-step">
                     <div class="step-num">4</div>
                     <div class="step-body">
-                        <div class="step-title"><span class="step-icon">🎴</span> 贴图卡片</div>
+                        <div class="step-title"><span class="step-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span> 贴图卡片</div>
                         <div class="step-desc">根据标题 / 文章自动生成 3:4 系列卡片（封面+内容+总结），Canvas 合成多风格</div>
                     </div>
                 </div>
                 <div class="onboard-step">
                     <div class="step-num">5</div>
                     <div class="step-body">
-                        <div class="step-title"><span class="step-icon">📦</span> 产物中心</div>
+                        <div class="step-title"><span class="step-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span> 产物中心</div>
                         <div class="step-desc">统一管理文章 / 卡片 / 音频产物，支持搜索、标签、版本历史与衍生闭环</div>
                     </div>
                 </div>
             </div>
             <div class="onboard-foot">
                 <button class="skip-btn" id="onboardSkip">跳过，不再显示</button>
-                <button class="start-btn" id="onboardStart">🚀 开始使用（按 Ctrl+K 唤起命令面板）</button>
+                <button class="start-btn" id="onboardStart"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.08-2.91a2.18 2.18 0 0 0-2.91-.08z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>开始使用（按 Ctrl+K 唤起命令面板）</button>
             </div>
         </div>
     </div>

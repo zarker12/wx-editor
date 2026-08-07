@@ -3479,7 +3479,7 @@ function bindDashButtons() {
             // 保证 loading 至少显示 600ms，让用户感知到反馈
             const dt = Date.now() - t0;
             if (dt < 600) await new Promise(res => setTimeout(res, 600 - dt));
-            b.disabled=false; b.textContent='🔄 立即同步';
+            b.disabled=false; b.textContent='立即同步';
         }
     });
     $('dashGoCreateBtn') && $('dashGoCreateBtn').addEventListener('click', () => switchTab('create'));
@@ -6917,7 +6917,7 @@ ${bgLine}
             } catch (e) {
                 showToast('同步失败：' + e.message);
             } finally {
-                syncBtn.disabled = false; syncBtn.textContent = '🔄 立即同步所有订阅';
+                syncBtn.disabled = false; syncBtn.textContent = '立即同步所有订阅';
             }
         });
     }
@@ -8608,12 +8608,12 @@ function showUserMenu() {
     };
 
     const SOURCE_META = {
-        'wechat': { label: '公众号', color: '#07C160', icon: '📢' },
-        'wechat-hot': { label: '爆文榜', color: '#DC2626', icon: '🔥' },
-        'weibo': { label: '微博', color: '#E11D48', icon: '📈' },
-        '36kr': { label: '36氪', color: '#1E40AF', icon: '📊' },
-        'douyin': { label: '抖音', color: '#111', icon: '🎵' },
-        'recommend': { label: '综合', color: '#3B82F6', icon: '🌐' }
+        'wechat': { label: '公众号', color: '#07C160', icon: '' },
+        'wechat-hot': { label: '爆文榜', color: '#DC2626', icon: '' },
+        'weibo': { label: '微博', color: '#E11D48', icon: '' },
+        '36kr': { label: '36氪', color: '#1E40AF', icon: '' },
+        'douyin': { label: '抖音', color: '#111', icon: '' },
+        'recommend': { label: '综合', color: '#3B82F6', icon: '' }
     };
 
     // 统一数据拉取：调用现有函数聚合所有信源
@@ -8749,7 +8749,7 @@ function showUserMenu() {
         list.innerHTML = items.slice(0, 60).map(it => {
             const meta = SOURCE_META[it._source] || { label: it.source||'未知', color: '#6B7280', icon: '📌' };
             const isMock = it._isMock ? '<span style="color:#92400E;font-size:10px;margin-left:4px;">示例</span>' : '';
-            const readInfo = it.readCount ? `<span style="font-size:11px;color:#9CA3AF;">👁 ${it.readCount}</span>` : '';
+            const readInfo = it.readCount ? `<span style="font-size:11px;color:#9CA3AF;display:inline-flex;align-items:center;gap:3px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> ${it.readCount}</span>` : '';
             const timeStr = (it.time||'').toString().slice(0,16);
             const desc = (it.desc||it.content||'').slice(0,80);
             return `<div class="inbox-card" data-source="${it._source}" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px;cursor:pointer;transition:all 0.2s;display:flex;flex-direction:column;gap:6px;position:relative;overflow:hidden;" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 20px rgba(0,0,0,0.08)';this.style.borderColor='${meta.color}66';" onmouseout="this.style.transform='';this.style.boxShadow='';this.style.borderColor='#E5E7EB';">
@@ -8761,7 +8761,7 @@ function showUserMenu() {
                 <div style="font-size:14px;color:#1F2937;font-weight:600;line-height:1.4;">${(it.title||'').replace(/</g,'&lt;')}</div>
                 ${desc ? `<div style="font-size:12px;color:#6B7280;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${desc.replace(/</g,'&lt;')}</div>` : ''}
                 <div style="display:flex;gap:6px;margin-top:auto;padding-top:6px;border-top:1px dashed #F3F4F6;">
-                    <button class="inbox-to-create" data-title="${(it.title||'').replace(/"/g,'&quot;')}" type="button" style="padding:4px 10px;background:linear-gradient(135deg,#10B981,#3B82F6);color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;">✍ 带入创作</button>
+                    <button class="inbox-to-create" data-title="${(it.title||'').replace(/"/g,'&quot;')}" type="button" style="padding:4px 10px;background:linear-gradient(135deg,#10B981,#3B82F6);color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> 带入创作</button>
                     ${it.url ? `<a href="${it.url}" target="_blank" rel="noopener" style="padding:4px 10px;background:#F3F4F6;color:#6B7280;border:none;border-radius:5px;font-size:11px;text-decoration:none;">原文 ↗</a>` : ''}
                 </div>
             </div>`;
@@ -8794,7 +8794,7 @@ function showUserMenu() {
             console.error('inbox refresh', e);
             if (list) list.innerHTML = '<div style="grid-column:1/-1;padding:40px;text-align:center;color:#DC2626;font-size:14px;">加载失败：'+e.message+'</div>';
         } finally {
-            if (btn) { btn.disabled = false; btn.textContent = '🔄 刷新全部'; }
+            if (btn) { btn.disabled = false; btn.textContent = '刷新全部'; }
         }
     }
 
@@ -8945,7 +8945,7 @@ function showUserMenu() {
                 document.getElementById('blueprintAIPanel').style.display = blueprint.mode === 'ai' ? 'block' : 'none';
                 document.getElementById('blueprintCustomPanel').style.display = blueprint.mode === 'custom' ? 'block' : 'none';
                 const genBtn = document.getElementById('createGenerateBtn');
-                if (genBtn) genBtn.textContent = blueprint.mode === 'ai' ? '🚀 生成文章' : '✍ 进入编辑器';
+                if (genBtn) genBtn.textContent = blueprint.mode === 'ai' ? '生成文章' : '进入编辑器';
             });
         });
 
@@ -9856,9 +9856,9 @@ function showUserMenu() {
 
         body.innerHTML = `
             <div style="font-size:11px;color:#9CA3AF;margin-bottom:14px;display:flex;gap:14px;flex-wrap:wrap;">
-                <span>📅 创建 ${fmtTime(p.createdAt)} · ${created.toLocaleDateString('zh-CN')}</span>
-                <span>✏ 更新 ${fmtTime(p.updatedAt)} · ${updated.toLocaleString('zh-CN')}</span>
-                <span>📊 ${p.wordCount||0} 字</span>
+                <span>创建 ${fmtTime(p.createdAt)} · ${created.toLocaleDateString('zh-CN')}</span>
+                <span>更新 ${fmtTime(p.updatedAt)} · ${updated.toLocaleString('zh-CN')}</span>
+                <span>${p.wordCount||0} 字</span>
             </div>
 
             ${previewHtml}
