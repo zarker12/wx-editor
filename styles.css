@@ -775,16 +775,31 @@ body {
     gap: 3px;
     min-width: 0;
 }
-/* 排版主题按钮：胶囊型，悬停浮起 */
+/* 排版主题：独占整行（跨 2 列），标题在上、6 个主题 3×2 网格在下 */
+.style-bar .section-theme {
+    grid-column: 1 / -1;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 9px 11px 10px;
+}
+.style-bar .section-theme h4 { align-self: flex-start; }
+.style-bar .section-theme .style-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+}
+/* 排版主题按钮：等宽胶囊型，悬停浮起 */
 .style-bar .style-btn {
-    padding: 5px 12px;
+    padding: 5px 8px;
     background: transparent;
     border: 1px solid transparent;
-    border-radius: 14px;
-    font-size: 12px;
+    border-radius: 8px;
+    font-size: 12.5px;
     color: var(--text-secondary);
-    height: 26px;
+    height: 28px;
     font-weight: 500;
+    text-align: center;
     transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .style-bar .style-btn:hover {
