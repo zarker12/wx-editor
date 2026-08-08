@@ -21,10 +21,6 @@
                 <span class="logo-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></span>
                 <span class="logo-text">内容工坊</span>
             </div>
-            <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" type="button" title="收起/展开 (Ctrl+B)" aria-label="收起侧栏">
-                <svg class="icon-collapse" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-                <svg class="icon-expand" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-            </button>
             <nav class="app-nav">
                 <div class="nav-section-label">工作流</div>
                 <button class="nav-item active" data-tab="editor" data-tip="排版">
@@ -54,6 +50,11 @@
                 <div class="ai-status-row"><span class="ai-status-dot" id="sidebarAiDot"></span><span id="sidebarAiText">AI 未配置</span></div>
                 <div class="sidebar-version">v5.1 · Cloudflare Ready</div>
             </div>
+            <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" type="button" title="收起/展开 (Ctrl+B)" aria-label="收起侧栏" aria-expanded="true">
+                <svg class="icon-collapse" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                <svg class="icon-expand" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                <span class="collapse-label">收起侧栏</span>
+            </button>
         </aside>
 
         <!-- ===== 主区域 ===== -->
@@ -495,6 +496,13 @@
         <main class="main-content">
             <!-- 样式工具条（共享工具栏，横跨编辑器+预览器） -->
             <div class="style-bar" id="styleBar">
+                <div class="style-bar-head">
+                    <span class="style-bar-title">样式设置</span>
+                    <button class="style-bar-toggle" id="styleBarToggle" type="button" title="收起/展开样式栏" aria-label="收起样式栏" aria-expanded="true">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                </div>
+                <div class="style-bar-grid">
                 <div class="section">
                     <h4>排版主题</h4>
                     <div class="style-list">
@@ -576,6 +584,7 @@
                         <button class="tracking-btn" data-tracking="loose">松</button>
                     </div>
                 </div>
+                </div><!-- /.style-bar-grid -->
             </div><!-- /.style-bar -->
 
             <div class="content-row">

@@ -2843,10 +2843,26 @@ editor.addEventListener('keydown', (e) => {
 (function setupStyleBar() {
     const bar = document.getElementById('styleBar');
     if (!bar) return;
+    const toggle = document.getElementById('styleBarToggle');
     const STORAGE_KEY = 'mp_stylebar_collapsed';
+
+    function syncState() {
+        const collapsed = bar.classList.contains('collapsed');
+        if (toggle) toggle.setAttribute('aria-expanded', String(!collapsed));
+    }
+
     let saved = null;
     try { saved = localStorage.getItem(STORAGE_KEY); } catch (e) {}
     if (saved === '1') bar.classList.add('collapsed');
+    syncState();
+
+    if (toggle) {
+        toggle.addEventListener('click', () => {
+            bar.classList.toggle('collapsed');
+            syncState();
+            try { localStorage.setItem(STORAGE_KEY, bar.classList.contains('collapsed') ? '1' : '0'); } catch (e) {}
+        });
+    }
 })();
 
 styleButtons.forEach(btn => btn.addEventListener('click', () => setStyle(btn.dataset.style)));
