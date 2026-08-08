@@ -60,15 +60,9 @@
         <div class="app-main">
         <header class="header">
             <div class="logo">
-                <span class="logo-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></span>
                 <span class="logo-text">排版助手</span>
             </div>
             <div class="header-actions">
-                <button class="global-search-trigger" id="globalSearchBtn" title="全局搜索 · Ctrl+K">
-                    <svg class="hdr-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <span>搜索一切...</span>
-                    <span class="kbd">⌘K</span>
-                </button>
                 <button class="btn btn-ghost" id="userBtn" title="登录/用户中心" style="display:none;">
                     <span class="btn-icon"><svg class="hdr-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
                     <span id="userName">登录</span>
@@ -499,31 +493,7 @@
         <!-- Tab 2: 排版助手 -->
         <div class="tab-content active" id="tab-editor">
         <main class="main-content">
-            <section class="editor-section">
-            <!-- 导入栏：导入MD · 链接解析 · 自动排版 · 一键配图 -->
-            <div class="import-bar">
-                <label class="import-label" for="fileInput">
-                    <span class="import-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
-                    <span>导入MD</span>
-                </label>
-                <input type="file" id="fileInput" accept=".md,.markdown,.txt" style="display:none;">
-                <div class="import-divider"></div>
-                <div class="import-link">
-                    <span class="link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>
-                    <input type="text" id="urlInput" placeholder="粘贴文章链接，自动解析排版..." />
-                    <button class="link-btn" id="parseUrlBtn" type="button">解析</button>
-                </div>
-                <div class="import-spacer"></div>
-                <button class="smart-btn" id="smartFormatBtn" type="button" data-tooltip="自动排版：识别标题/引用/代码块/列表，本地规则 + AI 增强">
-                    <span class="import-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8L20 10.7l-5.1 1.9L13 18.5l-1.9-5.9L6 10.7l5.1-1.9z"/></svg></span>
-                    <span>自动排版</span>
-                </button>
-                <button class="smart-btn smart-btn-accent" id="gotoImageBtn" type="button" data-tooltip="一键配图：AI 理解文章，生成配图自动插入">
-                    <span class="import-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>
-                    <span>一键配图</span>
-                </button>
-            </div>
-            <!-- 样式工具条（常驻上方，紧凑横向布局：主题/颜色/字体/字号/间距/字距） -->
+            <!-- 样式工具条（共享工具栏，横跨编辑器+预览器） -->
             <div class="style-bar" id="styleBar">
                 <div class="section">
                     <h4>排版主题</h4>
@@ -606,8 +576,33 @@
                         <button class="tracking-btn" data-tracking="loose">松</button>
                     </div>
                 </div>
-                    </div><!-- /.style-bar -->
+            </div><!-- /.style-bar -->
 
+            <div class="content-row">
+            <section class="editor-section">
+            <!-- 导入栏：导入MD · 链接解析 · 自动排版 · 一键配图 -->
+            <div class="import-bar">
+                <label class="import-label" for="fileInput">
+                    <span class="import-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
+                    <span>导入MD</span>
+                </label>
+                <input type="file" id="fileInput" accept=".md,.markdown,.txt" style="display:none;">
+                <div class="import-divider"></div>
+                <div class="import-link">
+                    <span class="link-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>
+                    <input type="text" id="urlInput" placeholder="粘贴文章链接，自动解析排版..." />
+                    <button class="link-btn" id="parseUrlBtn" type="button">解析</button>
+                </div>
+                <div class="import-spacer"></div>
+                <button class="smart-btn" id="smartFormatBtn" type="button" data-tooltip="自动排版：识别标题/引用/代码块/列表，本地规则 + AI 增强">
+                    <span class="import-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8L20 10.7l-5.1 1.9L13 18.5l-1.9-5.9L6 10.7l5.1-1.9z"/></svg></span>
+                    <span>自动排版</span>
+                </button>
+                <button class="smart-btn smart-btn-accent" id="gotoImageBtn" type="button" data-tooltip="一键配图：AI 理解文章，生成配图自动插入">
+                    <span class="import-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>
+                    <span>一键配图</span>
+                </button>
+            </div>
                 <!-- AI 工作流进度面板 -->
                 <div id="aiWorkflowPanel" style="display:none;background:linear-gradient(135deg,#f0fdf4,#eff6ff);border:1px solid #d1fae5;border-radius:8px;padding:12px 16px;margin:8px 0 0;font-size:13px;color:#374151;">
                     <div style="display:flex;align-items:center;gap:8px;">
@@ -892,6 +887,7 @@
                     </div>
                 </div>
             </section>
+            </div><!-- /.content-row -->
         </main>
         </div>
 
