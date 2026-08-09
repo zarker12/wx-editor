@@ -1162,9 +1162,10 @@ function setStyle(style) {
     const theme = getStyleTheme();
 
     if (theme.defaultColor) {
-        document.body.className = document.body.className.replace(/\btheme-\S+/g, '').trim();
+        const cr = document.querySelector('.content-row');
+        if (cr) cr.className = cr.className.replace(/\btheme-\S+/g, '').trim();
         currentColor = theme.defaultColor;
-        document.body.classList.add(`theme-${currentColor}`);
+        if (cr) cr.classList.add(`theme-${currentColor}`);
         try { localStorage.setItem('wx_theme_v5', `theme-${currentColor}`); } catch {}
         colorButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.color === currentColor));
     }
@@ -1180,9 +1181,10 @@ function setStyle(style) {
 }
 
 function setColor(color) {
-    document.body.className = document.body.className.replace(/\btheme-\S+/g, '').trim();
+    const cr = document.querySelector('.content-row');
+    if (cr) cr.className = cr.className.replace(/\btheme-\S+/g, '').trim();
     currentColor = color;
-    document.body.classList.add(`theme-${color}`);
+    if (cr) cr.classList.add(`theme-${color}`);
     try { localStorage.setItem('wx_theme_v5', `theme-${color}`); } catch {}
     colorButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.color === color));
     syncEditorToTheme();
@@ -3235,7 +3237,7 @@ document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Z') { e.preventDefault(); handleToolAction('redo'); }
 });
 
-document.body.classList.add(`theme-${currentColor}`);
+(function(){ const cr = document.querySelector('.content-row'); if (cr) cr.classList.add(`theme-${currentColor}`); })();
 setFont(currentFont);
 fillIntroDefaults();
 
@@ -3455,8 +3457,9 @@ function renderThemePicker() {
         el.addEventListener('click', () => {
             const key = el.dataset.theme;
             // 清除所有 theme-* class（含排版 tab 的 brown/black/beige），避免叠加
-            document.body.className = document.body.className.replace(/\btheme-\S+/g, '').trim();
-            document.body.classList.add(key);
+            const cr = document.querySelector('.content-row');
+            if (cr) cr.className = cr.className.replace(/\btheme-\S+/g, '').trim();
+            if (cr) cr.classList.add(key);
             try { localStorage.setItem('wx_theme_v5', key); } catch {}
             // 同步更新命令面板的 cycleTheme 状态
             grid.querySelectorAll('.theme-picker-item').forEach(x => x.classList.remove('active'));
@@ -10420,13 +10423,13 @@ function showUserMenu() {
     // ---------- 主题循环切换 ----------
     const THEMES = ['theme-emerald', 'theme-blue', 'theme-orange', 'theme-purple'];
     function cycleTheme() {
-        const body = document.body;
-        const current = THEMES.find(t => body.classList.contains(t)) || 'theme-emerald';
+        const cr = document.querySelector('.content-row');
+        const current = THEMES.find(t => cr && cr.classList.contains(t)) || 'theme-emerald';
         const idx = THEMES.indexOf(current);
         const next = THEMES[(idx + 1) % THEMES.length];
         // 清除所有 theme-* class（含排版 tab 的 brown/black/beige），避免叠加
-        body.className = body.className.replace(/\btheme-\S+/g, '').trim();
-        body.classList.add(next);
+        if (cr) cr.className = cr.className.replace(/\btheme-\S+/g, '').trim();
+        if (cr) cr.classList.add(next);
         try { localStorage.setItem('wx_theme_v5', next); } catch {}
         showBanner(`🎨 主题已切换为 ${next.replace('theme-','')}`);
     }
@@ -10511,10 +10514,14 @@ function showUserMenu() {
         // 恢复主题
         try {
             const saved = localStorage.getItem('wx_theme_v5');
+            const cr = document.querySelector('.content-row');
             // 清除所有 theme-* class，避免与排版 tab 主题色选择器叠加
-            document.body.className = document.body.className.replace(/\btheme-\S+/g, '').trim();
-            document.body.classList.add(saved || 'theme-emerald');
-        } catch { document.body.classList.add('theme-emerald'); }
+            if (cr) cr.className = cr.className.replace(/\btheme-\S+/g, '').trim();
+            if (cr) cr.classList.add(saved || 'theme-emerald');
+        } catch { 
+            const cr = document.querySelector('.content-row');
+            if (cr) cr.classList.add('theme-emerald');
+        }
         // 首次访问显示新手引导
         if (shouldShowOnboard()) {
             setTimeout(() => showOnboard(), 600);

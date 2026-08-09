@@ -122,31 +122,30 @@ body {
 
 .app-container {
     display: grid;
-    grid-template-columns: var(--sidebar-w, 232px) 1fr;
+    grid-template-columns: var(--sidebar-w, 200px) 1fr;
     min-height: 100vh;
     transition: grid-template-columns 0.32s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .app-container.sidebar-collapsed {
-    --sidebar-w: 60px;
+    --sidebar-w: 56px;
 }
 
-/* ===== Sidebar (左侧导航) — 深墨绿 + 琥珀金 杂志风 ===== */
+/* ===== Sidebar (左侧导航) — 暖墨色 + 柔米白，沉稳编辑室风 ===== */
 .app-sidebar {
-    background: #0B1F1A;
+    background: #1F1B16;
     background-image:
-        radial-gradient(circle at 15% 8%, rgba(16, 185, 129, 0.22), transparent 42%),
-        radial-gradient(circle at 100% 95%, rgba(245, 158, 11, 0.12), transparent 55%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 60%);
-    color: #E5E7EB;
+        radial-gradient(circle at 15% 8%, rgba(180, 160, 120, 0.06), transparent 42%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 60%);
+    color: #D6CFC2;
     display: flex;
     flex-direction: column;
-    padding: 26px 14px 16px;
+    padding: 22px 12px 14px;
     position: sticky;
     top: 0;
     height: 100vh;
     overflow-y: auto;
     overflow-x: hidden;
-    border-right: 1px solid rgba(245, 158, 11, 0.08);
+    border-right: 1px solid rgba(180, 160, 120, 0.1);
     font-family: var(--font-sans);
     transition: padding 0.32s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -171,10 +170,10 @@ body {
     width: 100%;
     margin-top: 12px;
     padding: 9px 12px;
-    background: rgba(245, 158, 11, 0.06);
-    border: 1px solid rgba(245, 158, 11, 0.18);
+    background: rgba(180, 160, 120, 0.08);
+    border: 1px solid rgba(180, 160, 120, 0.18);
     border-radius: 9px;
-    color: #FCD34D;
+    color: #C4B8A4;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -187,9 +186,9 @@ body {
     flex-shrink: 0;
 }
 .sidebar-collapse-btn:hover {
-    background: rgba(245, 158, 11, 0.16);
-    border-color: rgba(245, 158, 11, 0.42);
-    color: #FBBF24;
+    background: rgba(180, 160, 120, 0.16);
+    border-color: rgba(180, 160, 120, 0.36);
+    color: #E8DDC8;
 }
 .sidebar-collapse-btn:active { transform: scale(0.98); }
 .sidebar-collapse-btn .collapse-label { font-weight: 500; white-space: nowrap; }
@@ -199,15 +198,15 @@ body {
 .sidebar-tip {
     position: fixed;
     z-index: 9999;
-    background: #1F2937;
-    color: #FCD34D;
+    background: #2A241D;
+    color: #E8DDC8;
     padding: 5px 10px;
     border-radius: 6px;
     font-size: 12px;
     white-space: nowrap;
     pointer-events: none;
     box-shadow: 0 6px 18px rgba(0,0,0,0.35);
-    border: 1px solid rgba(245, 158, 11, 0.25);
+    border: 1px solid rgba(180, 160, 120, 0.25);
     opacity: 0;
     transform: translateX(-6px);
     transition: opacity 0.16s ease, transform 0.16s ease;
@@ -218,42 +217,41 @@ body {
 
 /* 窄屏自适应由下方 1024px / 640px 媒体查询统一处理（与新折叠系统协同） */
 
-/* 顶部细金线点缀 */
+/* 顶部细线点缀 */
 .app-sidebar::before {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, #F59E0B 30%, #10B981 70%, transparent);
-    opacity: 0.6;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(180, 160, 120, 0.5) 30%, rgba(180, 160, 120, 0.3) 70%, transparent);
+    opacity: 0.7;
 }
 
 .sidebar-logo {
     display: flex;
     align-items: center;
-    gap: 11px;
-    padding: 2px 8px 24px;
-    margin-bottom: 12px;
-    border-bottom: 1px solid rgba(245, 158, 11, 0.12);
+    gap: 10px;
+    padding: 2px 6px 20px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(180, 160, 120, 0.1);
     position: relative;
 }
 .sidebar-logo .logo-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 30px;
-    height: 30px;
-    color: #FCD34D;
-    filter: drop-shadow(0 2px 6px rgba(245, 158, 11, 0.45));
+    width: 28px;
+    height: 28px;
+    color: #C4B8A4;
     font-style: normal;
     font-weight: 700;
 }
 .sidebar-logo .logo-icon svg { display: block; }
 .sidebar-logo .logo-text {
     font-family: var(--font-serif);
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 600;
-    color: #F5F5F4;
+    color: #E8DDC8;
     letter-spacing: 2px;
 }
 .sidebar-logo .logo-text::after {
@@ -261,7 +259,7 @@ body {
     display: inline-block;
     width: 4px;
     height: 4px;
-    background: #F59E0B;
+    background: #A89880;
     border-radius: 50%;
     margin-left: 6px;
     vertical-align: middle;
@@ -277,12 +275,12 @@ body {
 .nav-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 11px 13px;
+    gap: 11px;
+    padding: 10px 11px;
     border: none;
     background: transparent;
-    color: #B8C5C0;
-    font-size: 13.5px;
+    color: #9C928A;
+    font-size: 13px;
     font-weight: 500;
     font-family: var(--font-sans);
     cursor: pointer;
@@ -296,44 +294,43 @@ body {
     position: absolute;
     left: 0; top: 0; bottom: 0;
     width: 2px;
-    background: linear-gradient(180deg, #F59E0B, #10B981);
+    background: #C4B8A4;
     transform: scaleY(0);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     transform-origin: center;
 }
 .nav-item .nav-icon {
-    font-size: 17px;
-    width: 22px;
+    font-size: 16px;
+    width: 20px;
     text-align: center;
     flex-shrink: 0;
     transition: transform 0.2s;
 }
 .nav-item:hover {
-    background: rgba(245, 158, 11, 0.1);
-    color: #FCD34D !important;
-    padding-left: 16px;
+    background: rgba(180, 160, 120, 0.08);
+    color: #E8DDC8 !important;
+    padding-left: 14px;
 }
-.nav-item:hover > span { color: #FCD34D; }
-.nav-item:hover .nav-icon { transform: scale(1.2) rotate(-6deg); color: #FBBF24; }
+.nav-item:hover > span { color: #E8DDC8; }
+.nav-item:hover .nav-icon { transform: scale(1.15); color: #C4B8A4; }
 .nav-item.active {
-    background: linear-gradient(90deg, rgba(245, 158, 11, 0.16), rgba(16, 185, 129, 0.06));
-    color: #fff;
+    background: rgba(180, 160, 120, 0.12);
+    color: #F5EFE3;
     font-weight: 600;
-    box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.18);
+    box-shadow: inset 0 0 0 1px rgba(180, 160, 120, 0.14);
 }
 .nav-item.active::after {
     transform: scaleY(1);
 }
 .nav-item.active .nav-icon {
-    color: #FCD34D;
-    filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.5));
+    color: #E8DDC8;
 }
 .nav-section-label {
     font-size: 10px;
     letter-spacing: 2px;
     text-transform: uppercase;
-    color: #6B7F75;
-    padding: 18px 13px 7px;
+    color: #6B6258;
+    padding: 16px 11px 6px;
     font-weight: 600;
     display: flex;
     align-items: center;
@@ -343,14 +340,14 @@ body {
     content: '';
     width: 12px;
     height: 1px;
-    background: rgba(245, 158, 11, 0.4);
+    background: rgba(180, 160, 120, 0.35);
 }
 .sidebar-footer {
     margin-top: auto;
-    padding: 14px 13px 2px;
-    border-top: 1px solid rgba(245, 158, 11, 0.1);
+    padding: 14px 11px 2px;
+    border-top: 1px solid rgba(180, 160, 120, 0.1);
     font-size: 11px;
-    color: #6B7F75;
+    color: #6B6258;
     line-height: 1.7;
     font-family: var(--font-mono);
     letter-spacing: 0.3px;
@@ -360,11 +357,11 @@ body {
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: #9CA3AF;
+    background: #6B6258;
     margin-right: 6px;
     vertical-align: middle;
 }
-.sidebar-footer .ai-status-dot.ready { background: #34D399; box-shadow: 0 0 8px #34D399; }
+.sidebar-footer .ai-status-dot.ready { background: #A8C68F; box-shadow: 0 0 8px rgba(168, 198, 143, 0.6); }
 
 /* ===== 入场动效（frontend-design：交错揭示，增强首次进入的仪式感）===== */
 @keyframes navFadeIn {
@@ -1404,15 +1401,15 @@ body {
 .import-link {
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex: 1;
-    min-width: 200px;
-    max-width: 460px;
+    gap: 6px;
+    flex: 1 1 280px;
+    min-width: 0;
+    max-width: 360px;
     background: var(--bg-surface);
     border: 1px solid var(--border-default);
     border-radius: 8px;
-    padding: 0 12px;
-    height: 34px;
+    padding: 0 10px;
+    height: 30px;
     transition: all 0.2s ease;
 }
 .import-link:hover {
@@ -1460,10 +1457,11 @@ body {
 
 #urlInput {
     flex: 1;
+    min-width: 0;
     border: none;
     outline: none;
-    padding: 7px 0;
-    font-size: 13px;
+    padding: 6px 0;
+    font-size: 12.5px;
     color: var(--text-primary);
     background: transparent;
     font-family: var(--font-body);
@@ -1486,6 +1484,9 @@ body {
     font-family: var(--font-body);
     font-weight: 600;
     letter-spacing: 0.5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    writing-mode: horizontal-tb;
 }
 
 .link-btn:hover {
@@ -2597,6 +2598,9 @@ body {
     }
     /* 工具条改单列，分组不再被挤压 */
     .style-bar-grid { grid-template-columns: 1fr; }
+    /* 超窄屏：排版主题降为 2 列、主题色降为 3 列 */
+    .style-bar .section-theme .style-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .style-bar .section-color .color-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 /* ===== Tab Bar (legacy, 保留用于移动端横向) ===== */
