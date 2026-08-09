@@ -38,8 +38,9 @@ window.styleThemes.vibrant = {
     h2Style(c, s, sp, t) {
         return `margin:36px 0 18px;padding:14px 18px;background:#FFF1E6;border-left:4px solid #FF6B35;border-radius:0 12px 12px 0;`;
     },
-    h2Decor(c) {
-        return `<section style="display:flex;align-items:center;margin-bottom:6px;"><span style="${this.h2NumberStyle(c)}"><span leaf="">01</span></span><span style="font-size:11px;color:#E85D04;letter-spacing:2px;font-weight:600;"><span leaf="">SECTION</span></span></section>`;
+    h2Decor(c, idx) {
+        const num = idx || '01';
+        return `<section style="display:flex;align-items:center;margin-bottom:6px;"><span style="${this.h2NumberStyle(c)}"><span leaf="">${num}</span></span><span style="font-size:11px;color:#E85D04;letter-spacing:2px;font-weight:600;"><span leaf="">SECTION</span></span></section>`;
     },
     h2NumberStyle(c) {
         return `display:inline-block;background:#FF6B35;color:#FFFFFF;font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px;margin-right:10px;letter-spacing:1px;`;
@@ -127,24 +128,22 @@ window.styleThemes.vibrant = {
     introCardHTML(data, ctx) {
         const sp = ctx.sp, s = ctx.s, c = ctx.c;
         const font = ctx.font;
-        const cardStyle = `margin:${sp.pMargin} 0 8px;padding:32px 22px 26px;background:#FFFFFF;border:2px solid transparent;border-radius:16px;box-shadow:0 6px 20px -6px rgba(255,107,53,0.2);text-align:center;font-family:${font};position:relative;`;
-        const cardBorderStyle = `position:absolute;inset:0;border-radius:16px;padding:2px;background:${c.gradient};-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;`;
-        const avatarStyle = `display:inline-block;width:56px;height:56px;border-radius:50%;background:${c.gradient};margin:0 0 14px;line-height:56px;text-align:center;box-shadow:0 6px 16px -2px rgba(255,107,53,0.4);`;
-        const avatarTextStyle = `font-size:22px;font-weight:800;color:#FFFFFF;font-family:Georgia,serif;`;
-        const nameStyle = `font-size:17px;font-weight:800;color:${c.accentDark};margin:0 0 8px;letter-spacing:1px;`;
+        const cardStyle = `margin:${sp.pMargin} 0 8px;padding:32px 22px 26px;background:#FFFFFF;border:2px solid #FF6B35;border-radius:16px;box-shadow:0 6px 20px -6px rgba(255,107,53,0.2);text-align:center;font-family:${font};position:relative;`;
+        const avatarStyle = `display:inline-block;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#FF6B35 0%,#FFB088 100%);margin:0 0 14px;line-height:56px;text-align:center;box-shadow:0 6px 16px -2px rgba(255,107,53,0.4);`;
+        const avatarTextStyle = `font-size:22px;font-weight:800;color:#FFFFFF;font-family:${font};`;
+        const nameStyle = `font-size:17px;font-weight:800;color:#9D2C00;margin:0 0 8px;letter-spacing:1px;`;
         const titleStyle = `font-size:13px;color:#E85D04;margin:0 0 16px;letter-spacing:0.5px;`;
         const decoStyle = `display:flex;align-items:center;justify-content:center;margin:0 0 16px;`;
-        const decoDotStyle = `display:inline-block;width:6px;height:6px;border-radius:50%;background:${c.accent};margin:0 6px;`;
-        const decoLineStyle = `height:1.5px;width:28px;background:${c.accentBorder};`;
+        const decoDotStyle = `display:inline-block;width:6px;height:6px;border-radius:50%;background:#FF6B35;margin:0 6px;`;
+        const decoLineStyle = `display:inline-block;height:1.5px;width:28px;background:#FED7AA;`;
         const focusStyle = `font-size:13px;color:${this.textColor};margin:0 0 6px;line-height:1.8;`;
-        const focusLabelStyle = `color:${c.accent};font-weight:700;`;
+        const focusLabelStyle = `color:#FF6B35;font-weight:700;`;
         const outputStyle = `font-size:13px;color:${this.textColor};margin:0 0 16px;line-height:1.8;`;
-        const outputLabelStyle = `color:${c.accent};font-weight:700;`;
-        const sloganStyle = `font-size:12px;color:${c.accentDark};margin:0 0 4px;line-height:1.8;font-weight:500;`;
-        const disclaimerStyle = `font-size:11px;color:${c.accentLight};margin:0;line-height:1.7;opacity:0.75;`;
+        const outputLabelStyle = `color:#FF6B35;font-weight:700;`;
+        const sloganStyle = `font-size:12px;color:#9D2C00;margin:0 0 4px;line-height:1.8;font-weight:500;`;
+        const disclaimerStyle = `font-size:11px;color:#FFB088;margin:0;line-height:1.7;opacity:0.75;`;
 
         let html = `<section style="${cardStyle}">`;
-        html += `<section style="${cardBorderStyle}"><span leaf=""><br></span></section>`;
         html += `<section style="${avatarStyle}"><span style="${avatarTextStyle}"><span leaf="">${(data.name || 'T').charAt(0).toUpperCase()}</span></span></section>`;
         if (data.name) {
             html += `<p style="${nameStyle}"><span leaf="">${data.name}</span></p>`;

@@ -32,8 +32,8 @@ window.styleThemes.luxury = {
         return `margin:0 0 ${sp.pMargin};font-size:15px;line-height:${sp.lineHeight};text-align:justify;color:${this.textColor};`;
     },
     h1Style(c, s, sp, t) {
-        // 金色渐变标题居中（按 UI：金色渐变 #C9A961 → #F5E6C8 → #C9A961）
-        return `font-size:${s.h1Size};font-weight:800;margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom};line-height:1.4;letter-spacing:1px;text-align:center;background:linear-gradient(90deg,${this.gold} 0%,${this.goldLight} 50%,${this.gold} 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;`;
+        // 金色标题居中（纯色，公众号兼容；不用 background-clip 渐变，避免被编辑器剥离导致文字消失）
+        return `font-size:${s.h1Size};font-weight:800;margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom};line-height:1.4;letter-spacing:1px;text-align:center;color:${this.goldLight};`;
     },
     h2Style(c, s, sp, t) {
         // 居中金色 + 上下双金线（按 UI）
@@ -138,7 +138,7 @@ window.styleThemes.luxury = {
         const cardStyle = `margin:${sp.pMargin} 0 8px;padding:32px 22px 26px;background:linear-gradient(135deg,${this.ink} 0%,${this.inkDeep} 100%);border:1px solid ${this.gold};border-radius:16px;box-shadow:0 6px 20px -6px rgba(201,169,97,0.25);text-align:center;font-family:${font};`;
         // 圆头像：黑底金边 + 金 T
         const avatarStyle = `display:inline-block;width:56px;height:56px;border-radius:50%;background:${this.ink};border:1.5px solid ${this.gold};margin:0 0 14px;line-height:56px;text-align:center;box-shadow:0 6px 16px -2px rgba(201,169,97,0.3);`;
-        const avatarTextStyle = `font-size:22px;font-weight:800;color:${this.gold};font-family:Georgia,serif;`;
+        const avatarTextStyle = `font-size:22px;font-weight:800;color:${this.gold};font-family:${font};`;
         // 作者名（浅金）
         const nameStyle = `font-size:17px;font-weight:800;color:${this.goldLight};margin:0 0 8px;letter-spacing:1.5px;`;
         // 一句话简介（金色斜体，按 UI）
@@ -146,7 +146,7 @@ window.styleThemes.luxury = {
         // 三点分隔（金色双圆点 + 灰线）
         const decoStyle = `display:flex;align-items:center;justify-content:center;margin:0 0 16px;`;
         const decoDotStyle = `display:inline-block;width:6px;height:6px;border-radius:50%;background:${this.gold};margin:0 6px;`;
-        const decoLineStyle = `height:1.5px;width:28px;background:${this.inkBorder};`;
+        const decoLineStyle = `display:inline-block;height:1.5px;width:28px;background:${this.inkBorder};`;
         // 关注行
         const focusStyle = `font-size:13px;color:${this.textColor};margin:0 0 6px;line-height:1.8;`;
         const focusLabelStyle = `color:${this.gold};font-weight:700;`;

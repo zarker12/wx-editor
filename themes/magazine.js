@@ -62,7 +62,7 @@ window.styleThemes.magazine = {
     ulStyle(c) { return `margin:0 4px 24px;`; },
     olStyle(c) { return `margin:0 4px 24px;`; },
     liStyle(c) {
-        return `display:flex;align-items:baseline;padding:14px 0;border-bottom:1px solid ${this.inkBorder};`;
+        return `display:flex;align-items:baseline;padding:10px 0;`;
     },
     liIcon(c) {
         return '';
@@ -139,12 +139,12 @@ window.styleThemes.magazine = {
         const cardStyle = `margin:${sp.pMargin} 0 8px;padding:32px 22px 26px;background:#FFFFFF;border-top:3px solid ${this.ink};border-bottom:1px solid ${this.ink};border-radius:0;text-align:center;font-family:${font};`;
         const editorLabelStyle = `font-size:10px;color:${this.ink};letter-spacing:6px;margin:0 0 16px;font-weight:700;`;
         const avatarStyle = `display:inline-block;width:56px;height:56px;border-radius:50%;background:${this.ink};margin:0 0 14px;line-height:56px;text-align:center;`;
-        const avatarTextStyle = `font-family:'Noto Serif SC',Georgia,serif;font-size:22px;font-weight:900;color:#FFFFFF;font-style:italic;`;
+        const avatarTextStyle = `font-family:${font};font-size:22px;font-weight:900;color:#FFFFFF;font-style:italic;`;
         const nameStyle = `font-family:'Noto Serif SC',Georgia,'Times New Roman',serif;font-size:19px;font-weight:900;color:${this.ink};margin:0 0 8px;letter-spacing:1.5px;`;
         const titleStyle = `font-size:13px;color:${this.crimson};margin:0 0 16px;letter-spacing:1px;font-style:italic;font-family:'Noto Serif SC',Georgia,serif;`;
         const decoStyle = `display:flex;align-items:center;justify-content:center;margin:0 0 16px;`;
         const decoDotStyle = `display:inline-block;width:6px;height:6px;border-radius:50%;background:${this.crimson};margin:0 6px;`;
-        const decoLineStyle = `height:1.5px;width:28px;background:${this.ink};`;
+        const decoLineStyle = `display:inline-block;height:1.5px;width:28px;background:${this.ink};`;
         const focusStyle = `font-size:13px;color:${this.textColor};margin:0 0 6px;line-height:1.8;font-family:'Noto Serif SC',Georgia,serif;`;
         const focusLabelStyle = `color:${this.ink};font-weight:700;`;
         const outputStyle = `font-size:13px;color:${this.textColor};margin:0 0 16px;line-height:1.8;font-family:'Noto Serif SC',Georgia,serif;`;

@@ -397,6 +397,8 @@ function renderStyledHTML(editorHTML) {
         return result;
     };
 
+    let h2Index = 0;
+
     function walk(node) {
         if (!node) return '';
 
@@ -417,21 +419,27 @@ function renderStyledHTML(editorHTML) {
                 return `<h1 style="${style}">${children}</h1>`;
             }
             case 'h2': {
+                h2Index++;
+                const h2Num = String(h2Index).padStart(2, '0');
                 let style = theme.h2Style(c, s, sp, t);
                 style = applyThemeColor(style, 'h2');
                 style = addBaseTextStyles(style);
-                const h2Decor = theme.h2Decor ? theme.h2Decor(c) : '';
+                const h2Decor = theme.h2Decor ? theme.h2Decor(c, h2Num) : '';
                 const hasH2TitleStyle = typeof theme.h2TitleStyle === 'function';
+
+                // 提取标题文本中的前导数字（如 "01、标题" → num="01", title="标题"）
+                const h2Text = node.textContent.trim();
+                const numMatch = h2Text.match(/^(\d+)[\s、.）)]+(.+)$/);
 
                 if (hasH2TitleStyle) {
                     let titleStyle = theme.h2TitleStyle(c, s, sp, t);
                     titleStyle = applyThemeColor(titleStyle, 'h2');
                     titleStyle = addBaseTextStyles(titleStyle);
-                    return `<div style="margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0;"><div style="${style}">${h2Decor}<h2 style="${titleStyle}">${children}</h2></div></div>`;
+                    // 有 SECTION 装饰时剥离标题前导数字，避免与装饰序号重复
+                    const titleContent = (h2Decor && numMatch) ? numMatch[2].trim() : children;
+                    return `<div style="margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0;"><div style="${style}">${h2Decor}<h2 style="${titleStyle}">${titleContent}</h2></div></div>`;
                 }
 
-                const h2Text = node.textContent.trim();
-                const numMatch = h2Text.match(/^(\d+)[\s、.）)]+(.+)$/);
                 if (numMatch) {
                     const num = numMatch[1];
                     const title = numMatch[2].trim();
@@ -918,6 +926,11 @@ function compressForWechat(html) {
     result = result.replace(/(margin(?:-top|-bottom|-left|-right)?):\s*([^;"]+)(;|(?="))/gi, '$1:$2 !important$3');
     result = result.replace(/(line-height):\s*([^;"]+)(;|(?="))/gi, '$1:$2 !important$3');
     result = result.replace(/(padding(?:-top|-bottom|-left|-right)?):\s*([^;"]+)(;|(?="))/gi, '$1:$2 !important$3');
+    // 8b.【颜色/背景/边框保护】给 color/background-color/border 加 !important，
+    //     防止公众号编辑器剥离或覆盖关键视觉样式（如黑金配色、主题色等）。
+    result = result.replace(/((?:color):\s*[^;"]+)(;|(?="))/gi, (m, p1, p2) => p1.includes('!important') ? m : p1 + ' !important' + p2);
+    result = result.replace(/(background(?:-color)?:\s*[^;"]+)(;|(?="))/gi, (m, p1, p2) => p1.includes('!important') ? m : p1 + ' !important' + p2);
+    result = result.replace(/(border(?:-top|-bottom|-left|-right|-color|-width|-style)?:\s*[^;"]+)(;|(?="))/gi, (m, p1, p2) => p1.includes('!important') ? m : p1 + ' !important' + p2);
 
     // 9.【重复 !important 防护】避免重复添加
     result = result.replace(/!important\s+!important/gi, '!important');
