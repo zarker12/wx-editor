@@ -789,6 +789,25 @@ body {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 5px;
 }
+/* 主题色：独占整行（跨 2 列），7 个色板等宽横排 */
+.style-bar .section-color {
+    grid-column: 1 / -1;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 9px 11px 10px;
+}
+.style-bar .section-color h4 { align-self: flex-start; }
+.style-bar .section-color .color-list {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 5px;
+}
+.style-bar .section-color .color-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 5px 4px;
+}
 /* 排版主题按钮：等宽胶囊型，悬停浮起 */
 .style-bar .style-btn {
     padding: 5px 8px;
@@ -2421,6 +2440,8 @@ body {
 @media (max-width: 900px) {
     .phone-frame { max-width: 320px; }
     .style-bar-grid { gap: 6px 10px; }
+    /* 窄屏：主题色 7 列过挤，改为 4 列自动换行 */
+    .style-bar .section-color .color-list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 /* 侧边栏面板/卡片（订阅、产物、设置 tab 共用）— 杂志风精修 */
