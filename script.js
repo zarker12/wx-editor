@@ -1153,13 +1153,43 @@ function syncEditorContentStyles() {
     styleTag.textContent = cssText;
 }
 
+// 保存 intro 卡片文案到 localStorage（跨主题切换保持用户输入）
+function saveIntroData() {
+    const fields = ['name', 'title', 'focus', 'output', 'slogan', 'disclaimer1', 'disclaimer2'];
+    const data = {};
+    fields.forEach(field => {
+        const el = document.getElementById('intro' + field.charAt(0).toUpperCase() + field.slice(1));
+        if (el) data[field] = el.value;
+    });
+    try { localStorage.setItem('introCardData', JSON.stringify(data)); } catch {}
+}
+
+// 从 localStorage 恢复 intro 卡片文案
+function loadIntroData() {
+    try {
+        const raw = localStorage.getItem('introCardData');
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch { return null; }
+}
+
 function fillIntroDefaults() {
     const theme = getStyleTheme();
-    if (!theme.defaultIntro) return;
-
-    const defaults = theme.defaultIntro;
     const fields = ['name', 'title', 'focus', 'output', 'slogan', 'disclaimer1', 'disclaimer2'];
 
+    // 优先使用用户已保存的文案（跨主题切换不重置）
+    const saved = loadIntroData();
+    if (saved) {
+        fields.forEach(field => {
+            const el = document.getElementById('intro' + field.charAt(0).toUpperCase() + field.slice(1));
+            if (el && saved[field] !== undefined) el.value = saved[field];
+        });
+        return;
+    }
+
+    // 首次使用：填充主题默认文案
+    if (!theme.defaultIntro) return;
+    const defaults = theme.defaultIntro;
     fields.forEach(field => {
         const el = document.getElementById('intro' + field.charAt(0).toUpperCase() + field.slice(1));
         if (el && defaults[field] !== undefined) {
@@ -2749,6 +2779,25 @@ editor.addEventListener('keydown', (e) => {
         block = block.parentElement;
     }
     if (!block || block === editor) return;
+
+    // 标题（h1/h2/h3）末尾按 Enter：插入正文段落，而非继续标题样式
+    if (!e.shiftKey && ['H1','H2','H3'].includes(block.tagName)) {
+        const range = sel.getRangeAt(0);
+        if (range.collapsed && isCursorAtBlockEnd(range, block)) {
+            e.preventDefault();
+            const newP = document.createElement('p');
+            newP.innerHTML = '<br>';
+            block.parentNode.insertBefore(newP, block.nextSibling);
+            const r = document.createRange();
+            r.setStart(newP, 0);
+            r.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(r);
+            debouncedUpdatePreview();
+            return;
+        }
+    }
+
     // 若光标在图片所在块，阻止默认，手动插入新空段落
     const img = block.tagName === 'P' ? block.querySelector('img') : null;
     if (img && block.textContent.trim() === '') {
@@ -2765,6 +2814,14 @@ editor.addEventListener('keydown', (e) => {
         debouncedUpdatePreview();
     }
 });
+
+// 判断光标是否在块级元素末尾
+function isCursorAtBlockEnd(range, block) {
+    const testRange = range.cloneRange();
+    testRange.selectNodeContents(block);
+    testRange.setStart(range.endContainer, range.endOffset);
+    return testRange.toString().trim() === '';
+}
 
 // ===== 侧边栏收起/展开（支持 localStorage 持久化 + Ctrl+B 快捷键）=====
 (function setupSidebarCollapse() {
@@ -3235,7 +3292,10 @@ urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') parseUrl(); }
 
 const introInputs = document.querySelectorAll('.intro-input');
 introInputs.forEach(input => {
-    input.addEventListener('input', debouncedUpdatePreview);
+    input.addEventListener('input', () => {
+        saveIntroData();
+        debouncedUpdatePreview();
+    });
 });
 const introEnabled = document.getElementById('introEnabled');
 if (introEnabled) {
