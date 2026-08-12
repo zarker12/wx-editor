@@ -1614,6 +1614,57 @@ function handleFileUpload(e) {
 }
 
 // ===== 智能排版 =====
+// 剥离编辑器 HTML 中残留的内联 style 属性，只保留语义标签和必要属性。
+// 防止旧的内联样式覆盖 syncEditorContentStyles 注入的 CSS，确保编辑器/预览/导出三者一致。
+function stripInlineStyles(html) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(`<div id="__strip__">${html}</div>`, 'text/html');
+    const root = doc.getElementById('__strip__');
+
+    const KEEP_ATTRS = {
+        img: ['src', 'alt'],
+        a: ['href'],
+        div: ['data-end-marker'],
+        p: ['class']
+    };
+
+    function clean(node) {
+        if (node.nodeType !== 1) return;
+        const tag = node.tagName.toLowerCase();
+        const keep = KEEP_ATTRS[tag] || [];
+        // 删除所有不在白名单中的属性（style / data-* / class 等）
+        Array.from(node.attributes).forEach(attr => {
+            if (!keep.includes(attr.name)) {
+                node.removeAttribute(attr.name);
+            }
+        });
+        // class 只保留 meta-line（用于引言行样式）
+        if (tag === 'p' && node.className && node.className !== 'meta-line') {
+            node.removeAttribute('class');
+        }
+        Array.from(node.children).forEach(clean);
+    }
+
+    Array.from(root.children).forEach(clean);
+
+    // 移除空的 style/section 嵌套包装（renderStyledHTML 残留的 section 包裹）
+    function unwrapEmptySections(node) {
+        Array.from(node.children).forEach(child => {
+            unwrapEmptySections(child);
+            if (child.tagName.toLowerCase() === 'section' && child.children.length <= 1) {
+                const parent = child.parentNode;
+                while (child.firstChild) {
+                    parent.insertBefore(child.firstChild, child);
+                }
+                parent.removeChild(child);
+            }
+        });
+    }
+    unwrapEmptySections(root);
+
+    return root.innerHTML;
+}
+
 function smartFormat() {
     const html = editor.innerHTML;
     if (!html.trim()) { showToast('请先输入内容'); return; }
@@ -1652,20 +1703,23 @@ function smartFormat() {
         // 标准 MD：直接走 marked.js 解析，保留所有格式（标题层级/代码块/引用/列表/表格/加粗斜体）
         if (!confirm('检测到标准 Markdown 格式，将直接解析为富文本。继续？')) return;
         const newHtml = markdownToHTML(text);
-        editor.innerHTML = newHtml;
+        editor.innerHTML = stripInlineStyles(newHtml);
+        syncEditorToTheme();
         updatePreview();
         showToast('Markdown 已解析为富文本！');
         return;
     }
 
     if (isHtmlRich) {
-        // HTML 富文本：保留结构，只应用主题样式（不转纯文本重新识别）
-        if (!confirm('检测到富文本内容，将应用主题样式排版。继续？')) return;
-        const normalizedContent = normalizeEditorHTML(editor.innerHTML);
-        const styledContent = renderStyledHTML(normalizedContent);
-        editor.innerHTML = styledContent;
+        // HTML 富文本：仅做结构规范化，剥离旧的内联样式，保留语义结构（h1/h2/p 等）。
+        // ⚠ 绝不能把 renderStyledHTML 的结果写回编辑器——那是导出用的内联样式 HTML，
+        //    写回后再次导出会重复嵌套样式导致公众号变形。
+        //    编辑器只存"无样式结构"，预览靠 syncEditorContentStyles 的 CSS，导出靠 renderStyledHTML。
+        if (!confirm('检测到富文本内容，将规范化结构并应用主题样式排版。继续？')) return;
+        editor.innerHTML = stripInlineStyles(normalizeEditorHTML(editor.innerHTML));
+        syncEditorToTheme();
         updatePreview();
-        showToast('富文本已应用主题样式！');
+        showToast('富文本已规范化，主题样式已应用！');
         return;
     }
 
@@ -1675,7 +1729,8 @@ function smartFormat() {
     }
     const formatted = smartFormatText(text);
     const newHtml = markdownToHTML(formatted);
-    editor.innerHTML = newHtml;
+    editor.innerHTML = stripInlineStyles(newHtml);
+    syncEditorToTheme();
     updatePreview();
     showToast('智能排版完成！');
 }
