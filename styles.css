@@ -1787,8 +1787,21 @@ body {
 }
 .tool-btn:hover .tool-ico { transform: scale(1.08); }
 
-#editor {
+/* 编辑器滚动容器：包裹 #editor + 底部名片 + 字数统计，整体滚动；
+   顶部导入栏/工具栏冻结在外部，名片不再固定挡住编辑区 */
+.editor-scroll-wrap {
     flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-surface);
+    -webkit-overflow-scrolling: touch;
+}
+
+#editor {
+    flex: 1 0 auto;
     width: 100%;
     border: none;
     resize: none;
@@ -1801,7 +1814,7 @@ body {
     outline: none;
     max-width: 480px;
     margin: 0 auto;
-    overflow-y: auto;
+    overflow-y: visible;
     word-break: break-word;
     min-height: 0;
     --editor-accent: var(--accent-500);

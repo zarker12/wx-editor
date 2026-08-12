@@ -2861,8 +2861,8 @@ function isCursorAtBlockEnd(range, block) {
     if (!collapseBtn || !container) return;
 
     const STORAGE_KEY = 'mp_sidebar_collapsed';
-    // 屏幕过窄时强制收起，且不恢复（避免恢复后挤压编辑区）
-    const FORCE_COLLAPSE_BREAKPOINT = 1024;
+    // 仅在移动端（≤640）强制收起；笔记本屏保留完整侧栏，确保"排版"二级菜单可见
+    const FORCE_COLLAPSE_BREAKPOINT = 640;
 
     function applyState(collapsed, persist) {
         container.classList.toggle('sidebar-collapsed', collapsed);
@@ -2872,11 +2872,9 @@ function isCursorAtBlockEnd(range, block) {
         }
     }
 
-    // 1) 恢复上次状态（窄屏强制收起）
+    // 1) 恢复上次状态（窄屏强制收起；大屏默认展开，避免因旧记录卡在收起态看不到二级菜单）
     const isNarrow = window.innerWidth <= FORCE_COLLAPSE_BREAKPOINT;
-    let saved = null;
-    try { saved = localStorage.getItem(STORAGE_KEY); } catch (e) {}
-    const initialCollapsed = isNarrow ? true : (saved === '1');
+    const initialCollapsed = isNarrow;
     applyState(initialCollapsed, false);
 
     // 2) 点击切换
@@ -2965,12 +2963,14 @@ function isCursorAtBlockEnd(range, block) {
         if (drawerTitle) drawerTitle.textContent = PANEL_TITLES[currentPanel] || '样式设置';
         drawer.classList.add('open');
         drawer.setAttribute('aria-hidden', 'false');
+        drawer.style.transform = 'translateX(0)';
         if (overlay) overlay.classList.add('show');
         if (navGroup) navGroup.classList.add('expanded');
     }
     function closeDrawer() {
         drawer.classList.remove('open');
         drawer.setAttribute('aria-hidden', 'true');
+        drawer.style.transform = 'translateX(-100%)';
         if (overlay) overlay.classList.remove('show');
     }
 
@@ -2999,11 +2999,16 @@ function isCursorAtBlockEnd(range, block) {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && drawer.classList.contains('open')) closeDrawer();
     });
-    // 排版 nav-item 点击时不阻止默认 tab 切换，仅确保子菜单展开
+    // 排版 nav-item 点击时不阻止默认 tab 切换，仅确保子菜单展开；
+    // 侧栏收起态下子菜单不可见，直接打开抽屉作为样式入口
     const editorNavItem = document.querySelector('[data-tab="editor"]');
     if (editorNavItem) {
         editorNavItem.addEventListener('click', () => {
             if (navGroup) navGroup.classList.add('expanded');
+            const appContainer = document.querySelector('.app-container');
+            if (appContainer && appContainer.classList.contains('sidebar-collapsed')) {
+                openDrawer(currentPanel);
+            }
         });
     }
 })();
