@@ -1444,6 +1444,39 @@ function sanitizeHTML(html) {
     return Array.from(root.childNodes).map(cleanNode).join('');
 }
 
+// 将文本转为 HTML，保留原始排版结构（不自动智能识别）：
+// - 含 Markdown 语法 → 直接用 marked 解析，保留标题/列表/引用/代码块等结构
+// - 纯文本 → 按空行分段，段内换行用 <br> 保留
+// 仅当用户点击"自动排版"按钮(smartFormat)或切换主题时才重新识别/应用样式
+function textToPreservedHTML(text) {
+    const trimmed = (text || '').trim();
+    if (!trimmed) return '';
+
+    const hasMarkdownSyntax = /^#{1,6}\s|```|^[-*]\s|^>\s|^\d+\.\s|\*\*[^*]+\*\*|`[^`]+`/m.test(trimmed);
+
+    if (hasMarkdownSyntax) {
+        return markdownToHTML(trimmed);
+    }
+
+    const lines = trimmed.split('\n');
+    const paragraphs = [];
+    let paraBuffer = [];
+    for (const line of lines) {
+        if (line.trim() === '') {
+            if (paraBuffer.length > 0) {
+                paragraphs.push(`<p>${paraBuffer.join('<br>')}</p>`);
+                paraBuffer = [];
+            }
+        } else {
+            paraBuffer.push(line);
+        }
+    }
+    if (paraBuffer.length > 0) {
+        paragraphs.push(`<p>${paraBuffer.join('<br>')}</p>`);
+    }
+    return paragraphs.join('');
+}
+
 function handlePaste(e) {
     e.preventDefault();
     const clipboardData = e.clipboardData;
@@ -1476,22 +1509,21 @@ function handlePaste(e) {
         const trimmed = textData.trim();
         if (!trimmed) return;
 
-        const hasMarkdownSyntax = /^#\s|^##\s|```|^-\s|^>\s|\*\*.+\*\*/.test(trimmed);
-        const isLongText = trimmed.length > 300;
-        const hasMultipleLines = trimmed.split('\n').filter(l => l.trim()).length > 5;
+        const hasMarkdownSyntax = /^#{1,6}\s|```|^[-*]\s|^>\s|^\d+\.\s|\*\*[^*]+\*\*|`[^`]+`/m.test(trimmed);
 
-        if (hasMarkdownSyntax || isLongText || hasMultipleLines) {
-            const formatted = smartFormatText(trimmed);
-            const html = markdownToHTML(formatted);
+        if (hasMarkdownSyntax) {
+            // 有 Markdown 语法：直接解析为富文本，保留原始排版结构（不自动智能识别）
+            const html = markdownToHTML(trimmed);
             insertHTMLAtCursor(html);
         } else {
+            // 纯文本：仅按空行分段，保留原文换行，不做智能排版
             const lines = trimmed.split('\n');
             const paragraphs = [];
             let paraBuffer = [];
             for (const line of lines) {
                 if (line.trim() === '') {
                     if (paraBuffer.length > 0) {
-                        paragraphs.push(`<p>${paraBuffer.join('')}</p>`);
+                        paragraphs.push(`<p>${paraBuffer.join('<br>')}</p>`);
                         paraBuffer = [];
                     }
                 } else {
@@ -1499,7 +1531,7 @@ function handlePaste(e) {
                 }
             }
             if (paraBuffer.length > 0) {
-                paragraphs.push(`<p>${paraBuffer.join('')}</p>`);
+                paragraphs.push(`<p>${paraBuffer.join('<br>')}</p>`);
             }
             insertHTMLAtCursor(paragraphs.join(''));
         }
@@ -1536,11 +1568,11 @@ function handleDrop(e) {
             if (file.name.endsWith('.md') || file.name.endsWith('.markdown') || file.name.endsWith('.txt')) {
                 const reader = new FileReader();
                 reader.onload = (evt) => {
-                    const formatted = smartFormatText(evt.target.result);
-                    const html = markdownToHTML(formatted);
+                    const raw = evt.target.result;
+                    const html = textToPreservedHTML(raw);
                     editor.innerHTML = html;
                     updatePreview();
-                    showToast(`已导入：${file.name}（已替换原有内容）`);
+                    showToast(`已导入：${file.name}（已保留原始排版）`);
                 };
                 reader.readAsText(file, 'UTF-8');
                 return;
@@ -1559,8 +1591,7 @@ function handleDrop(e) {
     if (textData) {
         const trimmed = textData.trim();
         if (trimmed) {
-            const formatted = smartFormatText(trimmed);
-            const html = markdownToHTML(formatted);
+            const html = textToPreservedHTML(trimmed);
             insertHTMLAtCursor(html);
         }
     }
@@ -1572,11 +1603,11 @@ function handleFileUpload(e) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function (evt) {
-        const formatted = smartFormatText(evt.target.result);
-        const html = markdownToHTML(formatted);
+        const raw = evt.target.result;
+        const html = textToPreservedHTML(raw);
         editor.innerHTML = html;
         updatePreview();
-        showToast(`已导入：${file.name}`);
+        showToast(`已导入：${file.name}（已保留原始排版）`);
     };
     reader.readAsText(file, 'UTF-8');
     fileInput.value = '';
@@ -2411,11 +2442,11 @@ async function parseUrl() {
             showToast('未能提取到文章内容，请尝试复制全文后使用智能排版');
             return;
         }
-        const formatted = smartFormatText(content);
-        const htmlContent = markdownToHTML(formatted);
+        // 保留原始排版结构，不自动智能识别；用户可点击"自动排版"再重新整理
+        const htmlContent = textToPreservedHTML(content);
         editor.innerHTML = htmlContent;
         updatePreview();
-        showToast('文章解析完成！');
+        showToast('文章解析完成（已保留原始排版，可点击"自动排版"重新整理）');
     } catch (err) {
         console.error(err);
         showToast('解析失败：' + (err.message || '请检查链接或稍后重试'));
@@ -2912,27 +2943,67 @@ function isCursorAtBlockEnd(range, block) {
 })();
 
 // ===== 样式工具条：可一键收起/展开（默认展开常驻上方）=====
-(function setupStyleBar() {
-    const bar = document.getElementById('styleBar');
-    if (!bar) return;
-    const toggle = document.getElementById('styleBarToggle');
-    const STORAGE_KEY = 'mp_stylebar_collapsed';
+// ===== 样式抽屉面板（侧栏"排版"二级菜单触发） =====
+(function setupStyleDrawer() {
+    const drawer = document.getElementById('styleDrawer');
+    const overlay = document.getElementById('styleDrawerOverlay');
+    const closeBtn = document.getElementById('styleDrawerClose');
+    const subToggle = document.getElementById('editorSubToggle');
+    const navGroup = document.getElementById('editorNavGroup');
+    const subItems = document.querySelectorAll('.nav-sub-item');
+    const panels = document.querySelectorAll('.style-drawer-panel');
+    const drawerTitle = document.getElementById('styleDrawerTitle');
+    if (!drawer) return;
 
-    function syncState() {
-        const collapsed = bar.classList.contains('collapsed');
-        if (toggle) toggle.setAttribute('aria-expanded', String(!collapsed));
+    const PANEL_TITLES = { theme: '主题风格', font: '字体段落' };
+    let currentPanel = 'theme';
+
+    function openDrawer(panel) {
+        currentPanel = panel || currentPanel;
+        panels.forEach(p => p.classList.toggle('active', p.dataset.panel === currentPanel));
+        subItems.forEach(s => s.classList.toggle('active', s.dataset.stylePanel === currentPanel));
+        if (drawerTitle) drawerTitle.textContent = PANEL_TITLES[currentPanel] || '样式设置';
+        drawer.classList.add('open');
+        drawer.setAttribute('aria-hidden', 'false');
+        if (overlay) overlay.classList.add('show');
+        if (navGroup) navGroup.classList.add('expanded');
+    }
+    function closeDrawer() {
+        drawer.classList.remove('open');
+        drawer.setAttribute('aria-hidden', 'true');
+        if (overlay) overlay.classList.remove('show');
     }
 
-    let saved = null;
-    try { saved = localStorage.getItem(STORAGE_KEY); } catch (e) {}
-    if (saved === '1') bar.classList.add('collapsed');
-    syncState();
-
-    if (toggle) {
-        toggle.addEventListener('click', () => {
-            bar.classList.toggle('collapsed');
-            syncState();
-            try { localStorage.setItem(STORAGE_KEY, bar.classList.contains('collapsed') ? '1' : '0'); } catch (e) {}
+    // 展开箭头：点击展开/收起子菜单（不打开抽屉）
+    if (subToggle) {
+        subToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (navGroup) navGroup.classList.toggle('expanded');
+        });
+    }
+    // 子菜单项：切换抽屉面板
+    subItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const panel = item.dataset.stylePanel;
+            // 若已打开同一面板则收起；否则打开对应面板
+            if (drawer.classList.contains('open') && currentPanel === panel) {
+                closeDrawer();
+            } else {
+                openDrawer(panel);
+            }
+        });
+    });
+    if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+    if (overlay) overlay.addEventListener('click', closeDrawer);
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && drawer.classList.contains('open')) closeDrawer();
+    });
+    // 排版 nav-item 点击时不阻止默认 tab 切换，仅确保子菜单展开
+    const editorNavItem = document.querySelector('[data-tab="editor"]');
+    if (editorNavItem) {
+        editorNavItem.addEventListener('click', () => {
+            if (navGroup) navGroup.classList.add('expanded');
         });
     }
 })();
