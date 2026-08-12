@@ -2852,13 +2852,16 @@ function normalizeEditorStructure() {
     }
 }
 
-// 回车键拦截：在图片后回车，确保生成新 <p> 而非延续图片所在块
+// ===== 编辑器键盘拦截 =====
+// 1. 标题（h1/h2/h3）按 Enter：无论光标在末尾还是中间，都生成正文段落（不延续标题样式）
+// 2. 图片段落后按 Enter：生成新空段落
+// 3. Backspace/Delete：支持删除图片（点击图片自动选中，Backspace 即删）
 editor.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter') return;
     const sel = window.getSelection();
     if (!sel.rangeCount) return;
     const anchor = sel.anchorNode;
     if (!anchor) return;
+
     // 找到最近的块级元素
     let block = anchor.nodeType === 3 ? anchor.parentElement : anchor;
     while (block && block !== editor && !['P','DIV','H1','H2','H3','LI','BLOCKQUOTE'].includes(block.tagName)) {
@@ -2866,10 +2869,50 @@ editor.addEventListener('keydown', (e) => {
     }
     if (!block || block === editor) return;
 
-    // 标题（h1/h2/h3）末尾按 Enter：插入正文段落，而非继续标题样式
-    if (!e.shiftKey && ['H1','H2','H3'].includes(block.tagName)) {
+    // ===== Enter 拦截 =====
+    if (e.key === 'Enter' && !e.shiftKey) {
         const range = sel.getRangeAt(0);
-        if (range.collapsed && isCursorAtBlockEnd(range, block)) {
+
+        // 标题（h1/h2/h3）按 Enter：始终生成正文段落，不延续标题
+        if (['H1','H2','H3'].includes(block.tagName)) {
+            e.preventDefault();
+            const newP = document.createElement('p');
+
+            if (range.collapsed && isCursorAtBlockEnd(range, block)) {
+                // 光标在标题末尾 → 直接插入空段落
+                newP.innerHTML = '<br>';
+                block.parentNode.insertBefore(newP, block.nextSibling);
+            } else {
+                // 光标在标题中间 → 把光标后的内容移到新段落（正文样式）
+                const afterRange = range.cloneRange();
+                afterRange.setStart(range.endContainer, range.endOffset);
+                afterRange.setEndAfter(block.lastChild);
+                const frag = afterRange.extractContents();
+                newP.appendChild(frag);
+                if (!newP.innerHTML.trim()) newP.innerHTML = '<br>';
+                block.parentNode.insertBefore(newP, block.nextSibling);
+                // 清理标题中可能残留的尾部 br
+                let last = block.lastChild;
+                while (last && last.nodeType === 3 && !last.textContent.trim()) {
+                    block.removeChild(last);
+                    last = block.lastChild;
+                }
+                if (last && last.nodeType === 1 && last.tagName === 'BR') block.removeChild(last);
+                if (!block.innerHTML.trim()) block.innerHTML = '<br>';
+            }
+
+            const r = document.createRange();
+            r.setStart(newP, 0);
+            r.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(r);
+            debouncedUpdatePreview();
+            return;
+        }
+
+        // 图片所在段落按 Enter：生成新空段落
+        const img = block.tagName === 'P' ? block.querySelector('img') : null;
+        if (img && block.textContent.trim() === '') {
             e.preventDefault();
             const newP = document.createElement('p');
             newP.innerHTML = '<br>';
@@ -2880,24 +2923,105 @@ editor.addEventListener('keydown', (e) => {
             sel.removeAllRanges();
             sel.addRange(r);
             debouncedUpdatePreview();
-            return;
         }
     }
 
-    // 若光标在图片所在块，阻止默认，手动插入新空段落
-    const img = block.tagName === 'P' ? block.querySelector('img') : null;
-    if (img && block.textContent.trim() === '') {
-        e.preventDefault();
-        const newP = document.createElement('p');
-        newP.innerHTML = '<br>';
-        block.parentNode.insertBefore(newP, block.nextSibling);
-        // 移动光标到新段落
+    // ===== Backspace / Delete 拦截：删除图片 =====
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+        const range = sel.getRangeAt(0);
+
+        // 有选区时：检查选中的是否是图片，是则主动删除
+        if (!range.collapsed) {
+            const selected = range.cloneContents();
+            if (selected.querySelector('img')) {
+                e.preventDefault();
+                range.deleteContents();
+                debouncedUpdatePreview();
+                return;
+            }
+            // 选中的不是图片，交给浏览器处理
+            return;
+        }
+
+        // 检测光标紧邻的图片（前一个兄弟节点或父级的前一个兄弟块里的 img）
+        const checkAndRemoveImg = (imgEl) => {
+            if (!imgEl || imgEl.tagName !== 'IMG') return false;
+            e.preventDefault();
+            const imgP = imgEl.closest('p') || imgEl.parentElement;
+            imgEl.remove();
+            // 如果图片所在段落空了，删除空段落并把光标移到前一个段落末尾
+            if (imgP && imgP.tagName === 'P' && !imgP.innerHTML.trim()) {
+                const prev = imgP.previousElementSibling;
+                imgP.remove();
+                if (prev) {
+                    const r = document.createRange();
+                    r.selectNodeContents(prev);
+                    r.collapse(false);
+                    sel.removeAllRanges();
+                    sel.addRange(r);
+                }
+            } else {
+                // 光标回到图片原位置
+                const r = document.createRange();
+                r.setStart(imgP || editor, 0);
+                r.collapse(true);
+                sel.removeAllRanges();
+                sel.addRange(r);
+            }
+            debouncedUpdatePreview();
+            return true;
+        };
+
+        if (e.key === 'Backspace') {
+            // 光标前一个兄弟节点是 img
+            const prevSibling = anchor.nodeType === 3
+                ? (range.startOffset > 0 ? null : anchor.previousSibling)
+                : anchor.childNodes[range.startOffset - 1];
+            if (prevSibling && prevSibling.tagName === 'IMG') {
+                if (checkAndRemoveImg(prevSibling)) return;
+            }
+            // 光标在段落开头，上一段落是纯图片段落
+            if (block.tagName === 'P' && range.startOffset === 0 && anchor === block) {
+                const prevBlock = block.previousElementSibling;
+                if (prevBlock && prevBlock.tagName === 'P') {
+                    const prevImg = prevBlock.querySelector('img');
+                    if (prevImg && !prevBlock.textContent.trim()) {
+                        if (checkAndRemoveImg(prevImg)) return;
+                    }
+                }
+            }
+        }
+
+        if (e.key === 'Delete') {
+            // 光标后一个兄弟节点是 img
+            const nextSibling = anchor.nodeType === 3
+                ? (range.startOffset < anchor.textContent.length ? null : anchor.nextSibling)
+                : anchor.childNodes[range.startOffset];
+            if (nextSibling && nextSibling.tagName === 'IMG') {
+                if (checkAndRemoveImg(nextSibling)) return;
+            }
+            // 光标在段落末尾，下一段落是纯图片段落
+            if (block.tagName === 'P' && isCursorAtBlockEnd(range, block)) {
+                const nextBlock = block.nextElementSibling;
+                if (nextBlock && nextBlock.tagName === 'P') {
+                    const nextImg = nextBlock.querySelector('img');
+                    if (nextImg && !nextBlock.textContent.trim()) {
+                        if (checkAndRemoveImg(nextImg)) return;
+                    }
+                }
+            }
+        }
+    }
+});
+
+// 点击图片自动选中（方便 Backspace 删除）
+editor.addEventListener('click', (e) => {
+    if (e.target.tagName === 'IMG') {
         const range = document.createRange();
-        range.setStart(newP, 0);
-        range.collapse(true);
+        range.selectNode(e.target);
+        const sel = window.getSelection();
         sel.removeAllRanges();
         sel.addRange(range);
-        debouncedUpdatePreview();
     }
 });
 
@@ -2995,54 +3119,51 @@ function isCursorAtBlockEnd(range, block) {
     });
 })();
 
-// ===== 样式工具条：可一键收起/展开（默认展开常驻上方）=====
-// ===== 样式抽屉面板（侧栏"排版"二级菜单触发） =====
+// ===== 样式面板（侧栏"排版"二级菜单触发，内嵌不悬浮） =====
 (function setupStyleDrawer() {
     const drawer = document.getElementById('styleDrawer');
-    const overlay = document.getElementById('styleDrawerOverlay');
     const closeBtn = document.getElementById('styleDrawerClose');
     const subToggle = document.getElementById('editorSubToggle');
     const navGroup = document.getElementById('editorNavGroup');
     const subItems = document.querySelectorAll('.nav-sub-item');
     const panels = document.querySelectorAll('.style-drawer-panel');
     const drawerTitle = document.getElementById('styleDrawerTitle');
-    if (!drawer) return;
+    const appContainer = document.querySelector('.app-container');
+    if (!drawer || !appContainer) return;
 
     const PANEL_TITLES = { theme: '主题风格', font: '字体段落' };
     let currentPanel = 'theme';
+    let isOpen = false;
 
     function openDrawer(panel) {
         currentPanel = panel || currentPanel;
         panels.forEach(p => p.classList.toggle('active', p.dataset.panel === currentPanel));
         subItems.forEach(s => s.classList.toggle('active', s.dataset.stylePanel === currentPanel));
         if (drawerTitle) drawerTitle.textContent = PANEL_TITLES[currentPanel] || '样式设置';
-        drawer.classList.add('open');
+        appContainer.classList.add('style-panel-open');
         drawer.setAttribute('aria-hidden', 'false');
-        drawer.style.transform = 'translateX(0)';
-        if (overlay) overlay.classList.add('show');
         if (navGroup) navGroup.classList.add('expanded');
+        isOpen = true;
     }
     function closeDrawer() {
-        drawer.classList.remove('open');
+        appContainer.classList.remove('style-panel-open');
         drawer.setAttribute('aria-hidden', 'true');
-        drawer.style.transform = 'translateX(-100%)';
-        if (overlay) overlay.classList.remove('show');
+        isOpen = false;
     }
 
-    // 展开箭头：点击展开/收起子菜单（不打开抽屉）
+    // 展开箭头：点击展开/收起子菜单
     if (subToggle) {
         subToggle.addEventListener('click', (e) => {
             e.stopPropagation();
             if (navGroup) navGroup.classList.toggle('expanded');
         });
     }
-    // 子菜单项：切换抽屉面板
+    // 子菜单项：切换面板（已打开同一面板则收起）
     subItems.forEach(item => {
         item.addEventListener('click', (e) => {
             e.stopPropagation();
             const panel = item.dataset.stylePanel;
-            // 若已打开同一面板则收起；否则打开对应面板
-            if (drawer.classList.contains('open') && currentPanel === panel) {
+            if (isOpen && currentPanel === panel) {
                 closeDrawer();
             } else {
                 openDrawer(panel);
@@ -3050,18 +3171,15 @@ function isCursorAtBlockEnd(range, block) {
         });
     });
     if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
-    if (overlay) overlay.addEventListener('click', closeDrawer);
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && drawer.classList.contains('open')) closeDrawer();
+        if (e.key === 'Escape' && isOpen) closeDrawer();
     });
-    // 排版 nav-item 点击时不阻止默认 tab 切换，仅确保子菜单展开；
-    // 侧栏收起态下子菜单不可见，直接打开抽屉作为样式入口
+    // 排版 nav-item 点击时确保子菜单展开；收起态下直接打开面板
     const editorNavItem = document.querySelector('[data-tab="editor"]');
     if (editorNavItem) {
         editorNavItem.addEventListener('click', () => {
             if (navGroup) navGroup.classList.add('expanded');
-            const appContainer = document.querySelector('.app-container');
-            if (appContainer && appContainer.classList.contains('sidebar-collapsed')) {
+            if (appContainer.classList.contains('sidebar-collapsed') && !isOpen) {
                 openDrawer(currentPanel);
             }
         });

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>公众号文章排版助手</title>
-    <link rel="stylesheet" href="styles.css?v=24">
+    <link rel="stylesheet" href="styles.css?v=26">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -62,6 +62,83 @@
                 <svg class="icon-expand" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                 <span class="collapse-label">收起侧栏</span>
             </button>
+        </aside>
+
+        <!-- ===== 样式面板（内嵌在 sidebar 与 main 之间，不悬浮不遮挡预览） ===== -->
+        <aside class="style-panel" id="styleDrawer" aria-hidden="true">
+            <div class="style-panel-head">
+                <span class="style-panel-title" id="styleDrawerTitle">主题风格</span>
+                <button class="style-panel-close" id="styleDrawerClose" type="button" aria-label="收起样式面板">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+            </div>
+            <div class="style-panel-body">
+                <!-- 面板：主题风格 -->
+                <div class="style-drawer-panel active" data-panel="theme">
+                    <div class="style-bar-grid">
+                    <div class="section section-theme">
+                        <h4>排版主题</h4>
+                        <div class="style-list">
+                            <button class="style-btn active" data-style="minimal" data-tooltip="极简白：干净清爽，渐变标题"><span class="style-name">极简</span></button>
+                            <button class="style-btn" data-style="luxury" data-tooltip="黑金奢：奢华质感，金色点缀"><span class="style-name">黑金</span></button>
+                            <button class="style-btn" data-style="cyber" data-tooltip="科技感：赛博朋克，代码风格"><span class="style-name">科技</span></button>
+                            <button class="style-btn" data-style="magazine" data-tooltip="杂志风：精致排版，视觉冲击"><span class="style-name">杂志</span></button>
+                            <button class="style-btn" data-style="fresh" data-tooltip="清新绿：自然舒适，适合阅读"><span class="style-name">清新</span></button>
+                            <button class="style-btn" data-style="vibrant" data-tooltip="活力橙：温暖明快，橙色渐变"><span class="style-name">活力</span></button>
+                        </div>
+                    </div>
+                    <div class="section section-color">
+                        <h4>主题色</h4>
+                        <div class="color-list">
+                            <button class="color-btn active" data-color="emerald"><span class="color-dot" style="background: linear-gradient(135deg, #10B981, #34D399);"></span>翠绿</button>
+                            <button class="color-btn" data-color="blue"><span class="color-dot" style="background: linear-gradient(135deg, #3B82F6, #60A0FA);"></span>湖蓝</button>
+                            <button class="color-btn" data-color="orange"><span class="color-dot" style="background: linear-gradient(135deg, #F97316, #FB923C);"></span>暖橙</button>
+                            <button class="color-btn" data-color="purple"><span class="color-dot" style="background: linear-gradient(135deg, #8B5CF6, #A78BFA);"></span>紫藤</button>
+                            <button class="color-btn" data-color="brown"><span class="color-dot" style="background: linear-gradient(135deg, #78350F, #B45309);"></span>栗棕</button>
+                            <button class="color-btn" data-color="black"><span class="color-dot" style="background: linear-gradient(135deg, #1F2937, #4B5563);"></span>墨灰</button>
+                            <button class="color-btn" data-color="beige"><span class="color-dot" style="background: linear-gradient(135deg, #D4C4A8, #E8DDC8);"></span>米驼</button>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+                <!-- 面板：字体段落 -->
+                <div class="style-drawer-panel" data-panel="font">
+                    <div class="style-bar-grid">
+                    <div class="section">
+                        <h4>字体</h4>
+                        <div class="font-options">
+                            <button class="font-btn active" data-font="serif"><span class="font-sample">宋</span>衬线</button>
+                            <button class="font-btn" data-font="sans"><span class="font-sample">黑</span>无衬线</button>
+                            <button class="font-btn" data-font="mono"><span class="font-sample">M</span>等宽</button>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <h4>正文字号</h4>
+                        <div class="size-options">
+                            <button class="size-btn" data-size="small">A-</button>
+                            <button class="size-btn active" data-size="medium">A</button>
+                            <button class="size-btn" data-size="large">A+</button>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <h4>段落间距</h4>
+                        <div class="spacing-options">
+                            <button class="spacing-btn" data-spacing="compact">紧</button>
+                            <button class="spacing-btn active" data-spacing="normal">中</button>
+                            <button class="spacing-btn" data-spacing="loose">松</button>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <h4>字间距</h4>
+                        <div class="tracking-options">
+                            <button class="tracking-btn active" data-tracking="tight">紧</button>
+                            <button class="tracking-btn" data-tracking="normal">中</button>
+                            <button class="tracking-btn" data-tracking="loose">松</button>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+            </div>
         </aside>
 
         <!-- ===== 主区域 ===== -->
@@ -1173,92 +1250,13 @@ services:
         </div>
     </div>
 
-    <!-- 样式抽屉面板（从左侧滑出，由侧栏"排版"二级菜单触发）；
-         必须放在 script.js 之前，确保 setupStyleDrawer 执行时元素已存在 -->
-    <div class="style-drawer-overlay" id="styleDrawerOverlay"></div>
-    <aside class="style-drawer" id="styleDrawer" aria-hidden="true">
-        <div class="style-drawer-head">
-            <span class="style-drawer-title" id="styleDrawerTitle">主题风格</span>
-            <button class="style-drawer-close" id="styleDrawerClose" type="button" aria-label="关闭样式面板">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-        </div>
-        <div class="style-drawer-body">
-            <!-- 面板：主题风格（排版主题 + 主题色） -->
-            <div class="style-drawer-panel active" data-panel="theme">
-                <div class="style-bar-grid">
-                <div class="section section-theme">
-                    <h4>排版主题</h4>
-                    <div class="style-list">
-                        <button class="style-btn active" data-style="minimal" data-tooltip="极简白：干净清爽，渐变标题"><span class="style-name">极简</span></button>
-                        <button class="style-btn" data-style="luxury" data-tooltip="黑金奢：奢华质感，金色点缀"><span class="style-name">黑金</span></button>
-                        <button class="style-btn" data-style="cyber" data-tooltip="科技感：赛博朋克，代码风格"><span class="style-name">科技</span></button>
-                        <button class="style-btn" data-style="magazine" data-tooltip="杂志风：精致排版，视觉冲击"><span class="style-name">杂志</span></button>
-                        <button class="style-btn" data-style="fresh" data-tooltip="清新绿：自然舒适，适合阅读"><span class="style-name">清新</span></button>
-                        <button class="style-btn" data-style="vibrant" data-tooltip="活力橙：温暖明快，橙色渐变"><span class="style-name">活力</span></button>
-                    </div>
-                </div>
-                <div class="section section-color">
-                    <h4>主题色</h4>
-                    <div class="color-list">
-                        <button class="color-btn active" data-color="emerald"><span class="color-dot" style="background: linear-gradient(135deg, #10B981, #34D399);"></span>翠绿</button>
-                        <button class="color-btn" data-color="blue"><span class="color-dot" style="background: linear-gradient(135deg, #3B82F6, #60A0FA);"></span>湖蓝</button>
-                        <button class="color-btn" data-color="orange"><span class="color-dot" style="background: linear-gradient(135deg, #F97316, #FB923C);"></span>暖橙</button>
-                        <button class="color-btn" data-color="purple"><span class="color-dot" style="background: linear-gradient(135deg, #8B5CF6, #A78BFA);"></span>紫藤</button>
-                        <button class="color-btn" data-color="brown"><span class="color-dot" style="background: linear-gradient(135deg, #78350F, #B45309);"></span>栗棕</button>
-                        <button class="color-btn" data-color="black"><span class="color-dot" style="background: linear-gradient(135deg, #1F2937, #4B5563);"></span>墨灰</button>
-                        <button class="color-btn" data-color="beige"><span class="color-dot" style="background: linear-gradient(135deg, #D4C4A8, #E8DDC8);"></span>米驼</button>
-                    </div>
-                </div>
-                </div>
-            </div>
-            <!-- 面板：字体段落（字体 + 字号 + 间距 + 字距） -->
-            <div class="style-drawer-panel" data-panel="font">
-                <div class="style-bar-grid">
-                <div class="section">
-                    <h4>字体</h4>
-                    <div class="font-options">
-                        <button class="font-btn active" data-font="serif"><span class="font-sample">宋</span>衬线</button>
-                        <button class="font-btn" data-font="sans"><span class="font-sample">黑</span>无衬线</button>
-                        <button class="font-btn" data-font="mono"><span class="font-sample">M</span>等宽</button>
-                    </div>
-                </div>
-                <div class="section">
-                    <h4>正文字号</h4>
-                    <div class="size-options">
-                        <button class="size-btn" data-size="small">A-</button>
-                        <button class="size-btn active" data-size="medium">A</button>
-                        <button class="size-btn" data-size="large">A+</button>
-                    </div>
-                </div>
-                <div class="section">
-                    <h4>段落间距</h4>
-                    <div class="spacing-options">
-                        <button class="spacing-btn" data-spacing="compact">紧</button>
-                        <button class="spacing-btn active" data-spacing="normal">中</button>
-                        <button class="spacing-btn" data-spacing="loose">松</button>
-                    </div>
-                </div>
-                <div class="section">
-                    <h4>字间距</h4>
-                    <div class="tracking-options">
-                        <button class="tracking-btn active" data-tracking="tight">紧</button>
-                        <button class="tracking-btn" data-tracking="normal">中</button>
-                        <button class="tracking-btn" data-tracking="loose">松</button>
-                    </div>
-                </div>
-                </div>
-            </div>
-        </div>
-    </aside>
-
     <script src="themes/minimal.js"></script>
     <script src="themes/luxury.js"></script>
     <script src="themes/cyber.js"></script>
     <script src="themes/magazine.js"></script>
     <script src="themes/fresh.js"></script>
     <script src="themes/vibrant.js"></script>
-    <script src="script.js?v=67"></script>
+    <script src="script.js?v=69"></script>
 
     <!-- V5 全局命令面板 -->
     <div class="cmdk-overlay" id="cmdkOverlay">
