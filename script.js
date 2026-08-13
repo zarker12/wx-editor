@@ -345,16 +345,18 @@ function renderStyledHTML(editorHTML) {
     const addBaseTextStyles = (style, useMono = false) => {
         const fontFamily = useMono ? fontFamilies.mono : font;
         let result = style;
-        if (!result.includes('font-family:')) {
-            result += `font-family:${fontFamily};`;
-        }
-        if (!result.includes('font-size:')) {
-            result += `font-size:${s.fontSize};`;
-        }
-        if (!result.includes('line-height:')) {
-            result += `line-height:${sp.lineHeight};`;
-        }
-        if (!result.includes('letter-spacing:') && t.letterSpacing) {
+        // 强制替换 font-family
+        result = result.replace(/font-family:[^;"]*;?/gi, '');
+        result += `font-family:${fontFamily};`;
+        // 强制替换 font-size
+        result = result.replace(/font-size:[^;"]*;?/gi, '');
+        result += `font-size:${s.fontSize};`;
+        // 强制替换 line-height
+        result = result.replace(/line-height:[^;"]*;?/gi, '');
+        result += `line-height:${sp.lineHeight};`;
+        // 强制替换 letter-spacing
+        result = result.replace(/letter-spacing:[^;"]*;?/gi, '');
+        if (t.letterSpacing) {
             result += `letter-spacing:${t.letterSpacing};`;
         }
         return result;
@@ -750,18 +752,23 @@ function escapeHTML(str) {
 
 // ===== 底部名片渲染 =====
 function getIntroCardHTML() {
-    const enabledEl = document.getElementById('introEnabled');
+    // 支持从设置页或编辑器底部名片读取
+    const enabledEl = document.getElementById('introEnabled') || document.getElementById('introEnabled2');
     if (enabledEl && !enabledEl.checked) return '';
+
+    const getVal = (id1, id2) => {
+        return document.getElementById(id1)?.value || document.getElementById(id2)?.value || '';
+    };
 
     // 收集名片字段（已转义，防止破坏 HTML 结构）
     const data = {
-        name: escapeHTML(document.getElementById('introName')?.value || ''),
-        title: escapeHTML(document.getElementById('introTitle')?.value || ''),
-        focus: escapeHTML(document.getElementById('introFocus')?.value || ''),
-        output: escapeHTML(document.getElementById('introOutput')?.value || ''),
-        slogan: escapeHTML(document.getElementById('introSlogan')?.value || ''),
-        disclaimer1: escapeHTML(document.getElementById('introDisclaimer1')?.value || ''),
-        disclaimer2: escapeHTML(document.getElementById('introDisclaimer2')?.value || ''),
+        name: escapeHTML(getVal('introName', 'introName2')),
+        title: escapeHTML(getVal('introTitle', 'introTitle2')),
+        focus: escapeHTML(getVal('introFocus', 'introFocus2')),
+        output: escapeHTML(getVal('introOutput', 'introOutput2')),
+        slogan: escapeHTML(getVal('introSlogan', 'introSlogan2')),
+        disclaimer1: escapeHTML(getVal('introDisclaimer1', 'introDisclaimer1')),
+        disclaimer2: escapeHTML(getVal('introDisclaimer2', 'introDisclaimer2')),
     };
 
     // 主题色 / 字号 / 间距配置（兼容老主题用）
@@ -1206,10 +1213,8 @@ function setStyle(style) {
     const theme = getStyleTheme();
 
     if (theme.defaultColor) {
-        const cr = document.querySelector('.content-row');
-        if (cr) cr.className = cr.className.replace(/\btheme-\S+/g, '').trim();
         currentColor = theme.defaultColor;
-        if (cr) cr.classList.add(`theme-${currentColor}`);
+        applyThemeClass(currentColor);
         try { localStorage.setItem('wx_theme_v5', `theme-${currentColor}`); } catch {}
         colorButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.color === currentColor));
     }
@@ -1224,11 +1229,22 @@ function setStyle(style) {
     updatePreview();
 }
 
-function setColor(color) {
+function applyThemeClass(themeName) {
+    const themeClass = `theme-${themeName}`;
+    // Apply to body for global UI elements (sidebar, header, buttons)
+    document.body.className = document.body.className.replace(/\btheme-\S+/g, '').trim();
+    document.body.classList.add(themeClass);
+    // Apply to .content-row for editor/preview content
     const cr = document.querySelector('.content-row');
-    if (cr) cr.className = cr.className.replace(/\btheme-\S+/g, '').trim();
+    if (cr) {
+        cr.className = cr.className.replace(/\btheme-\S+/g, '').trim();
+        cr.classList.add(themeClass);
+    }
+}
+
+function setColor(color) {
+    applyThemeClass(color);
     currentColor = color;
-    if (cr) cr.classList.add(`theme-${color}`);
     try { localStorage.setItem('wx_theme_v5', `theme-${color}`); } catch {}
     colorButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.color === color));
     syncEditorToTheme();
@@ -3574,12 +3590,48 @@ const introInputs = document.querySelectorAll('.intro-input');
 introInputs.forEach(input => {
     input.addEventListener('input', () => {
         saveIntroData();
+        // 同步到对应字段（如果存在）
+        const field = input.dataset.field;
+        if (field) {
+            // 尝试同步到另一组输入
+            const otherIdMap = {
+                'introName': 'introName2', 'introName2': 'introName',
+                'introTitle': 'introTitle2', 'introTitle2': 'introTitle',
+                'introFocus': 'introFocus2', 'introFocus2': 'introFocus',
+                'introOutput': 'introOutput2', 'introOutput2': 'introOutput',
+                'introSlogan': 'introSlogan2', 'introSlogan2': 'introSlogan',
+            };
+            for (const [a, b] of Object.entries(otherIdMap)) {
+                const elA = document.getElementById(a);
+                const elB = document.getElementById(b);
+                if (elA && elB && elA !== input && elB !== input) {
+                    // 避免循环触发
+                    if (elB.value !== input.value) {
+                        elB.value = input.value;
+                    }
+                }
+            }
+        }
         debouncedUpdatePreview();
     });
 });
 const introEnabled = document.getElementById('introEnabled');
+const introEnabled2 = document.getElementById('introEnabled2');
 if (introEnabled) {
-    introEnabled.addEventListener('change', debouncedUpdatePreview);
+    introEnabled.addEventListener('change', () => {
+        debouncedUpdatePreview();
+        if (introEnabled2 && introEnabled2.checked !== introEnabled.checked) {
+            introEnabled2.checked = introEnabled.checked;
+        }
+    });
+}
+if (introEnabled2) {
+    introEnabled2.addEventListener('change', () => {
+        debouncedUpdatePreview();
+        if (introEnabled && introEnabled.checked !== introEnabled2.checked) {
+            introEnabled.checked = introEnabled2.checked;
+        }
+    });
 }
 
 document.addEventListener('keydown', e => {
@@ -3809,15 +3861,14 @@ function renderThemePicker() {
     grid.querySelectorAll('.theme-picker-item').forEach(el => {
         el.addEventListener('click', () => {
             const key = el.dataset.theme;
-            // 清除所有 theme-* class（含排版 tab 的 brown/black/beige），避免叠加
-            const cr = document.querySelector('.content-row');
-            if (cr) cr.className = cr.className.replace(/\btheme-\S+/g, '').trim();
-            if (cr) cr.classList.add(key);
+            const colorName = key.replace('theme-', '');
+            applyThemeClass(colorName);
+            currentColor = colorName;
             try { localStorage.setItem('wx_theme_v5', key); } catch {}
             // 同步更新命令面板的 cycleTheme 状态
             grid.querySelectorAll('.theme-picker-item').forEach(x => x.classList.remove('active'));
             el.classList.add('active');
-            if (window._showBanner) window._showBanner(`🎨 主题已切换为 ${key.replace('theme-','')}`, 2000);
+            if (window._showBanner) window._showBanner(`🎨 主题已切换为 ${colorName}`, 2000);
         });
     });
 }
@@ -10777,14 +10828,15 @@ function showUserMenu() {
     const THEMES = ['theme-emerald', 'theme-blue', 'theme-orange', 'theme-purple'];
     function cycleTheme() {
         const cr = document.querySelector('.content-row');
-        const current = THEMES.find(t => cr && cr.classList.contains(t)) || 'theme-emerald';
-        const idx = THEMES.indexOf(current);
+        const bodyTheme = THEMES.find(t => document.body.classList.contains(t)) || THEMES.find(t => cr && cr.classList.contains(t)) || 'theme-emerald';
+        const idx = THEMES.indexOf(bodyTheme);
         const next = THEMES[(idx + 1) % THEMES.length];
-        // 清除所有 theme-* class（含排版 tab 的 brown/black/beige），避免叠加
-        if (cr) cr.className = cr.className.replace(/\btheme-\S+/g, '').trim();
-        if (cr) cr.classList.add(next);
+        const colorName = next.replace('theme-', '');
+        applyThemeClass(colorName);
+        currentColor = colorName;
+        colorButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.color === colorName));
         try { localStorage.setItem('wx_theme_v5', next); } catch {}
-        showBanner(`🎨 主题已切换为 ${next.replace('theme-','')}`);
+        showBanner(`🎨 主题已切换为 ${colorName}`);
     }
 
     // ---------- 事件 ----------
@@ -10867,13 +10919,12 @@ function showUserMenu() {
         // 恢复主题
         try {
             const saved = localStorage.getItem('wx_theme_v5');
-            const cr = document.querySelector('.content-row');
-            // 清除所有 theme-* class，避免与排版 tab 主题色选择器叠加
-            if (cr) cr.className = cr.className.replace(/\btheme-\S+/g, '').trim();
-            if (cr) cr.classList.add(saved || 'theme-emerald');
+            const themeName = (saved || 'theme-emerald').replace('theme-', '');
+            applyThemeClass(themeName);
+            currentColor = themeName;
         } catch { 
-            const cr = document.querySelector('.content-row');
-            if (cr) cr.classList.add('theme-emerald');
+            applyThemeClass('emerald');
+            currentColor = 'emerald';
         }
         // 首次访问显示新手引导
         if (shouldShowOnboard()) {

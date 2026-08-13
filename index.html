@@ -873,6 +873,38 @@
                         <span class="wc-item"><b id="lineCount">0</b> 段</span>
                     </div>
                 </div>
+
+                <!-- 底部名片编辑器（始终可见于编辑器底部） -->
+                <div class="intro-card-editor" id="introCardEditor">
+                    <div class="intro-card-header">
+                        <div class="intro-card-title">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            <span>底部名片 / 作者介绍</span>
+                        </div>
+                        <label class="intro-toggle">
+                            <input type="checkbox" id="introEnabled2" checked>
+                            <span class="intro-toggle-track"></span>
+                            <span class="intro-toggle-label">显示</span>
+                        </label>
+                    </div>
+                    <div class="intro-fields-compact">
+                        <div class="intro-row">
+                            <input type="text" id="introName2" class="intro-input" value="你的名字" data-field="name" placeholder="你的名字">
+                            <span class="intro-sep">｜</span>
+                            <input type="text" id="introTitle2" class="intro-input" value="一句话介绍" data-field="title" placeholder="一句话介绍你自己">
+                        </div>
+                        <div class="intro-row">
+                            <span class="intro-label">关注:</span>
+                            <input type="text" id="introFocus2" class="intro-input" value="你关注的领域" data-field="focus" placeholder="你关注的领域">
+                            <span class="intro-label">产出:</span>
+                            <input type="text" id="introOutput2" class="intro-input" value="你的内容方向" data-field="output" placeholder="你的内容方向">
+                        </div>
+                        <div class="intro-row">
+                            <input type="text" id="introSlogan2" class="intro-input intro-slogan" value="一句签名 / 更新频率 / 感谢关注" data-field="slogan" placeholder="一句签名 / 更新频率">
+                        </div>
+                    </div>
+                </div>
+
                 </div>
             </section>
 
