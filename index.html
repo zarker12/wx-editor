@@ -329,6 +329,52 @@
                             </div>
                             <div id="themePickerGrid" class="theme-picker-grid"></div>
                         </div>
+
+                        <!-- 底部名片设置 -->
+                        <div style="margin-top:18px;padding:16px;border:1px solid #E5E7EB;border-radius:10px;background:#fff;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                                <div style="display:flex;align-items:center;gap:8px;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#6B7280;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                    <span style="font-size:13px;color:#374151;font-weight:600;">底部名片</span>
+                                </div>
+                                <label class="intro-toggle" style="position:static;">
+                                    <input type="checkbox" id="introEnabled" checked>
+                                    <span class="intro-toggle-track"></span>
+                                    <span class="intro-toggle-label">显示</span>
+                                </label>
+                            </div>
+                            <div class="intro-fields">
+                                <div class="intro-row">
+                                    <span class="intro-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+                                    <input type="text" id="introName" class="intro-input" value="你的名字" data-field="name">
+                                    <span class="intro-sep">｜</span>
+                                    <input type="text" id="introTitle" class="intro-input" value="一句话介绍你自己" data-field="title">
+                                </div>
+                                <div class="intro-row">
+                                    <span class="intro-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span>
+                                    <span class="intro-label">关注：</span>
+                                    <input type="text" id="introFocus" class="intro-input" value="你关注的领域" data-field="focus">
+                                </div>
+                                <div class="intro-row">
+                                    <span class="intro-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
+                                    <span class="intro-label">产出：</span>
+                                    <input type="text" id="introOutput" class="intro-input" value="你的内容方向" data-field="output">
+                                </div>
+                                <div class="intro-row intro-slogan-row">
+                                    <span class="intro-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+                                    <input type="text" id="introSlogan" class="intro-input intro-slogan" value="一句签名 / 更新频率 / 感谢关注" data-field="slogan">
+                                </div>
+                                <div class="intro-divider"></div>
+                                <div class="intro-row">
+                                    <span class="intro-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
+                                    <input type="text" id="introDisclaimer1" class="intro-input" value="个人观点，仅供参考" data-field="disclaimer1">
+                                </div>
+                                <div class="intro-row">
+                                    <span class="intro-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></span>
+                                    <input type="text" id="introDisclaimer2" class="intro-input" value="素材来源网络，如有侵权请联系删除" data-field="disclaimer2">
+                                </div>
+                            </div>
+                        </div>
                         <div style="margin-top:18px;padding:14px;border-radius:10px;background:linear-gradient(135deg,rgba(16,185,129,0.08),rgba(59,130,246,0.08));border:1px solid rgba(16,185,129,0.2);">
                             <div style="font-size:13px;font-weight:600;color:#065F46;margin-bottom:4px;">Cloudflare 部署</div>
                             <div style="font-size:12px;color:#374151;line-height:1.6;">订阅与爆文榜单数据由 Pages Functions + D1 + Cron 提供，全部免费。当前为本地模式，部署后可持久化与自动同步。</div>
@@ -817,51 +863,6 @@
 行内代码
 ---
 可直接拖拽图片或文件到此处"></div>
-
-                <div class="intro-card-editor">
-                    <div class="intro-card-title">
-                        <span class="intro-title-text">
-                            <svg class="intro-title-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                            底部名片
-                        </span>
-                        <label class="intro-toggle">
-                            <input type="checkbox" id="introEnabled" checked>
-                            <span class="intro-toggle-track"></span>
-                            <span class="intro-toggle-label">显示</span>
-                        </label>
-                    </div>
-                    <div class="intro-fields">
-                        <div class="intro-row">
-                            <span class="intro-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-                            <input type="text" id="introName" class="intro-input" value="你的名字" data-field="name">
-                            <span class="intro-sep">｜</span>
-                            <input type="text" id="introTitle" class="intro-input" value="一句话介绍你自己" data-field="title">
-                        </div>
-                        <div class="intro-row">
-                            <span class="intro-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span>
-                            <span class="intro-label">关注：</span>
-                            <input type="text" id="introFocus" class="intro-input" value="你关注的领域" data-field="focus">
-                        </div>
-                        <div class="intro-row">
-                            <span class="intro-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
-                            <span class="intro-label">产出：</span>
-                            <input type="text" id="introOutput" class="intro-input" value="你的内容方向" data-field="output">
-                        </div>
-                        <div class="intro-row intro-slogan-row">
-                            <span class="intro-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
-                            <input type="text" id="introSlogan" class="intro-input intro-slogan" value="一句签名 / 更新频率 / 感谢关注" data-field="slogan">
-                        </div>
-                        <div class="intro-divider"></div>
-                        <div class="intro-row">
-                            <span class="intro-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
-                            <input type="text" id="introDisclaimer1" class="intro-input" value="个人观点，仅供参考" data-field="disclaimer1">
-                        </div>
-                        <div class="intro-row">
-                            <span class="intro-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></span>
-                            <input type="text" id="introDisclaimer2" class="intro-input" value="素材来源网络，如有侵权请联系删除" data-field="disclaimer2">
-                        </div>
-                    </div>
-                </div>
 
                 <div class="editor-footer">
                     <div class="word-count">
