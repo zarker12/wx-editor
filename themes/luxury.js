@@ -36,12 +36,12 @@ window.styleThemes.luxury = {
         return `font-size:${s.h1Size};font-weight:800;margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom};line-height:1.4;letter-spacing:1px;text-align:center;color:${this.goldLight};`;
     },
     h2Style(c, s, sp, t) {
-        // 居中金色 + 上下双金线（按 UI）
-        return `margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom};padding:12px 0;line-height:1.5;text-align:center;font-size:${s.h2Size};font-weight:800;color:${this.goldLight};border-top:1px solid ${this.gold};border-bottom:1px solid ${this.gold};letter-spacing:1.5px;`;
+        // 居中金色标题（去掉上下双金线，保留主题标题样式）
+        return `margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom};padding:12px 0;line-height:1.5;text-align:center;font-size:${s.h2Size};font-weight:800;color:${this.goldLight};letter-spacing:1.5px;`;
     },
     h2Decor(c) {
-        // 标题下方居中菱形装饰（按 UI）
-        return `<section style="display:flex;align-items:center;justify-content:center;margin-top:10px;"><span style="height:1px;width:24px;background:${this.gold};margin-right:8px;"><span leaf=""><br></span></span><span style="font-size:10px;color:${this.gold};letter-spacing:2px;"><span leaf="">◆</span></span><span style="height:1px;width:24px;background:${this.gold};margin-left:8px;"><span leaf=""><br></span></span></section>`;
+        // 移除标题下方横线装饰，仅保留主题标题样式（与其他模板一致）
+        return '';
     },
     blockquoteStyle(c) {
         // 居中斜体 + 金色上下双线（按 UI）

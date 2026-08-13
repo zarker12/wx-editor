@@ -431,23 +431,24 @@ function renderStyledHTML(editorHTML) {
                 const h2Text = node.textContent.trim();
                 const numMatch = h2Text.match(/^(\d+)[\s、.）)]+(.+)$/);
 
+                // 数字小标题：数字保留在 h2 文本内，不输出 h2Decor 的自动编号（避免与文本中的数字重复）。
+                // 仍走主题标准标题结构（卡片 + h2TitleStyle），保证视觉与非数字标题一致；
+                // 不再拆分"大号数字 div + 标题 h2"——那种结构粘贴到公众号时会被剥离/错位，导致样式丢失。
+                if (numMatch) {
+                    if (hasH2TitleStyle) {
+                        let titleStyle = theme.h2TitleStyle(c, s, sp, t);
+                        titleStyle = applyThemeColor(titleStyle, 'h2');
+                        titleStyle = addBaseTextStyles(titleStyle);
+                        return `<div style="margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0;"><div style="${style}"><h2 style="${titleStyle}">${children}</h2></div></div>`;
+                    }
+                    return `<h2 style="${style}">${children}</h2>`;
+                }
+
                 if (hasH2TitleStyle) {
                     let titleStyle = theme.h2TitleStyle(c, s, sp, t);
                     titleStyle = applyThemeColor(titleStyle, 'h2');
                     titleStyle = addBaseTextStyles(titleStyle);
-                    // 有 SECTION 装饰时剥离标题前导数字，避免与装饰序号重复
-                    const titleContent = (h2Decor && numMatch) ? numMatch[2].trim() : children;
-                    return `<div style="margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0;"><div style="${style}">${h2Decor}<h2 style="${titleStyle}">${titleContent}</h2></div></div>`;
-                }
-
-                if (numMatch) {
-                    const num = numMatch[1];
-                    const title = numMatch[2].trim();
-                    const numStyle = theme.h2NumberStyle
-                        ? theme.h2NumberStyle(c, s, sp, t)
-                        : `display:block;text-align:center;font-size:48px;font-weight:700;color:${c.accent};line-height:1.2;letter-spacing:2px;margin:0 0 8px 0;`;
-                    const titleStyle = style.replace(/text-align:[^;]+;?/g, '') + 'text-align:center;display:block;margin:0;';
-                    return `<div style="margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0;text-align:center;"><div style="${numStyle}">${num}</div><h2 style="${titleStyle}">${title}</h2>${h2Decor}</div>`;
+                    return `<div style="margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom} 0;"><div style="${style}">${h2Decor}<h2 style="${titleStyle}">${children}</h2></div></div>`;
                 }
 
                 if (h2Decor) {
@@ -1678,7 +1679,7 @@ function smartFormat() {
         return `![${alt}](${src})`;
     });
     // 移除其他 HTML 标签，只留文本
-    text = text.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n\n').replace(/<\/div>/gi, '\n');
+    text = text.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>|<\/h1>|<\/h2>|<\/h3>/gi, '\n\n').replace(/<\/div>/gi, '\n');
     text = text.replace(/<[^>]+>/g, '');
     // 解码 HTML 实体
     text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
@@ -2047,9 +2048,18 @@ function analyzeTextStructure(cleanLines, nonEmptyLines) {
     if (totalLines === 0) return { lineTypes };
 
     const firstLine = nonEmptyLines[0].trim();
-    if (isLikelyTitle(firstLine) && totalLines > 2) {
+    // 首行若是日期/作者等元信息，绝不当作大标题——否则会被渲染成带边框/背景的大色块
+    // （用户反馈的"顶部污染色块 + 时间"即源于日期被误判为 H1）。
+    // 让循环中的 isAuthorDateLine 把它判为 meta（小字灰字），不再是色块。
+    const firstIsMeta = isAuthorDateLine(firstLine, '', totalLines > 1 ? nonEmptyLines[1].trim() : '', 0, totalLines);
+    if (firstIsMeta) {
+        // 若第二行像标题，把标题位置让给第二行，避免真实标题被当成正文
+        if (totalLines > 2 && isLikelyTitle(nonEmptyLines[1].trim())) {
+            lineTypes[1] = 'title';
+        }
+    } else if (isLikelyTitle(firstLine) && totalLines > 2) {
         lineTypes[0] = 'title';
-        
+
         if (totalLines > 1) {
             const secondLine = nonEmptyLines[1].trim();
             if (isLikelySubtitle(secondLine, firstLine)) {
@@ -2149,14 +2159,19 @@ function detectHeadingLevel(line, idx, totalLines, prevLine, nextLine, lastHeadi
     const t = line.trim();
     if (t.length < 2) return null;
 
-    const isNumberedPattern = /^[0-9]+[、.．]\s+\S/.test(t) || /^[0-9]+\.[0-9]+(\.[0-9]+)?\s+\S/.test(t);
+    // 数字小标题/列表识别："[数字]、标题" 允许无空格（中文惯例 "01、标题"），
+    // "[数字].标题" 仍要求空格，避免误匹配日期 "2024.05.20" 或版本号。
+    const _numSingleRe = /^[0-9]+(?:、\s*|[.．]\s+)\S/;
+    const _numMultiRe = /^[0-9]+\.[0-9]+(\.[0-9]+)?\s+\S/;
+    const isNumberedPattern = _numSingleRe.test(t) || _numMultiRe.test(t);
     const isNumberedCirclePattern = /^[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮]\s*\S/.test(t) || /^[⒈⒉⒊⒋⒌⒍⒎⒏⒐⒑]\s*\S/.test(t);
 
     if (isNumberedPattern || isNumberedCirclePattern) {
-        if (nextLine && (/^[0-9]+[、.．]\s+\S/.test(nextLine) || /^[0-9]+\.[0-9]+(\.[0-9]+)?\s+\S/.test(nextLine))) {
+        // 连续多行都是"数字、" → 视为有序列表，而非标题（避免列表被误判为连续小标题）
+        if (nextLine && (_numSingleRe.test(nextLine) || _numMultiRe.test(nextLine))) {
             return null;
         }
-        if (prevLine && (/^[0-9]+[、.．]\s+\S/.test(prevLine) || /^[0-9]+\.[0-9]+(\.[0-9]+)?\s+\S/.test(prevLine))) {
+        if (prevLine && (_numSingleRe.test(prevLine) || _numMultiRe.test(prevLine))) {
             return null;
         }
     }
@@ -2184,7 +2199,7 @@ function detectHeadingLevel(line, idx, totalLines, prevLine, nextLine, lastHeadi
         /^第[一二三四五六七八九十百千0-9]+条[、\s]/,
         /^第[一二三四五六七八九十百千0-9]+点[、\s]/,
         /^第[一二三四五六七八九十百千0-9]+讲[、\s]/,
-        /^[0-9]+[、.．]\s+\S/,
+        /^[0-9]+(?:、\s*|[.．]\s+)\S/,
     ];
     for (const p of h2Patterns) {
         if (p.test(t) && t.length < 70) return 'h2';
@@ -2789,8 +2804,20 @@ function normalizeEditorStructure() {
     };
 
     // 1. 移除视觉为空的 <p>（仅含空白/br）
+    //    例外：保留当前光标所在的空段落——标题(H1/H2/H3)回车后会新建一个空 <p><br></p> 作为正文，
+    //    若被这里删掉，光标会落入下一段（往往是下一个小标题）内部，导致回车"插进标题"的 bug。
+    const _sel = window.getSelection();
+    let cursorP = null;
+    if (_sel && _sel.rangeCount && _sel.anchorNode) {
+        let n = _sel.anchorNode.nodeType === 3 ? _sel.anchorNode.parentElement : _sel.anchorNode;
+        while (n && n !== editor) {
+            if (n.tagName === 'P') { cursorP = n; break; }
+            n = n.parentElement;
+        }
+    }
     const empties = root.querySelectorAll('p');
     empties.forEach(p => {
+        if (p === cursorP) return; // 保留光标所在空段落
         if (isVisualEmpty(p)) {
             p.remove();
             changed = true;
@@ -2798,7 +2825,9 @@ function normalizeEditorStructure() {
     });
 
     // 2. 清理段落/块内末尾孤立的 <br>（contenteditable 残留，导致图片与下文多余间距）
+    //    同样跳过光标所在空段落，避免把标题回车后的占位 <br> 清掉导致空段无法聚焦。
     root.querySelectorAll('p, div, h1, h2, h3, li, blockquote').forEach(el => {
+        if (el === cursorP) return;
         let last = el.lastChild;
         while (last && last.nodeType === 3 && !last.textContent.trim()) {
             el.removeChild(last);
@@ -2827,10 +2856,12 @@ function normalizeEditorStructure() {
     });
 
     // 4. 移除相邻的重复空段落（连续空段堆积时合并为单个）
+    //    同样跳过光标所在空段落：连续回车产生的空行若被合并，光标会跳到上一行。
     const ps = root.querySelectorAll('p');
     let prevEmpty = false;
     ps.forEach(p => {
         const isEmpty = isVisualEmpty(p);
+        if (p === cursorP) { prevEmpty = isEmpty; return; }
         if (isEmpty && prevEmpty) {
             p.remove();
             changed = true;
@@ -3351,7 +3382,7 @@ if (autoFormatBtn) {
                     const alt = altMatch ? altMatch[2] : '';
                     return `![${alt}](${src})`;
                 })
-                .replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n\n').replace(/<\/div>/gi, '\n')
+                .replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>|<\/h1>|<\/h2>|<\/h3>/gi, '\n\n').replace(/<\/div>/gi, '\n')
                 .replace(/<[^>]+>/g, '')
                 .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
                 .replace(/\u3000/g, ' ').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
@@ -3451,7 +3482,7 @@ smartFormatBtn.addEventListener('click', async () => {
         const alt = altMatch ? altMatch[2] : '';
         return `![${alt}](${src})`;
     });
-    text = text.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n\n').replace(/<\/div>/gi, '\n');
+    text = text.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>|<\/h1>|<\/h2>|<\/h3>/gi, '\n\n').replace(/<\/div>/gi, '\n');
     text = text.replace(/<[^>]+>/g, '');
     text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
     text = text.replace(/\u3000/g, ' ').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
@@ -8317,7 +8348,7 @@ ${bgLine}
             let currentText = editorHtml
                 .replace(/<img[^>]*alt="([^"]*)"[^>]*src="([^"]*)"[^>]*>/gi, '![$1]($2)')
                 .replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, '![]($1)')
-                .replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n\n').replace(/<\/div>/gi, '\n')
+                .replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>|<\/h1>|<\/h2>|<\/h3>/gi, '\n\n').replace(/<\/div>/gi, '\n')
                 .replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
             let finalArticle = insertImagesIntoArticle(currentText, imageUrls, imageCaptions);
             if (coverImage) {

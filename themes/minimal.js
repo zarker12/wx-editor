@@ -26,7 +26,7 @@ window.styleThemes.minimal = {
         return `margin:0 0 ${sp.pMargin};font-size:15px;line-height:${sp.lineHeight};text-align:justify;color:${this.textColor};`;
     },
     h1Style(c, s, sp, t) {
-        return `font-size:22px;font-weight:800;margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom};line-height:1.4;letter-spacing:0.5px;text-align:center;background:linear-gradient(180deg,#1F2937 0%,#6B7280 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;border-top:1px solid #E5E7EB;border-bottom:1px solid #E5E7EB;padding:20px 0;`;
+        return `font-size:22px;font-weight:800;margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom};line-height:1.4;letter-spacing:0.5px;text-align:center;background:linear-gradient(180deg,#1F2937 0%,#6B7280 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;padding:20px 0;`;
     },
     h2Style(c, s, sp, t) {
         return `margin:36px 0 18px;font-size:18px;font-weight:800;color:#1F2937;line-height:1.5;padding-left:14px;border-left:4px solid #1F2937;letter-spacing:0.5px;`;

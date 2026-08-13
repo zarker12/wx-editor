@@ -32,7 +32,7 @@ window.styleThemes.cyber = {
         return `margin:0 0 ${sp.pMargin};font-size:15px;line-height:${sp.lineHeight};text-align:justify;color:${this.textColor};`;
     },
     h1Style(c, s, sp, t) {
-        return `font-size:22px;font-weight:800;margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom};line-height:1.4;color:${this.ink};padding-left:14px;padding-bottom:12px;border-left:4px solid ${this.cyan};background:linear-gradient(90deg,${this.cyan} 0%,${this.cyanBorder} 100%) bottom left 14px / calc(100% - 14px) 2px no-repeat;`;
+        return `font-size:22px;font-weight:800;margin:${sp.h2MarginTop} 0 ${sp.h2MarginBottom};line-height:1.4;color:${this.ink};padding-left:14px;padding-bottom:12px;border-left:4px solid ${this.cyan};`;
     },
     h2Style(c, s, sp, t) {
         return `margin:0;font-size:19px;font-weight:800;color:${this.ink};line-height:1.4;letter-spacing:0.5px;display:inline-block;vertical-align:middle;`;
@@ -41,7 +41,7 @@ window.styleThemes.cyber = {
         return `display:inline-block;background:${this.cyan};color:#FFFFFF;font-size:12px;font-weight:700;padding:3px 10px;border-radius:3px;font-family:${fontFamilies.mono};margin-right:10px;vertical-align:middle;`;
     },
     h2Decor(c) {
-        return `<section style="height:2px;width:100%;background:linear-gradient(90deg,${this.cyan} 0%,${this.cyanBorder} 100%);margin-top:10px;"><span leaf=""><br></span></section>`;
+        return '';
     },
     blockquoteStyle(c) {
         return `margin:0 0 24px;padding:14px 20px;border-left:3px solid ${this.cyan};background:${this.cyanSoft};font-size:15px;line-height:1.8;color:${this.textColor};`;

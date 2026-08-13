@@ -126,7 +126,7 @@ const SAMPLE_MD = `# 主标题测试
 
 正文段落，包含**加粗**和*斜体*文字，以及[链接](https://example.com)。
 
-## 01 章节标题一
+## 章节标题一
 
 第一章正文内容。
 
@@ -135,7 +135,7 @@ const SAMPLE_MD = `# 主标题测试
 - 列表项 A
 - 列表项 B
 
-## 02 章节标题二
+## 章节标题二
 
 1. 有序第一
 2. 有序第二
@@ -249,16 +249,14 @@ function getH2Elements(themeName) {
     });
 }
 
-// 黑金奢：居中金线
+// 黑金奢：居中金色标题（横线/菱形装饰已按用户需求移除，仅保留标题样式）
 {
     const h2s = getH2Elements('luxury');
     test('黑金奢 渲染出2个h2', h2s.length === 2, `实际${h2s.length}个`);
     h2s.forEach((h, i) => {
         test(`黑金奢 h2#${i} 居中`, /text-align:center/.test(h.h2Style), h.h2Style.slice(0, 120));
-        test(`黑金奢 h2#${i} 上金线`, /border-top:[^;]*C9A961/.test(h.h2Style), h.h2Style.slice(0, 120));
-        test(`黑金奢 h2#${i} 下金线`, /border-bottom:[^;]*C9A961/.test(h.h2Style), h.h2Style.slice(0, 120));
+        test(`黑金奢 h2#${i} 无横线装饰`, !/border-(top|bottom):/.test(h.h2Style), h.h2Style.slice(0, 120));
         test(`黑金奢 h2#${i} 金色文字`, /color:[^;]*(F5E6C8|goldLight)/.test(h.h2Style), h.h2Style.slice(0, 120));
-        test(`黑金奢 h2#${i} 装饰有菱形◆`, h.decorHTML.includes('◆'), '缺失菱形');
     });
 }
 

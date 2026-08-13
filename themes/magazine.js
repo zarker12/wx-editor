@@ -36,7 +36,7 @@ window.styleThemes.magazine = {
         return `margin:0 0 ${sp.pMargin};font-size:15px;line-height:${sp.lineHeight};text-align:justify;color:${this.textColor};padding:0 4px;`;
     },
     h1Style(c, s, sp, t) {
-        return `margin:44px 0 24px;padding:20px 0;text-align:center;border-top:1px solid ${this.ink};border-bottom:1px solid ${this.ink};`;
+        return `margin:44px 0 24px;padding:20px 0;text-align:center;font-family:'Noto Serif SC',Georgia,'Times New Roman',serif;font-size:21px;font-weight:900;color:${this.ink};line-height:1.4;letter-spacing:1px;`;
     },
     h1NumberStyle(c, s, sp, t) {
         return `font-family:'Noto Serif SC',Georgia,'Times New Roman',serif;font-size:36px;font-weight:900;color:${this.inkSofter};line-height:1;letter-spacing:-1px;margin-bottom:8px;`;
@@ -54,7 +54,7 @@ window.styleThemes.magazine = {
         return `font-family:'Noto Serif SC',Georgia,'Times New Roman',serif;font-size:18px;font-weight:900;color:${this.crimson};line-height:1;margin-bottom:8px;`;
     },
     h2Decor(c) {
-        return `<section style="height:1px;background:${this.ink};margin-top:14px;"><span leaf=""><br></span></section>`;
+        return '';
     },
     blockquoteStyle(c) {
         return `margin:32px 0;padding:32px 20px;border-top:2px solid ${this.ink};border-bottom:2px solid ${this.ink};text-align:center;background:#FFFFFF;font-family:'Noto Serif SC',Georgia,'Times New Roman',serif;font-size:16px;font-weight:700;color:${this.ink};line-height:1.85;letter-spacing:1px;`;
