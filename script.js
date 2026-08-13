@@ -962,12 +962,16 @@ function generateExportHTML() {
     const fontWeight = getFontWeight();
     const theme = getStyleTheme();
 
-    const bodyStyle = theme.bodyStyle(c, s, sp, t, font);
+    let bodyStyle = theme.bodyStyle(c, s, sp, t, font);
+    // 导出时移除背景色，避免在公众号中产生色块/方框
+    bodyStyle = bodyStyle.replace(/background-color\s*:\s*[^;]+;?/gi, '');
+
     const normalizedContent = normalizeEditorHTML(editor.innerHTML);
     const styledContent = renderStyledHTML(normalizedContent);
     const introHTML = getIntroCardHTML();
 
-    const fullHTML = `<section id="articleContent" style="max-width:677px;margin:0 auto;background:${theme.canvasBg};word-break:break-word;"><section style="${bodyStyle}">${styledContent}${introHTML}</section></section>`;
+    // 仅保留内容样式，移除外层方框容器，确保复制到公众号的是纯内容
+    const fullHTML = `<section style="${bodyStyle}">${styledContent}${introHTML}</section>`;
 
     return compressForWechat(fullHTML);
 }
