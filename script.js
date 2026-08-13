@@ -372,6 +372,14 @@ function renderStyledHTML(editorHTML) {
         const hasTransparentFill = /-webkit-text-fill-color\s*:\s*transparent/i.test(result);
 
         if (hasGradientText && hasTransparentFill) {
+            // 渐变文字转为纯色，避免公众号粘贴后变成色块
+            const gradientMatch = result.match(/background:\s*linear-gradient\([^,]*,\s*(#[0-9a-fA-F]{3,8})/);
+            const solidColor = gradientMatch ? gradientMatch[1] : c.accentDark;
+            result = result.replace(/background:\s*linear-gradient\([^)]*\)[^;]*;?/gi, '');
+            result = result.replace(/-webkit-background-clip:\s*text[^;]*;?/gi, '');
+            result = result.replace(/background-clip:\s*text[^;]*;?/gi, '');
+            result = result.replace(/-webkit-text-fill-color:\s*transparent[^;]*;?/gi, '');
+            result += `color:${solidColor};`;
             return result;
         }
 
