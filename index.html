@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>公众号文章排版助手</title>
-    <link rel="stylesheet" href="styles.css?v=70">
+    <link rel="stylesheet" href="styles.css?v=71">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -85,6 +85,12 @@
                             <button class="style-btn" data-style="magazine" data-tooltip="杂志风：精致排版，视觉冲击"><span class="style-name">杂志</span></button>
                             <button class="style-btn" data-style="fresh" data-tooltip="清新绿：自然舒适，适合阅读"><span class="style-name">清新</span></button>
                             <button class="style-btn" data-style="vibrant" data-tooltip="活力橙：温暖明快，橙色渐变"><span class="style-name">活力</span></button>
+                            <button class="style-btn" data-style="g-pink" data-tooltip="粉的很无敌：粉绿渐变容器 + 粉色标题"><span class="style-name">粉无敌</span></button>
+                            <button class="style-btn" data-style="g-dream" data-tooltip="深邃又梦幻：靛蓝奶油渐变 + 靛蓝标题"><span class="style-name">梦幻</span></button>
+                            <button class="style-btn" data-style="g-heal" data-tooltip="好治愈的配色：青粉渐变 + 青色标题"><span class="style-name">治愈</span></button>
+                            <button class="style-btn" data-style="g-deep" data-tooltip="绝不能让它去沉淀：蓝米渐变 + 蓝色标题"><span class="style-name">沉淀</span></button>
+                            <button class="style-btn" data-style="g-love" data-tooltip="如痴如梦爱了：紫粉渐变 + 紫色标题"><span class="style-name">痴梦</span></button>
+                            <button class="style-btn" data-style="g-pretty" data-tooltip="啥也不说就好看：绿粉渐变 + 绿色标题"><span class="style-name">好看</span></button>
                         </div>
                     </div>
                     <div class="section section-color">
@@ -327,6 +333,31 @@
                     <section class="settings-section">
                         <h3 class="settings-section-title">当前配置概览</h3>
                         <div id="dashSettingsOverview" class="settings-overview">加载中...</div>
+                    </section>
+
+                    <!-- 主题系统：外壳主题 + 排版主题 分组切换 -->
+                    <section class="settings-section">
+                        <h3 class="settings-section-title">主题系统</h3>
+                        <div class="theme-system-bar">
+                            <span class="ts-label">当前：</span>
+                            <span class="ts-name" id="tsCurrentShell">默认暖纸</span>
+                            <span class="ts-sep">·</span>
+                            <span class="ts-name" id="tsCurrentLayout">极简白</span>
+                        </div>
+                        <div class="ts-group">
+                            <div class="ts-group-head">
+                                <span class="ts-group-title">网站全局主题</span>
+                                <span class="ts-group-hint">仅外壳背景渐变 + 磨砂侧边栏，不影响文章</span>
+                            </div>
+                            <div class="ts-grid" id="shellThemeGrid"></div>
+                        </div>
+                        <div class="ts-group">
+                            <div class="ts-group-head">
+                                <span class="ts-group-title">编辑器排版主题</span>
+                                <span class="ts-group-hint">文章容器 + 标题强调色，导出时跟随输出</span>
+                            </div>
+                            <div class="ts-grid" id="layoutThemeGrid"></div>
+                        </div>
                     </section>
 
                     <!-- 主题色选择器 -->
@@ -1272,7 +1303,8 @@ services:
     <script src="themes/magazine.js"></script>
     <script src="themes/fresh.js"></script>
     <script src="themes/vibrant.js"></script>
-    <script src="script.js?v=70"></script>
+    <script src="themes/gradient.js"></script>
+    <script src="script.js?v=71"></script>
 
     <!-- V5 全局命令面板 -->
     <div class="cmdk-overlay" id="cmdkOverlay">
