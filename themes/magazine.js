@@ -3,6 +3,7 @@ window.styleThemes = window.styleThemes || {};
 // 04 杂志风：宋体大字 · 上下线引用 · 编辑美学 · 深红点缀
 window.styleThemes.magazine = {
     name: '杂志风',
+    fixedColor: true,
     defaultColor: 'brown',
     defaultFont: 'serif',
     canvasBg: '#FDFCFA',

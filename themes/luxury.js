@@ -3,6 +3,7 @@ window.styleThemes = window.styleThemes || {};
 // 02 黑金奢：金色点缀 · 居中斜体引用 · 深色底 · 菱形符号
 window.styleThemes.luxury = {
     name: '黑金奢',
+    fixedColor: true,
     defaultColor: 'brown',
     defaultFont: 'sans',
     defaultIntro: {

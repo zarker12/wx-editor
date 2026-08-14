@@ -363,7 +363,7 @@ function renderStyledHTML(editorHTML) {
     };
 
     const applyThemeColor = (style, element) => {
-        if (theme.name === '黑金奢' || theme.name === '杂志风') {
+        if (theme.fixedColor) {
             return style;
         }
 
@@ -799,6 +799,18 @@ function getIntroCardHTML() {
     return defaultIntroCardHTML(data, ctx);
 }
 
+// 更新设置页名片实时预览
+function updateIntroPreview() {
+    const wrap = document.getElementById('introPreviewWrap');
+    if (!wrap) return;
+    const enabledEl = document.getElementById('introEnabled');
+    if (enabledEl && !enabledEl.checked) {
+        wrap.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-tertiary);font-size:13px;background:var(--bg-surface);border-radius:10px;border:1px dashed var(--border-default);">名片已隐藏，开启「显示」后可见</div>';
+        return;
+    }
+    wrap.innerHTML = getIntroCardHTML();
+}
+
 // 默认名片渲染（兜底，老主题未实现 introCardHTML 时使用）
 function defaultIntroCardHTML(data, ctx) {
     const { c, s, sp, font } = ctx;
@@ -1022,7 +1034,10 @@ function fallbackCopyWithHTML(html, msg) {
 
     try {
         document.execCommand('copy');
-    } catch (e) {}
+    } catch (e) {
+        // execCommand 已废弃，失败时上层已有 clipboard API 降级；记录便于排查
+        console.warn('execCommand 复制失败:', e);
+    }
 
     selection.removeAllRanges();
     document.body.removeChild(container);
@@ -1181,7 +1196,7 @@ function saveIntroData() {
         const el = document.getElementById('intro' + field.charAt(0).toUpperCase() + field.slice(1));
         if (el) data[field] = el.value;
     });
-    try { localStorage.setItem('introCardData', JSON.stringify(data)); } catch {}
+    try { localStorage.setItem('introCardData', JSON.stringify(data)); } catch (e) { console.warn('名片数据保存失败:', e); }
 }
 
 // 从 localStorage 恢复 intro 卡片文案
@@ -1190,7 +1205,7 @@ function loadIntroData() {
         const raw = localStorage.getItem('introCardData');
         if (!raw) return null;
         return JSON.parse(raw);
-    } catch { return null; }
+    } catch (e) { console.warn('名片数据读取失败:', e); return null; }
 }
 
 function fillIntroDefaults() {
@@ -1227,7 +1242,7 @@ function setStyle(style) {
     if (theme.defaultColor) {
         currentColor = theme.defaultColor;
         applyThemeClass(currentColor);
-        try { localStorage.setItem('wx_theme_v5', `theme-${currentColor}`); } catch {}
+        try { localStorage.setItem('wx_theme_v5', `theme-${currentColor}`); } catch (e) { console.warn('主题持久化失败:', e); }
         colorButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.color === currentColor));
     }
 
@@ -1243,10 +1258,12 @@ function setStyle(style) {
 
 function applyThemeClass(themeName) {
     const themeClass = `theme-${themeName}`;
-    // Apply to body for global UI elements (sidebar, header, buttons)
+    // Apply to <html> (documentElement) for global CSS variable cascade across ALL UI areas
+    document.documentElement.className = document.documentElement.className.replace(/\btheme-\S+/g, '').trim();
+    document.documentElement.classList.add(themeClass);
+    // Also keep on body for legacy selectors and .content-row for editor/preview content
     document.body.className = document.body.className.replace(/\btheme-\S+/g, '').trim();
     document.body.classList.add(themeClass);
-    // Apply to .content-row for editor/preview content
     const cr = document.querySelector('.content-row');
     if (cr) {
         cr.className = cr.className.replace(/\btheme-\S+/g, '').trim();
@@ -1257,7 +1274,7 @@ function applyThemeClass(themeName) {
 function setColor(color) {
     applyThemeClass(color);
     currentColor = color;
-    try { localStorage.setItem('wx_theme_v5', `theme-${color}`); } catch {}
+    try { localStorage.setItem('wx_theme_v5', `theme-${color}`); } catch (e) { console.warn('主题持久化失败:', e); }
     colorButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.color === color));
     syncEditorToTheme();
     updatePreview();
@@ -2598,7 +2615,9 @@ async function fetchWebpage(url) {
                             if (data.contents && data.contents.length > 50) {
                                 return data.contents;
                             }
-                        } catch (e) {}
+                        } catch (e) {
+                            // 预期控制流：响应非合法 JSON，回退到后续解析策略
+                        }
                     }
 
                     if (proxy.type === 'jsonp') {
@@ -2608,7 +2627,9 @@ async function fetchWebpage(url) {
                                 const data = JSON.parse(match[1]);
                                 if (data.html) return data.html;
                             }
-                        } catch (e) {}
+                        } catch (e) {
+                            // 预期控制流：jsonp 提取/解析失败，回退到原始文本
+                        }
                     }
 
                     if (text && text.length > 100) {
@@ -2616,7 +2637,9 @@ async function fetchWebpage(url) {
                             try {
                                 const data = JSON.parse(text);
                                 if (data.contents) return data.contents;
-                            } catch (e) {}
+                            } catch (e) {
+                                // 预期控制流：疑似 JSON 但解析失败，按原始 HTML 文本返回
+                            }
                         }
                         return text;
                     }
@@ -3106,7 +3129,7 @@ function isCursorAtBlockEnd(range, block) {
         container.classList.toggle('sidebar-collapsed', collapsed);
         collapseBtn.setAttribute('aria-expanded', String(!collapsed));
         if (persist) {
-            try { localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0'); } catch (e) {}
+            try { localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0'); } catch (e) { console.warn('侧栏收起状态持久化失败:', e); }
         }
     }
 
@@ -3624,6 +3647,7 @@ introInputs.forEach(input => {
                 }
             }
         }
+        updateIntroPreview();
         debouncedUpdatePreview();
     });
 });
@@ -3631,6 +3655,7 @@ const introEnabled = document.getElementById('introEnabled');
 const introEnabled2 = document.getElementById('introEnabled2');
 if (introEnabled) {
     introEnabled.addEventListener('change', () => {
+        updateIntroPreview();
         debouncedUpdatePreview();
         if (introEnabled2 && introEnabled2.checked !== introEnabled.checked) {
             introEnabled2.checked = introEnabled.checked;
@@ -3639,6 +3664,7 @@ if (introEnabled) {
 }
 if (introEnabled2) {
     introEnabled2.addEventListener('change', () => {
+        updateIntroPreview();
         debouncedUpdatePreview();
         if (introEnabled && introEnabled.checked !== introEnabled2.checked) {
             introEnabled.checked = introEnabled2.checked;
@@ -3761,7 +3787,7 @@ function updateSidebarAiStatus() {
             dot.classList.remove('ready');
             text.textContent = 'AI 未配置';
         }
-    } catch {}
+    } catch (e) { console.warn('updateSidebarAiStatus 失败:', e); }
 }
 
 // ===== 订阅 Dashboard =====
@@ -3788,17 +3814,17 @@ async function refreshSubscribeDash() {
             } catch (e) { console.warn('articles fetch', e); }
         }
         if (arts.length === 0) {
-            try { arts = JSON.parse(localStorage.getItem('wx_editor_subs_articles_cache_v1') || '[]'); } catch {}
+            try { arts = JSON.parse(localStorage.getItem('wx_editor_subs_articles_cache_v1') || '[]'); } catch (e) { console.warn('读取文章缓存失败:', e); }
         }
         if (artCount) artCount.textContent = arts.length;
         if (list) {
             if (arts.length === 0) {
-                list.innerHTML = '<div style="padding:16px;text-align:center;color:#9CA3AF;font-size:13px;border:1px dashed #E5E7EB;border-radius:8px;">暂无文章，点"立即同步"抓取</div>';
+                list.innerHTML = '<div class="subs-article-empty">暂无文章，点"立即同步"抓取</div>';
             } else {
                 list.innerHTML = arts.slice(0, 10).map(a => `
-                    <div style="padding:10px 12px;border:1px solid #E5E7EB;border-radius:8px;background:#fff;">
-                        <div style="font-size:13px;color:#1F2937;font-weight:500;margin-bottom:4px;">${(a.title||'').replace(/</g,'&lt;')}</div>
-                        <div style="font-size:11px;color:#9CA3AF;">${(a.source||'')} · ${(a.pub_date||a.time||'').slice(0,16)}</div>
+                    <div class="subs-article-item">
+                        <div class="subs-article-title">${(a.title||'').replace(/</g,'&lt;')}</div>
+                        <div class="subs-article-meta">${(a.source||'')} · ${(a.pub_date||a.time||'').slice(0,16)}</div>
                     </div>`).join('');
             }
         }
@@ -3851,6 +3877,8 @@ async function refreshSettingsDash() {
     }
     // 渲染主题选择器（独立入口，不依赖 Ctrl+K）
     renderThemePicker();
+    // 渲染名片实时预览
+    updateIntroPreview();
 }
 
 // 主题选择器渲染（设置 tab 独立入口）
@@ -3861,10 +3889,13 @@ function renderThemePicker() {
         { key: 'theme-emerald', name: '翡翠绿', color: '#10B981' },
         { key: 'theme-blue',    name: '天空蓝', color: '#3B82F6' },
         { key: 'theme-orange',   name: '活力橙', color: '#F97316' },
-        { key: 'theme-purple',   name: '梦幻紫', color: '#8B5CF6' }
+        { key: 'theme-purple',   name: '梦幻紫', color: '#8B5CF6' },
+        { key: 'theme-brown',    name: '栗棕色', color: '#92400E' },
+        { key: 'theme-black',    name: '墨灰色', color: '#374151' },
+        { key: 'theme-beige',    name: '米驼色', color: '#A89880' }
     ];
     let current = 'theme-emerald';
-    try { current = localStorage.getItem('wx_theme_v5') || 'theme-emerald'; } catch {}
+    try { current = localStorage.getItem('wx_theme_v5') || 'theme-emerald'; } catch (e) { console.warn('读取主题失败:', e); }
     grid.innerHTML = THEMES.map(t => `
         <div class="theme-picker-item ${t.key === current ? 'active' : ''}" data-theme="${t.key}" type="button">
             <div class="theme-picker-swatch" style="background:linear-gradient(135deg, ${t.color}, ${t.color}cc);"></div>
@@ -3876,7 +3907,9 @@ function renderThemePicker() {
             const colorName = key.replace('theme-', '');
             applyThemeClass(colorName);
             currentColor = colorName;
-            try { localStorage.setItem('wx_theme_v5', key); } catch {}
+            try { localStorage.setItem('wx_theme_v5', key); } catch (e) { console.warn('主题持久化失败:', e); }
+            // 同步更新 colorButtons 选中态
+            colorButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.color === colorName));
             // 同步更新命令面板的 cycleTheme 状态
             grid.querySelectorAll('.theme-picker-item').forEach(x => x.classList.remove('active'));
             el.classList.add('active');
@@ -3926,8 +3959,7 @@ function bindDashButtons() {
 }
 bindDashButtons();
 updateSidebarAiStatus();
-// 定期刷新侧边栏状态（AI 设置变化后）
-setInterval(updateSidebarAiStatus, 3000);
+// 不再使用 setInterval 轮询，改为在 saveAISettings 中事件驱动更新
 
 // 模式切换
 document.querySelectorAll('.mode-btn').forEach(btn => {
@@ -4447,6 +4479,8 @@ function formatParagraph(text) {
         if (baseUrl !== undefined) localStorage.setItem('llm_base_url', baseUrl);
         if (model !== undefined) localStorage.setItem('llm_model', model);
         localStorage.setItem('ai_image_count', String(imageCount));
+        // 事件驱动更新侧边栏 AI 状态（替代 setInterval 轮询）
+        if (typeof updateSidebarAiStatus === 'function') updateSidebarAiStatus();
     }
 
     // 图片生成 API 配置的读写
@@ -7389,7 +7423,7 @@ ${bgLine}
             items = items.filter(it => it.cat === topicCenterState.currentCategory);
         }
         if (items.length === 0) {
-            hotTopicsList.innerHTML = '<div style="padding:20px;text-align:center;color:#9CA3AF;font-size:13px;">该分类下暂无选题</div>';
+            hotTopicsList.innerHTML = '<div class="topic-list-empty">该分类下暂无选题</div>';
             return;
         }
 
@@ -7408,33 +7442,31 @@ ${bgLine}
         const timeStr = `${now.getHours() < 10 ? '0' + now.getHours() : now.getHours()}:${now.getMinutes() < 10 ? '0' + now.getMinutes() : now.getMinutes()}`;
         // mock 数据不再假装"实时"，明确标注"示例选题"
         const timeLabel = hasMock ? '示例选题' : `实时 ${timeStr}`;
-        const mockTip = hasMock ? '<span style="color:#92400E;font-size:11px;margin-left:6px;">⚠️ 实时数据获取失败，当前为预置示例</span>' : '';
+        const mockTip = hasMock ? '<span class="topic-list-mock-tip">⚠️ 实时数据获取失败，当前为预置示例</span>' : '';
 
-        hotTopicsList.innerHTML = `<div style="font-size:12px;color:#6B7280;margin-bottom:8px;font-weight:600;">${sourceLabel} · ${timeLabel}（共 ${items.length} 条，点击选择）：${mockTip}</div>` +
+        hotTopicsList.innerHTML = `<div class="topic-list-head">${sourceLabel} · ${timeLabel}（共 ${items.length} 条，点击选择）：${mockTip}</div>` +
             items.map((it, i) => {
                 const catInfo = TOPIC_CATEGORIES[it.cat] || TOPIC_CATEGORIES.society;
                 const safeTitle = (it.title || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
                 const safeDesc = (it.desc || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
                 const safeLink = (it.link || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
                 const itemTime = it.time || timeLabel;
-                return `<div style="padding:10px 12px;margin-bottom:6px;border:1px solid #E5E7EB;background:#fff;border-radius:8px;cursor:pointer;transition:all 0.15s;" data-topic="${safeTitle}" data-desc="${safeDesc}" data-source="${it.source || ''}" data-link="${safeLink}" class="topic-item">
-                    <div style="display:flex;align-items:center;margin-bottom:4px;">
-                        <span style="color:#9CA3AF;font-size:11px;margin-right:8px;min-width:20px;">${i + 1}.</span>
-                        <span style="flex:1;font-size:13px;color:#1F2937;font-weight:500;">${safeTitle}</span>
-                        <span style="font-size:10px;padding:1px 6px;border-radius:3px;background:${catInfo.color}1a;color:${catInfo.color};margin-left:8px;font-weight:600;white-space:nowrap;">${catInfo.name}</span>
+                return `<div class="topic-item" data-topic="${safeTitle}" data-desc="${safeDesc}" data-source="${it.source || ''}" data-link="${safeLink}">
+                    <div class="topic-item-row">
+                        <span class="topic-item-num">${i + 1}.</span>
+                        <span class="topic-item-title">${safeTitle}</span>
+                        <span class="topic-item-cat" style="background:${catInfo.color}1a;color:${catInfo.color};">${catInfo.name}</span>
                     </div>
-                    <div style="display:flex;align-items:center;padding-left:28px;">
-                        <span style="font-size:11px;color:#9CA3AF;margin-right:8px;">${itemTime}</span>
-                        ${safeDesc ? `<span style="font-size:11px;color:#6B7280;line-height:1.4;">${safeDesc}</span>` : ''}
+                    <div class="topic-item-meta">
+                        <span class="topic-item-time">${itemTime}</span>
+                        ${safeDesc ? `<span class="topic-item-desc">${safeDesc}</span>` : ''}
                     </div>
                 </div>`;
             }).join('');
         hotTopicsList.style.display = 'block';
 
-        // 绑定事件
+        // 绑定事件（hover 由 CSS :hover 处理，无需 JS）
         hotTopicsList.querySelectorAll('.topic-item').forEach(el => {
-            el.addEventListener('mouseenter', () => { el.style.background = '#F0FDF4'; el.style.borderColor = '#10B981'; });
-            el.addEventListener('mouseleave', () => { el.style.background = '#fff'; el.style.borderColor = '#E5E7EB'; });
             el.addEventListener('click', () => {
                 if (createTopicInput) createTopicInput.value = el.dataset.topic;
                 // 记录选中资讯的摘要到 workflowState，供文章生成时作为背景信息
@@ -7451,30 +7483,9 @@ ${bgLine}
         if (!source) return;
         topicCenterState.currentSource = source;
 
-        // UI 按钮状态
+        // UI 按钮状态：用 active class 切换，颜色由 CSS data-source 令牌控制
         document.querySelectorAll('.topic-source-btn').forEach(b => {
-            const isActive = b.dataset.source === source;
-            // 保留各自的颜色，激活时反色
-            const colors = {
-                weibo: '#E11D48',
-                douyin: '#111',
-                '36kr': '#1E40AF',
-                recommend: '#3B82F6',
-                wechat: '#07C160',
-                'wechat-hot': '#DC2626'
-            };
-            const c = colors[source] || '#3B82F6';
-            if (isActive) {
-                b.style.background = c;
-                b.style.color = '#fff';
-                b.style.borderColor = c;
-                b.classList.add('active');
-            } else {
-                b.style.background = '#fff';
-                b.style.color = c;
-                b.style.borderColor = c;
-                b.classList.remove('active');
-            }
+            b.classList.toggle('active', b.dataset.source === source);
         });
 
         // 加载列表
@@ -7529,20 +7540,9 @@ ${bgLine}
         btn.addEventListener('click', () => {
             const cat = btn.dataset.cat;
             topicCenterState.currentCategory = cat;
-            // UI 状态
+            // UI 状态：用 active class 切换
             document.querySelectorAll('.topic-cat-btn').forEach(b => {
-                const isActive = b.dataset.cat === cat;
-                if (isActive) {
-                    b.style.background = '#10B981';
-                    b.style.color = '#fff';
-                    b.style.border = 'none';
-                    b.classList.add('active');
-                } else {
-                    b.style.background = '#fff';
-                    b.style.color = '#374151';
-                    b.style.border = '1px solid #D1D5DB';
-                    b.classList.remove('active');
-                }
+                b.classList.toggle('active', b.dataset.cat === cat);
             });
             renderTopicList();
         });
@@ -8717,7 +8717,6 @@ function checkAutosave() {
 // ===== 用户系统（GitHub OAuth + Gist 数据同步）=====
 // 方案：GitHub OAuth 登录 → 获取 access_token → 数据存用户私有 Gist
 // 纯前端实现，无需后端，完全免费
-const GITHUB_CLIENT_ID = 'Ov23liHSxnd1wuTDpic4'; // GitHub OAuth App Client ID
 const GIST_FILENAME = 'wx-editor-data.json';
 
 function getGitHubToken() {
@@ -9178,26 +9177,26 @@ function showUserMenu() {
         items.sort((a,b) => parseItemTime(b.time) - parseItemTime(a.time));
         if (count) count.textContent = `${items.length} 条`;
         if (items.length === 0) {
-            list.innerHTML = '<div style="grid-column:1/-1;padding:40px;text-align:center;color:#9CA3AF;font-size:14px;">暂无信息，试试切换信源或刷新</div>';
+            list.innerHTML = '<div class="inbox-grid-empty">暂无信息，试试切换信源或刷新</div>';
             return;
         }
         list.innerHTML = items.slice(0, 60).map(it => {
             const meta = SOURCE_META[it._source] || { label: it.source||'未知', color: '#6B7280', icon: '📌' };
-            const isMock = it._isMock ? '<span style="color:#92400E;font-size:10px;margin-left:4px;">示例</span>' : '';
-            const readInfo = it.readCount ? `<span style="font-size:11px;color:#9CA3AF;display:inline-flex;align-items:center;gap:3px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> ${it.readCount}</span>` : '';
+            const isMock = it._isMock ? '<span class="inbox-card-mock">示例</span>' : '';
+            const readInfo = it.readCount ? `<span class="inbox-card-read"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> ${it.readCount}</span>` : '';
             const timeStr = (it.time||'').toString().slice(0,16);
             const desc = (it.desc||it.content||'').slice(0,80);
-            return `<div class="inbox-card" data-source="${it._source}" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px;cursor:pointer;transition:all 0.2s;display:flex;flex-direction:column;gap:6px;position:relative;overflow:hidden;" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 20px rgba(0,0,0,0.08)';this.style.borderColor='${meta.color}66';" onmouseout="this.style.transform='';this.style.boxShadow='';this.style.borderColor='#E5E7EB';">
-                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                    <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:${meta.color}15;color:${meta.color};font-weight:600;">${meta.icon} ${meta.label}</span>${isMock}
+            return `<div class="inbox-card" data-source="${it._source}">
+                <div class="inbox-card-head">
+                    <span class="inbox-card-badge" style="background:${meta.color}15;color:${meta.color};">${meta.icon} ${meta.label}</span>${isMock}
                     ${readInfo}
-                    <span style="font-size:10px;color:#9CA3AF;margin-left:auto;">${timeStr}</span>
+                    <span class="inbox-card-time">${timeStr}</span>
                 </div>
-                <div style="font-size:14px;color:#1F2937;font-weight:600;line-height:1.4;">${(it.title||'').replace(/</g,'&lt;')}</div>
-                ${desc ? `<div style="font-size:12px;color:#6B7280;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${desc.replace(/</g,'&lt;')}</div>` : ''}
-                <div style="display:flex;gap:6px;margin-top:auto;padding-top:6px;border-top:1px dashed #F3F4F6;">
-                    <button class="inbox-to-create" data-title="${(it.title||'').replace(/"/g,'&quot;')}" type="button" style="padding:4px 10px;background:linear-gradient(135deg,#10B981,#3B82F6);color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> 带入创作</button>
-                    ${it.url ? `<a href="${it.url}" target="_blank" rel="noopener" style="padding:4px 10px;background:#F3F4F6;color:#6B7280;border:none;border-radius:5px;font-size:11px;text-decoration:none;">原文 ↗</a>` : ''}
+                <div class="inbox-card-title">${(it.title||'').replace(/</g,'&lt;')}</div>
+                ${desc ? `<div class="inbox-card-desc">${desc.replace(/</g,'&lt;')}</div>` : ''}
+                <div class="inbox-card-foot">
+                    <button class="inbox-to-create" data-title="${(it.title||'').replace(/"/g,'&quot;')}" type="button"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> 带入创作</button>
+                    ${it.url ? `<a href="${it.url}" target="_blank" rel="noopener" class="inbox-source-link">原文 ↗</a>` : ''}
                 </div>
             </div>`;
         }).join('');
@@ -9221,33 +9220,26 @@ function showUserMenu() {
         const btn = document.getElementById('inboxRefreshBtn');
         const list = document.getElementById('inboxList');
         if (btn) { btn.disabled = true; btn.textContent = '⏳ 加载中...'; }
-        if (list) list.innerHTML = '<div style="grid-column:1/-1;padding:40px;text-align:center;color:#9CA3AF;font-size:14px;">⏳ 正在聚合所有信源...</div>';
+        if (list) list.innerHTML = '<div class="inbox-grid-empty">⏳ 正在聚合所有信源...</div>';
         try {
             inboxState.allItems = await fetchAllSources();
             renderInbox();
         } catch (e) {
             console.error('inbox refresh', e);
-            if (list) list.innerHTML = '<div style="grid-column:1/-1;padding:40px;text-align:center;color:#DC2626;font-size:14px;">加载失败：'+e.message+'</div>';
+            if (list) list.innerHTML = '<div class="inbox-grid-error">加载失败：'+e.message+'</div>';
         } finally {
             if (btn) { btn.disabled = false; btn.textContent = '刷新全部'; }
         }
     }
 
-    // 信源切换
+    // 信源切换：active class 切换，颜色由 CSS data-source 令牌控制
     function bindSourceTabs() {
         document.querySelectorAll('.inbox-source-btn').forEach(b => {
             b.addEventListener('click', () => {
                 inboxState.currentSource = b.dataset.inboxSource;
                 document.querySelectorAll('.inbox-source-btn').forEach(x => {
-                    x.classList.remove('active');
-                    x.style.background = '#fff';
-                    x.style.color = x.style.borderColor;
+                    x.classList.toggle('active', x === b);
                 });
-                b.classList.add('active');
-                const meta = SOURCE_META[b.dataset.inboxSource];
-                const c = meta ? meta.color : '#10B981';
-                b.style.background = c;
-                b.style.color = '#fff';
                 renderInbox();
             });
         });
@@ -9336,20 +9328,12 @@ function showUserMenu() {
 
     function applyBlueprint(bp) {
         Object.assign(blueprint, bp);
-        // 同步 UI
+        // 同步 UI：active class 切换，颜色由 CSS 令牌控制
         document.querySelectorAll('.bp-type-btn').forEach(b => {
-            const on = b.dataset.type === blueprint.type;
-            b.classList.toggle('active', on);
-            b.style.borderColor = on ? '#10B981' : '#E5E7EB';
-            b.style.background = on ? '#ECFDF5' : '#fff';
-            b.querySelector('div:last-child').style.color = on ? '#1F2937' : '#6B7280';
+            b.classList.toggle('active', b.dataset.type === blueprint.type);
         });
         document.querySelectorAll('.bp-aud-btn').forEach(b => {
-            const on = b.dataset.aud === blueprint.audience;
-            b.classList.toggle('active', on);
-            b.style.borderColor = on ? '#10B981' : '#E5E7EB';
-            b.style.background = on ? '#ECFDF5' : '#fff';
-            b.style.color = on ? '#1F2937' : '#6B7280';
+            b.classList.toggle('active', b.dataset.aud === blueprint.audience);
         });
         const s = document.getElementById('blueprintStructure'); if (s) s.value = blueprint.structure;
         const l = document.getElementById('blueprintLength'); if (l) l.value = blueprint.length;
@@ -9367,15 +9351,12 @@ function showUserMenu() {
         // 兼容旧代码：创建隐藏的旧 select 占位（避免旧生成逻辑读到 null）
         ensureLegacyInputs();
 
-        // 模式切换
+        // 模式切换：active class 切换，颜色由 CSS 令牌控制
         document.querySelectorAll('.blueprint-mode-btn').forEach(b => {
             b.addEventListener('click', () => {
                 blueprint.mode = b.dataset.mode;
                 document.querySelectorAll('.blueprint-mode-btn').forEach(x => {
-                    const on = x.dataset.mode === blueprint.mode;
-                    x.style.background = on ? 'linear-gradient(135deg,#10B981,#3B82F6)' : '#fff';
-                    x.style.color = on ? '#fff' : '#6B7280';
-                    x.classList.toggle('active', on);
+                    x.classList.toggle('active', x.dataset.mode === blueprint.mode);
                 });
                 document.getElementById('blueprintAIPanel').style.display = blueprint.mode === 'ai' ? 'block' : 'none';
                 document.getElementById('blueprintCustomPanel').style.display = blueprint.mode === 'custom' ? 'block' : 'none';
