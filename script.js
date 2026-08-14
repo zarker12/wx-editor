@@ -897,9 +897,6 @@ function syncEditorContainerStyle() {
     if (padMatch) editor.style.padding = padMatch[1].trim();
     const alignMatch = bodyStyle.match(/text-align:\s*([^;]+);/);
     editor.style.textAlign = alignMatch ? alignMatch[1].trim() : 'left';
-    // 渐变排版主题：同步 background: 渐变到编辑器
-    const bgMatch = bodyStyle.match(/background:\s*([^;]+);/);
-    if (bgMatch) editor.style.background = bgMatch[1].trim();
 
     editor.style.maxWidth = '480px';
     editor.style.margin = '0 auto';
@@ -1105,10 +1102,6 @@ function syncEditorToTheme() {
     if (padMatch) editor.style.padding = padMatch[1].trim();
     const alignMatch = bodyStyle.match(/text-align:\s*([^;]+);/);
     editor.style.textAlign = alignMatch ? alignMatch[1].trim() : 'left';
-    // 渐变排版主题：bodyStyle 使用 background:linear-gradient(...)，解析后同步到编辑器
-    //（固体主题用 background-color:，不会被此正则误匹配，仍走上面的 canvasBg 兜底）
-    const bgMatch = bodyStyle.match(/background:\s*([^;]+);/);
-    if (bgMatch) editor.style.background = bgMatch[1].trim();
 
     // 限制编辑器内容宽度与预览手机框一致（phone-frame max-width:480px）
     // 让文字换行、图片缩放与预览完全 1:1
@@ -1267,13 +1260,6 @@ function setStyle(style) {
     fillIntroDefaults();
     syncEditorToTheme();
     updatePreview();
-
-    // 同步设置页「主题系统」UI：排版组选中态 + 顶部当前主题名指示条
-    const layoutGrid = document.getElementById('layoutThemeGrid');
-    if (layoutGrid) {
-        layoutGrid.querySelectorAll('.ts-item').forEach(el => el.classList.toggle('active', el.dataset.key === style));
-    }
-    if (typeof updateThemeSystemBar === 'function') updateThemeSystemBar();
 }
 
 function applyThemeClass(themeName) {
@@ -3897,8 +3883,6 @@ async function refreshSettingsDash() {
     }
     // 渲染主题选择器（独立入口，不依赖 Ctrl+K）
     renderThemePicker();
-    // 渲染「主题系统」分组（外壳主题 + 排版主题）
-    renderThemeSystem();
     // 渲染名片实时预览
     updateIntroPreview();
 }
@@ -3938,112 +3922,6 @@ function renderThemePicker() {
             if (window._showBanner) window._showBanner(`🎨 主题已切换为 ${colorName}`, 2000);
         });
     });
-}
-
-// ===== 网站全局主题（外壳渐变）+ 排版主题 分组切换 =====
-// 两套主题独立：外壳主题只改 body 背景渐变 + 磨砂侧边栏；排版主题只改文章容器/标题。
-// 导出时仅排版主题样式跟随（generateExportHTML 不读取 --shell-bg），外壳主题不导出。
-
-/**
- * @typedef {Object} GradientTheme
- * @property {string} key        主题唯一键
- * @property {string} name       主题显示名
- * @property {string} gradient   CSS 渐变字符串
- * @property {string} startColor 起始色（排版标题强调色）
- * @property {string} endColor   结束色
- */
-
-/** @type {GradientTheme[]} 网站全局主题（外壳背景渐变）列表 */
-const SHELL_GRADIENT_THEMES = [
-    { key: 'shell-default', name: '默认暖纸', gradient: '',                startColor: '#047857', endColor: '#F7F4ED' },
-    { key: 'shell-pink',    name: '粉的很无敌',     gradient: 'linear-gradient(90deg, #FF768D, #E5FFFD)', startColor: '#FF768D', endColor: '#E5FFFD' },
-    { key: 'shell-dream',   name: '深邃又梦幻',     gradient: 'linear-gradient(90deg, #5E68FB, #FFFEDA)', startColor: '#5E68FB', endColor: '#FFFEDA' },
-    { key: 'shell-heal',    name: '好治愈的配色',   gradient: 'linear-gradient(90deg, #1899B6, #FFCCDD)', startColor: '#1899B6', endColor: '#FFCCDD' },
-    { key: 'shell-deep',    name: '绝不能让它去沉淀', gradient: 'linear-gradient(90deg, #30A9FF, #FFF4E3)', startColor: '#30A9FF', endColor: '#FFF4E3' },
-    { key: 'shell-love',    name: '如痴如梦爱了',   gradient: 'linear-gradient(90deg, #5D62CC, #FFDDDD)', startColor: '#5D62CC', endColor: '#FFDDDD' },
-    { key: 'shell-pretty',  name: '啥也不说就好看',  gradient: 'linear-gradient(90deg, #18B670, #FFD0D0)', startColor: '#18B670', endColor: '#FFD0D0' }
-];
-
-/** @type {GradientTheme[]} 经典排版主题（取自 themes/*.js，供设置页分组展示） */
-const CLASSIC_LAYOUT_THEMES = [
-    { key: 'minimal',  name: '极简白', gradient: 'linear-gradient(135deg, #1F2937, #6B7280)' },
-    { key: 'luxury',   name: '黑金奢', gradient: 'linear-gradient(135deg, #0E0E10, #C9A961)' },
-    { key: 'cyber',    name: '科技感', gradient: 'linear-gradient(135deg, #0A0A0F, #00FF9D)' },
-    { key: 'magazine', name: '杂志风', gradient: 'linear-gradient(135deg, #1A1A1A, #8B0000)' },
-    { key: 'fresh',    name: '清新绿', gradient: 'linear-gradient(135deg, #059669, #A7F3D0)' },
-    { key: 'vibrant',  name: '活力橙', gradient: 'linear-gradient(135deg, #EA580C, #FBBF24)' }
-];
-
-let currentShellTheme = 'shell-default';
-const SHELL_STORAGE_KEY = 'wx_shell_theme_v1';
-
-/** 应用外壳渐变到 :root(--shell-bg) + body.shell-themed；空渐变则恢复默认暖纸外壳 */
-function applyShellTheme(key) {
-    const theme = SHELL_GRADIENT_THEMES.find(t => t.key === key);
-    if (theme && theme.gradient) {
-        document.documentElement.style.setProperty('--shell-bg', theme.gradient);
-        document.body.classList.add('shell-themed');
-    } else {
-        document.documentElement.style.removeProperty('--shell-bg');
-        document.body.classList.remove('shell-themed');
-    }
-}
-
-/** 切换外壳主题：应用 + 持久化 + 更新 UI 选中态 */
-function setShellTheme(key) {
-    currentShellTheme = key;
-    applyShellTheme(key);
-    try { localStorage.setItem(SHELL_STORAGE_KEY, key); } catch (e) { console.warn('外壳主题持久化失败:', e); }
-    document.querySelectorAll('#shellThemeGrid .ts-item').forEach(el => {
-        el.classList.toggle('active', el.dataset.key === key);
-    });
-    updateThemeSystemBar();
-}
-
-/** 渲染设置页「主题系统」分组：顶部当前主题名 + 外壳组 + 排版组 */
-function renderThemeSystem() {
-    const shellGrid = document.getElementById('shellThemeGrid');
-    const layoutGrid = document.getElementById('layoutThemeGrid');
-    if (!shellGrid || !layoutGrid) return;
-
-    // 外壳主题组
-    shellGrid.innerHTML = SHELL_GRADIENT_THEMES.map(t => `
-        <div class="ts-item ${t.key === currentShellTheme ? 'active' : ''}" data-key="${t.key}" type="button">
-            <div class="ts-swatch" style="background:${t.gradient || 'linear-gradient(135deg, #F7F4ED, #ECE6DA)'};"></div>
-            <div class="ts-name">${t.name}</div>
-        </div>`).join('');
-    shellGrid.querySelectorAll('.ts-item').forEach(el => {
-        el.addEventListener('click', () => setShellTheme(el.dataset.key));
-    });
-
-    // 排版主题组（经典 6 + 渐变 6）
-    const gradientLayout = window.GRADIENT_LAYOUT_THEMES || [];
-    const gradientForUi = gradientLayout.map(t => ({ key: t.key, name: t.name, gradient: t.gradient }));
-    const allLayout = CLASSIC_LAYOUT_THEMES.concat(gradientForUi);
-    layoutGrid.innerHTML = allLayout.map(t => `
-        <div class="ts-item ${t.key === currentStyle ? 'active' : ''}" data-key="${t.key}" type="button">
-            <div class="ts-swatch" style="background:${t.gradient};"></div>
-            <div class="ts-name">${t.name}</div>
-        </div>`).join('');
-    layoutGrid.querySelectorAll('.ts-item').forEach(el => {
-        el.addEventListener('click', () => {
-            setStyle(el.dataset.key);
-            layoutGrid.querySelectorAll('.ts-item').forEach(x => x.classList.toggle('active', x.dataset.key === el.dataset.key));
-            updateThemeSystemBar();
-        });
-    });
-
-    updateThemeSystemBar();
-}
-
-/** 更新顶部「当前：外壳主题 · 排版主题」指示条 */
-function updateThemeSystemBar() {
-    const shellEl = document.getElementById('tsCurrentShell');
-    const layoutEl = document.getElementById('tsCurrentLayout');
-    const shell = SHELL_GRADIENT_THEMES.find(t => t.key === currentShellTheme);
-    const layoutTheme = getStyleTheme();
-    if (shellEl) shellEl.textContent = shell ? shell.name : '默认暖纸';
-    if (layoutEl) layoutEl.textContent = layoutTheme ? layoutTheme.name : '极简白';
 }
 
 // 绑定 dashboard 按钮到既有 modal/函数
@@ -11043,18 +10921,10 @@ function showUserMenu() {
             const themeName = (saved || 'theme-emerald').replace('theme-', '');
             applyThemeClass(themeName);
             currentColor = themeName;
-        } catch {
+        } catch { 
             applyThemeClass('emerald');
             currentColor = 'emerald';
         }
-        // 恢复外壳主题（网站全局主题，独立于排版主题）
-        try {
-            const savedShell = localStorage.getItem(SHELL_STORAGE_KEY);
-            if (savedShell) {
-                currentShellTheme = savedShell;
-                applyShellTheme(savedShell);
-            }
-        } catch (e) { console.warn('恢复外壳主题失败:', e); }
         // 首次访问显示新手引导
         if (shouldShowOnboard()) {
             setTimeout(() => showOnboard(), 600);

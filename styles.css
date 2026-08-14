@@ -155,27 +155,6 @@ body {
         radial-gradient(circle at 92% 94%, rgba(120, 53, 15, 0.03), transparent 45%),
         linear-gradient(180deg, rgba(255, 255, 255, 0.5), transparent 120px);
     background-attachment: fixed;
-    /* 外壳主题切换时平滑过渡 */
-    transition: background-image 0.5s ease, background-color 0.5s ease;
-}
-
-/* ===== 网站全局主题（外壳渐变） =====
-   仅修改外壳背景渐变，不碰文章；磨砂侧边栏适配渐变。
-   --shell-bg 由 JS 在 :root 上设置为目标渐变；body.shell-themed 启用渐变外壳。 */
-body.shell-themed {
-    background-image: var(--shell-bg, none);
-    background-color: transparent;
-    background-attachment: fixed;
-}
-/* 磨砂侧边栏：渐变外壳下侧栏改为半透明 + 毛玻璃，透出底层渐变 */
-body.shell-themed .app-sidebar {
-    background: rgba(20, 20, 22, 0.5);
-    backdrop-filter: blur(18px) saturate(1.25);
-    -webkit-backdrop-filter: blur(18px) saturate(1.25);
-}
-body.shell-themed .style-panel {
-    backdrop-filter: blur(16px) saturate(1.2);
-    -webkit-backdrop-filter: blur(16px) saturate(1.2);
 }
 
 .app-container {
@@ -4642,43 +4621,6 @@ body.shell-themed .style-panel {
     width: 100%; height: 36px; border-radius: 6px; margin-bottom: 6px;
 }
 .theme-picker-name { font-size: 12px; color: var(--text-primary); font-weight: 600; }
-
-/* ===== 主题系统：外壳主题 + 排版主题 分组切换 ===== */
-.theme-system-bar {
-    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-    padding: 10px 14px; margin-bottom: 14px;
-    background: var(--bg-surface); border: 1px solid var(--border-default);
-    border-radius: 10px; font-size: 13px;
-}
-.theme-system-bar .ts-label { color: var(--text-tertiary); font-weight: 600; }
-.theme-system-bar .ts-name {
-    color: var(--accent-600); font-weight: 700;
-    background: var(--accent-soft); padding: 3px 10px; border-radius: 20px;
-}
-.theme-system-bar .ts-sep { color: var(--border-default); }
-
-.ts-group { margin-bottom: 18px; }
-.ts-group-head {
-    display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px;
-}
-.ts-group-title { font-size: 14px; font-weight: 700; color: var(--text-primary); }
-.ts-group-hint { font-size: 12px; color: var(--text-tertiary); }
-.ts-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px;
-}
-.ts-item {
-    border: 2px solid var(--border-default); border-radius: 10px; padding: 10px;
-    cursor: pointer; transition: all 0.18s; text-align: center;
-    background: var(--card-bg); position: relative;
-}
-.ts-item:hover { border-color: var(--text-tertiary); transform: translateY(-2px); }
-.ts-item.active { border-color: var(--accent-500); box-shadow: 0 0 0 3px var(--accent-soft); }
-.ts-item.active::after {
-    content: '✓'; position: absolute; top: 4px; right: 6px;
-    font-size: 12px; font-weight: 700; color: var(--accent-600);
-}
-.ts-swatch { width: 100%; height: 40px; border-radius: 6px; margin-bottom: 6px; }
-.ts-name { font-size: 12px; color: var(--text-primary); font-weight: 600; }
 
 /* 名片实时预览容器 */
 .intro-preview-wrap {
